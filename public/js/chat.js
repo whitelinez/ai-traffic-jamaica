@@ -42,14 +42,14 @@ const Chat = (() => {
     return palette[(abs >> 3) % palette.length];
   }
 
-  function defaultAvatar(seed) {
-    const accent = _userAccent(seed);
+  function defaultAvatar(_seed) {
+    const accent = '#FFD600';
     // Plain SVG silhouette: circle head + body fill, flat monochrome
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>
       <rect width='64' height='64' rx='8' fill='#0c1320'/>
       <circle cx='32' cy='23' r='12' fill='${accent}' opacity='0.88'/>
       <path d='M8 62 Q8 44 32 40 Q56 44 56 62Z' fill='${accent}' opacity='0.7'/>
-      <rect width='64' height='64' rx='8' fill='none' stroke='${accent}' stroke-width='1' opacity='0.18'/>
+      <rect width='64' height='64' rx='8' fill='none' stroke='${accent}' stroke-width='1' opacity='0.22'/>
     </svg>`;
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   }

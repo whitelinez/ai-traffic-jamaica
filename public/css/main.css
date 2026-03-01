@@ -162,7 +162,7 @@ a:hover { text-decoration: underline; }
 .logo-part-loc {
   font-family: "Inter", sans-serif;
   font-size: 9px; font-weight: 600; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--accent);
+  text-transform: uppercase; color: #FFD600;
 }
 /* Logo image stack */
 .logo-img-wrap {
@@ -10632,4 +10632,33 @@ button {
 .lb-row-top-0 .lb-medal { color: #FFD700; }
 .lb-row-top-1 .lb-medal { color: #C0C0C0; }
 .lb-row-top-2 .lb-medal { color: #CD7F32; }
+
+/* ══════════════════════════════════════════════════════════════
+   KILL ALL PULSE / BLINK / BREATHE ANIMATIONS — too many dots
+   ══════════════════════════════════════════════════════════════ */
+.header-cam-dot,
+.header-watching-dot,
+.aip-pulse-dot,
+.live-dot,
+.cw-ws-dot,
+.cw-ws-err,
+.intel-online-dot,
+.stream-live-dot,
+.stream-offline-dot,
+.header-play-btn.round-open,
+.bnr-icon-idle,
+.bnr-ai-dot,
+.bnr-ai-dot-live,
+.bnr-ai-dot-cyan,
+.cp-ai-dot,
+.ml-cell-fill,
+[class*="chat-live"],
+[class*="live-pulse"],
+[class*="-pulse-dot"],
+[class*="pulse-dot"],
+[class*="bnr-play"],
+[class*="bnr-green"] {
+  animation: none !important;
+  box-shadow: none !important;
+}
 

@@ -146,19 +146,14 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
     }
   }
 
-  function defaultAvatar(seed) {
-    const src = String(seed || "whitelinez-user");
-    let hash = 0;
-    for (let i = 0; i < src.length; i += 1) hash = ((hash << 5) - hash + src.charCodeAt(i)) | 0;
-    const abs = Math.abs(hash);
-    const palette = ["#00d4ff","#22c55e","#a78bfa","#f472b6","#fb923c","#4ade80","#e879f9","#60a5fa","#f59e0b","#2dd4bf"];
-    const accent = palette[abs % palette.length];
+  function defaultAvatar(_seed) {
+    const accent = '#FFD600';
     // Plain SVG silhouette: circle head + body fill, flat monochrome
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>
       <rect width='64' height='64' rx='8' fill='#0c1320'/>
       <circle cx='32' cy='23' r='12' fill='${accent}' opacity='0.88'/>
       <path d='M8 62 Q8 44 32 40 Q56 44 56 62Z' fill='${accent}' opacity='0.7'/>
-      <rect width='64' height='64' rx='8' fill='none' stroke='${accent}' stroke-width='1' opacity='0.18'/>
+      <rect width='64' height='64' rx='8' fill='none' stroke='${accent}' stroke-width='1' opacity='0.22'/>
     </svg>`;
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   }
