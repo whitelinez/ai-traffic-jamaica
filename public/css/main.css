@@ -10565,12 +10565,6 @@ button {
   clip-path: none !important; background: transparent !important; border: none !important;
 }
 
-/* ── AI Pulse HUD: compact pill (desktop) ── */
-.ml-hud {
-  padding: 0 !important;
-}
-.ml-hud.is-expanded .aip-compact { border-radius: 8px 8px 0 0; }
-
 /* ── Intel panel: hide when tab not active ── */
 .tab-content.intel-panel:not(.active) { display: none !important; }
 

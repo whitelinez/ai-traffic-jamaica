@@ -302,69 +302,37 @@
         </div>
 
         <div id="ml-hud" class="ml-hud" title="Toggle AI details">
-          <!-- Compact view (default) — icon-based stat badges -->
-          <div class="aip-compact">
-            <!-- Live indicator -->
-            <div class="aip-badge">
-              <span class="aip-pulse-dot"></span>
-              <svg class="aip-cam-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-            </div>
-            <!-- 3 live stat chips -->
-            <div class="aip-stats">
-              <span class="aip-stat" title="Live objects in frame">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-                <strong id="ml-hud-profile">—</strong>
-              </span>
-              <span class="aip-stat" title="Detection confidence">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                <strong id="ml-hud-delay">—</strong>
-              </span>
-              <span class="aip-stat aip-stat-load" title="Traffic load">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><rect x="2" y="14" width="3" height="6" rx="1"/><rect x="9" y="9" width="3" height="11" rx="1"/><rect x="16" y="4" width="3" height="16" rx="1"/></svg>
-                <strong id="ml-hud-scene-conf">—</strong>
-              </span>
-            </div>
-            <!-- Expand chevron -->
-            <span class="aip-expand-ico" aria-hidden="true">
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="ml-hud-head">
+            <span class="ml-hud-title">VISION HUD</span>
+            <span id="ml-hud-level" class="ml-hud-state">
+              <svg id="ml-hud-wx-svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="width:9px;height:9px;flex-shrink:0"><path id="ml-hud-wx-path" d=""/></svg>
+              <span id="ml-hud-wx-text">Idle</span>
             </span>
-            <!-- Hidden compat: ml-overlay.js writes here, kept for JS contract -->
-            <p id="ml-hud-msg" class="aip-hidden" aria-hidden="true"></p>
-            <div id="aip-load-fill" style="display:none"></div>
           </div>
-
-          <!-- Expanded view (toggled by click) -->
-          <div class="aip-expanded">
-            <div class="aip-exp-head">
-              <span class="ml-hud-title">VISION HUD</span>
-              <span id="ml-hud-level" class="ml-hud-state">
-                <svg id="ml-hud-wx-svg" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="width:9px;height:9px;flex-shrink:0"><path id="ml-hud-wx-path" d=""/></svg>
-                <span id="ml-hud-wx-text">Idle</span>
-              </span>
-            </div>
-            <p id="ml-hud-bot" class="ml-hud-bot"></p>
-            <p id="ml-hud-verbose" class="ml-hud-verbose">Scene lock scanning | retrain idle | scene --</p>
-            <div class="ml-hud-cells">
-              <div class="ml-cell-row">
-                <span class="ml-cell-label">Detection Rate</span>
-                <strong id="ml-hud-conf">0.0/m</strong>
-                <div class="ml-cell-track">
-                  <div id="ml-hud-conf-bar" class="ml-cell-fill" style="--pct:0"></div>
-                </div>
-              </div>
-              <div class="ml-cell-row ml-cell-row-traffic">
-                <span class="ml-cell-label">Traffic Load</span>
-                <span id="ml-hud-traffic-msg" class="ml-cell-note">Waiting for data…</span>
+          <p id="ml-hud-msg" class="ml-hud-msg"></p>
+          <p id="ml-hud-bot" class="ml-hud-bot"></p>
+          <p id="ml-hud-verbose" class="ml-hud-verbose">Scene lock scanning | retrain idle | scene --</p>
+          <div class="ml-hud-cells">
+            <div class="ml-cell-row">
+              <span class="ml-cell-label">Detection Rate</span>
+              <strong id="ml-hud-conf">0.0/m</strong>
+              <div class="ml-cell-track">
+                <div id="ml-hud-conf-bar" class="ml-cell-fill" style="--pct:0"></div>
               </div>
             </div>
-            <div class="ml-hud-metrics">
-              <span>Frames <strong id="ml-hud-frames">0</strong></span>
-              <span>Objects <strong id="ml-hud-dets">0</strong></span>
+            <div class="ml-cell-row ml-cell-row-traffic">
+              <span class="ml-cell-label">Traffic Load</span>
+              <span id="ml-hud-traffic-msg" class="ml-cell-note">Waiting for data…</span>
             </div>
           </div>
-
-          <!-- Hidden compat element -->
-          <img src="/img/aiframes.png" class="ml-hud-collapsed-ico" alt="" aria-hidden="true" style="display:none" />
+          <div class="ml-hud-metrics">
+            <span>Frames <strong id="ml-hud-frames">0</strong></span>
+            <span>Objects <strong id="ml-hud-dets">0</strong></span>
+          </div>
+          <!-- JS-contracted IDs (ml-overlay.js guard) — hidden, not displayed -->
+          <span id="ml-hud-profile" style="display:none" aria-hidden="true"></span>
+          <span id="ml-hud-delay" style="display:none" aria-hidden="true"></span>
+          <span id="ml-hud-scene-conf" style="display:none" aria-hidden="true"></span>
         </div>
 
         <!-- Scene chip: weather only (location shown in header cam chip) -->
