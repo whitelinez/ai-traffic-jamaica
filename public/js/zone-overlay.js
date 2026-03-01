@@ -194,6 +194,9 @@ const ZoneOverlay = (() => {
       syncSize();
       draw();
     });
+    if (window.ResizeObserver) {
+      new ResizeObserver(() => { syncSize(); draw(); }).observe(video);
+    }
     video.addEventListener("loadedmetadata", () => {
       syncSize();
       loadAndDraw();
@@ -297,7 +300,7 @@ const ZoneOverlay = (() => {
     flashTimer = setTimeout(() => {
       isFlashing = false;
       draw();
-    }, 350);
+    }, 600);
   }
 
   function draw() {
@@ -312,14 +315,8 @@ const ZoneOverlay = (() => {
     const bounds = getContentBounds(video);
     const pt = (rx, ry) => contentToPixel(rx, ry, bounds);
 
-    if (detectZone) {
-      _drawZone(detectZone, "#00BCD4", false, "", pt);
-    }
-
-    if (countLine) {
-      const color = isFlashing ? "#00FF88" : "#FFD600";
-      _drawZone(countLine, color, isFlashing, String(confirmedTotal), pt, _hoverCountLine);
-    }
+    if (detectZone) _drawDetectZoneCanvas(detectZone, pt);
+    if (countLine) _drawCountLineCanvas(countLine, pt);
 
     _drawLandmarks(bounds);
   }
@@ -332,14 +329,8 @@ const ZoneOverlay = (() => {
     const bounds = getContentBounds(video);
     const pt = (rx, ry) => contentToPixel(rx, ry, bounds);
 
-    if (detectZone) {
-      _drawZonePixi(detectZone, "#00BCD4", false, "", pt, false);
-    }
-
-    if (countLine) {
-      const color = isFlashing ? "#00FF88" : "#FFD600";
-      _drawZonePixi(countLine, color, isFlashing, String(confirmedTotal), pt, _hoverCountLine);
-    }
+    if (detectZone) _drawDetectZonePixi(detectZone, pt);
+    if (countLine) _drawCountLinePixi(countLine, pt);
 
     // Landmarks render on the 2D ctx even when Pixi is active (text/labels)
     if (ctx) _drawLandmarks(getContentBounds(video));
@@ -471,6 +462,164 @@ const ZoneOverlay = (() => {
         addPixiLabel(label, mx, my, colorNum);
       }
     }
+  }
+
+  // ── New visual drawing functions ─────────────────────────────
+
+  function _drawDetectZoneCanvas(zone, pt) {
+    const poly = _toPoints(zone, pt);
+    if (!poly || poly.length < 3) return;
+    ctx.save();
+    // Subtle fill
+    ctx.beginPath();
+    ctx.moveTo(poly[0].x, poly[0].y);
+    poly.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(0,212,255,0.04)';
+    ctx.fill();
+    // Dashed perimeter
+    ctx.beginPath();
+    ctx.moveTo(poly[0].x, poly[0].y);
+    poly.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.closePath();
+    ctx.strokeStyle = '#00D4FF';
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.7;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // SCAN label above the topmost vertex
+    const top = poly.reduce((t, p) => p.y < t.y ? p : t, poly[0]);
+    ctx.globalAlpha = 1;
+    ctx.font = '700 9px "JetBrains Mono", monospace';
+    ctx.fillStyle = 'rgba(0,212,255,0.7)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('SCAN', top.x, top.y - 4);
+    ctx.restore();
+  }
+
+  function _drawCountLineCanvas(zone, pt) {
+    if (!zone || zone.x1 === undefined) return;
+    const p1 = pt(zone.x1, zone.y1);
+    const p2 = pt(zone.x2, zone.y2);
+    const flash = isFlashing;
+    const lineColor = flash ? '#00FF88' : '#FFB800';
+
+    // Glow halo pass
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = flash ? 8 : 5;
+    ctx.globalAlpha = 0.20;
+    ctx.shadowColor = lineColor;
+    ctx.shadowBlur = flash ? 20 : 12;
+    ctx.stroke();
+    ctx.restore();
+
+    // Main line
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = flash ? 3 : 2;
+    ctx.shadowColor = lineColor;
+    ctx.shadowBlur = flash ? 12 : 6;
+    ctx.stroke();
+    ctx.restore();
+
+    // Rounded end caps
+    [p1, p2].forEach(p => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = lineColor;
+      ctx.shadowColor = lineColor;
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.restore();
+    });
+
+    // Count badge above midpoint
+    const mx = (p1.x + p2.x) / 2;
+    const my = (p1.y + p2.y) / 2;
+    const label = String(confirmedTotal);
+    ctx.save();
+    ctx.font = '700 15px Rajdhani, sans-serif';
+    const tw = ctx.measureText(label).width;
+    const padX = 9, bh = 22;
+    const bw = Math.max(tw + padX * 2, 34);
+    const bx = mx - bw / 2;
+    const by = my - bh - 10;
+    // Badge background
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 4);
+    else ctx.rect(bx, by, bw, bh);
+    ctx.fillStyle = flash ? 'rgba(0,255,136,0.18)' : 'rgba(0,0,0,0.78)';
+    ctx.fill();
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 1;
+    ctx.shadowColor = lineColor;
+    ctx.shadowBlur = flash ? 8 : 4;
+    ctx.stroke();
+    // Badge text
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = lineColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, mx, by + bh / 2);
+    ctx.restore();
+
+    applyVehicleOcclusion();
+  }
+
+  function _drawDetectZonePixi(zone, pt) {
+    const poly = _toPoints(zone, pt);
+    if (!poly || poly.length < 3) return;
+    // Subtle fill (Pixi solid — no dashes available)
+    pixiGraphics.beginFill(0x00D4FF, 0.04);
+    pixiGraphics.lineStyle(1.5, 0x00D4FF, 0.65);
+    pixiGraphics.moveTo(poly[0].x, poly[0].y);
+    for (let i = 1; i < poly.length; i++) pixiGraphics.lineTo(poly[i].x, poly[i].y);
+    pixiGraphics.lineTo(poly[0].x, poly[0].y);
+    pixiGraphics.endFill();
+    // SCAN label
+    const top = poly.reduce((t, p) => p.y < t.y ? p : t, poly[0]);
+    addPixiLabel('SCAN', top.x, top.y - 10, 0x00D4FF);
+  }
+
+  function _drawCountLinePixi(zone, pt) {
+    if (!zone || zone.x1 === undefined) return;
+    const p1 = pt(zone.x1, zone.y1);
+    const p2 = pt(zone.x2, zone.y2);
+    const flash = isFlashing;
+    const col = flash ? 0x00FF88 : 0xFFB800;
+
+    // Glow pass
+    pixiGraphics.lineStyle(flash ? 8 : 5, col, 0.20);
+    pixiGraphics.moveTo(p1.x, p1.y);
+    pixiGraphics.lineTo(p2.x, p2.y);
+
+    // Main line
+    pixiGraphics.lineStyle(flash ? 3 : 2, col, 1);
+    pixiGraphics.moveTo(p1.x, p1.y);
+    pixiGraphics.lineTo(p2.x, p2.y);
+
+    // End caps
+    [p1, p2].forEach(p => {
+      pixiGraphics.beginFill(col, 1);
+      pixiGraphics.lineStyle(0);
+      pixiGraphics.drawCircle(p.x, p.y, 4);
+      pixiGraphics.endFill();
+    });
+
+    // Count badge label
+    const mx = (p1.x + p2.x) / 2;
+    const my = (p1.y + p2.y) / 2 - 20;
+    addPixiLabel(String(confirmedTotal), mx, my, col);
   }
 
   const LM_TYPE_COLOR = {

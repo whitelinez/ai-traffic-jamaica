@@ -34,17 +34,17 @@ const DetectionOverlay = (() => {
   const laneSmoothing = new Map();
 
   let settings = {
-    box_style: "solid",
-    line_width: 2,
-    fill_alpha: 0.10,
-    max_boxes: 10,
+    box_style: "corner",
+    line_width: 1.5,
+    fill_alpha: 0.0,
+    max_boxes: 20,
     show_labels: true,
     detect_zone_only: true,
     outside_scan_enabled: true,
-    outside_scan_min_conf: 0.45,
-    outside_scan_max_boxes: 25,
+    outside_scan_min_conf: 0.50,
+    outside_scan_max_boxes: 8,
     outside_scan_hold_ms: 220,
-    outside_scan_show_labels: true,
+    outside_scan_show_labels: false,
     ground_overlay_enabled: true,
     show_ground_plane_public: false,
     ground_overlay_alpha: 0.16,
@@ -263,9 +263,10 @@ const DetectionOverlay = (() => {
   }
 
   function drawCornerBox(x, y, w, h, color, lineWidth) {
-    const c = Math.max(6, Math.min(20, Math.floor(Math.min(w, h) * 0.2)));
+    const c = Math.max(6, Math.min(20, Math.floor(Math.min(w, h) * 0.22)));
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
     ctx.setLineDash([]);
     ctx.beginPath();
     ctx.moveTo(x, y + c); ctx.lineTo(x, y); ctx.lineTo(x + c, y);
@@ -273,11 +274,12 @@ const DetectionOverlay = (() => {
     ctx.moveTo(x + w, y + h - c); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - c, y + h);
     ctx.moveTo(x + c, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - c);
     ctx.stroke();
+    ctx.lineCap = 'butt';
   }
 
   function drawCornerBoxPixi(g, x, y, w, h, colorNum, lineWidth) {
-    const c = Math.max(6, Math.min(20, Math.floor(Math.min(w, h) * 0.2)));
-    g.lineStyle(lineWidth, colorNum, 1);
+    const c = Math.max(6, Math.min(20, Math.floor(Math.min(w, h) * 0.22)));
+    g.lineStyle(lineWidth, colorNum, 1, 0.5, true);
     g.moveTo(x, y + c); g.lineTo(x, y); g.lineTo(x + c, y);
     g.moveTo(x + w - c, y); g.lineTo(x + w, y); g.lineTo(x + w, y + c);
     g.moveTo(x + w, y + h - c); g.lineTo(x + w, y + h); g.lineTo(x + w - c, y + h);
@@ -528,21 +530,16 @@ const DetectionOverlay = (() => {
     else ctx.strokeRect(p1.x, p1.y, bw, bh);
 
     if (showLabels) {
-      const defaultConf = Number(det?.conf || 0) > 0 ? ` ${(Number(det.conf) * 100).toFixed(0)}%` : "";
-      const label = labelText || `${String(det?.cls || "vehicle").toUpperCase()}${defaultConf}`;
+      const CLS_ABBR = { car: 'C', truck: 'T', bus: 'B', motorcycle: 'M' };
+      const abbr = labelText || CLS_ABBR[String(det?.cls || '').toLowerCase()] || String(det?.cls || 'V').charAt(0).toUpperCase();
       ctx.setLineDash([]);
-      const _lfs = isMobileClient ? "9px" : "11px";
-      ctx.font = `${_lfs} Inter, sans-serif`;
-      const padX = isMobileClient ? 4 : 6;
-      const padY = isMobileClient ? 3 : 4;
-      const tw = Math.max(24, Math.ceil(ctx.measureText(label).width + padX * 2));
-      const th = isMobileClient ? 14 : 18;
-      const lx = p1.x;
-      const ly = Math.max(2, p1.y - th - 2);
-      ctx.fillStyle = hexToRgba(color, opts.labelBgAlpha ?? 0.85);
-      ctx.fillRect(lx, ly, tw, th);
-      ctx.fillStyle = opts.labelColor || "#0d1118";
-      ctx.fillText(label, lx + padX, ly + th - padY);
+      const _lfs = isMobileClient ? "9px" : "10px";
+      ctx.font = `700 ${_lfs} "JetBrains Mono", monospace`;
+      ctx.fillStyle = hexToRgba(color, 0.90);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      const c = Math.max(6, Math.min(20, Math.floor(Math.min(bw, bh) * 0.22)));
+      ctx.fillText(abbr, p1.x + c + 2, p1.y + 2);
     }
   }
 
@@ -582,26 +579,18 @@ const DetectionOverlay = (() => {
 
     if (!showLabels) return;
 
-    const defaultConf = Number(det?.conf || 0) > 0 ? ` ${(Number(det.conf) * 100).toFixed(0)}%` : "";
-    const label = labelText || `${String(det?.cls || "vehicle").toUpperCase()}${defaultConf}`;
+    const CLS_ABBR = { car: 'C', truck: 'T', bus: 'B', motorcycle: 'M' };
+    const abbr = labelText || CLS_ABBR[String(det?.cls || '').toLowerCase()] || String(det?.cls || 'V').charAt(0).toUpperCase();
     const txt = getPixiText();
     if (!txt) return;
 
-    txt.text = label;
-    txt.style.fill = hexToPixi(opts.labelColor || "#0d1118");
+    txt.text = abbr;
+    txt.style.fill = colorNum;
+    txt.style.fontWeight = '700';
 
-    const padX = 6;
-    const th = 18;
-    const tw = Math.max(30, Math.ceil(txt.width + padX * 2));
-    const lx = p1.x;
-    const ly = Math.max(2, p1.y - th - 2);
-
-    g.beginFill(colorNum, Math.max(0, Math.min(1, Number(opts.labelBgAlpha ?? 0.85))));
-    g.drawRect(lx, ly, tw, th);
-    g.endFill();
-
-    txt.x = lx + padX;
-    txt.y = ly + 2;
+    const c = Math.max(6, Math.min(20, Math.floor(Math.min(bw, bh) * 0.22)));
+    txt.x = p1.x + c + 2;
+    txt.y = p1.y + 2;
   }
 
   /**
@@ -674,6 +663,9 @@ const DetectionOverlay = (() => {
 
     window.addEventListener("resize", syncSize);
     video.addEventListener("loadedmetadata", syncSize);
+    if (window.ResizeObserver) {
+      new ResizeObserver(syncSize).observe(video);
+    }
 
     window.addEventListener("count:update", (e) => {
       latestDetections = e.detail?.detections ?? [];
