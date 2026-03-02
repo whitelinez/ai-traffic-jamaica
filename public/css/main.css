@@ -10275,10 +10275,12 @@ button {
      ───────────────────────────────────────────── */
   #tab-chat {
     padding: 0;
-    display: flex;
+    /* no display:flex here — .tab-content.active handles visibility;
+       setting display:flex on the ID would override display:none
+       from the class rule, keeping chat visible on all tabs */
     flex-direction: column;
     flex: 1 1 auto;
-    min-height: 0;       /* lets it shrink inside flex parent */
+    min-height: 0;
     overflow: hidden;
   }
   .chat-tab-header { padding: 10px 14px 6px 14px; flex-shrink: 0; }
