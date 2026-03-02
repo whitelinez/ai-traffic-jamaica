@@ -17,21 +17,27 @@
 <body class="dark account-page">
 
   <header class="site-header">
-    <a href="/" class="logo">
+    <a href="/" class="logo" id="site-logo">
       <span class="logo-img-wrap">
-        <img class="logo-icon" src="/img/iconinframes.png" alt="AI TRAFFIC JAMAICA" />
+        <img class="logo-icon" src="/img/iconinframes.png" alt="TRAFFIC.AI JAMAICA" />
         <img class="logo-ai-frame" src="/img/aiframes.png" alt="" aria-hidden="true" />
       </span>
-      <span class="logo-title">AI TRAFFIC JAMAICA</span>
-    </a>
-    <nav>
-      <a id="account-nav-admin" href="/admin" class="hidden">Admin</a>
-      <a href="/">Live</a>
-      <a href="/account" class="active">Account</a>
-      <span class="nav-icon-btn nav-avatar-btn" title="Profile">
-        <img id="account-header-avatar" class="nav-avatar" alt="Profile" />
+      <span class="logo-title-block">
+        <span class="logo-part-main">AI TRAFFIC</span>
+        <span class="logo-part-loc">JAMAICA</span>
       </span>
-      <button id="btn-logout">Logout</button>
+    </a>
+    <nav class="header-nav">
+      <a id="account-nav-admin" href="/admin" class="nav-dd-item hidden">Admin</a>
+      <a href="/" class="nav-login-btn">Live</a>
+      <span id="nav-user">
+        <div class="nav-user-menu">
+          <span class="nav-avatar-trigger" title="Profile">
+            <img id="account-header-avatar" class="nav-avatar" alt="Profile" />
+          </span>
+        </div>
+      </span>
+      <button id="btn-logout" class="nav-login-btn">Sign out</button>
     </nav>
   </header>
 

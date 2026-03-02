@@ -311,22 +311,6 @@ const DetectionOverlay = (() => {
     // BL
     ctx.moveTo(p1.x + tc, p2.y); ctx.lineTo(p1.x, p2.y); ctx.lineTo(p1.x, p2.y - tc);
     ctx.stroke();
-    // Dim label: "Car?"
-    const CLS_NAME = { car: 'Car', truck: 'Truck', bus: 'Bus', motorcycle: 'Moto' };
-    const clsStr = (CLS_NAME[String(det?.cls || '').toLowerCase()] || 'Vehicle') + '?';
-    const fs = isMobileClient ? 8 : 9;
-    ctx.font = `600 ${fs}px "JetBrains Mono", monospace`;
-    const tw = ctx.measureText(clsStr).width;
-    const px = 3, py = 1;
-    const tx = p1.x, ty = p1.y - (fs + py * 2);
-    if (ty >= 0) {
-      ctx.fillStyle = `rgba(0,180,220,${pulse * 0.75})`;
-      ctx.fillRect(tx, ty, tw + px * 2, fs + py * 2);
-      ctx.fillStyle = `rgba(0,0,0,0.85)`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText(clsStr, tx + px, ty + py);
-    }
     ctx.restore();
   }
 
