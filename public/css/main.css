@@ -581,7 +581,7 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: 0.9rem;
 /* ── Count widget — bottom strip redesign ───────────────────────── */
 .count-widget {
   position: absolute;
-  bottom: 0; left: 0; right: 0;
+  bottom: 40px; left: 0; right: 0;
   height: 44px;
   background: rgba(8, 12, 20, 0.82);
   backdrop-filter: blur(12px);
