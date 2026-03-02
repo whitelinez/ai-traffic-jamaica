@@ -20,7 +20,7 @@ const DetectionOverlay = (() => {
   const QUEUE_MAX_AGE_MS  = 15_000;  // drop entries older than 15s
   const QUEUE_MATCH_TOL_MS = 800;    // ±800ms — tighter now that lag is stable at ~4s
   const QUEUE_POLL_MS = 200;         // continuous poll interval (ms) independent of WS
-  const SETTINGS_KEY = "whitelinez.detection.overlay_settings.v5";
+  const SETTINGS_KEY = "whitelinez.detection.overlay_settings.v6";
   let pixiApp = null;
   let pixiEnabled = false;
   let isMobileClient = false;
@@ -530,16 +530,25 @@ const DetectionOverlay = (() => {
     else ctx.strokeRect(p1.x, p1.y, bw, bh);
 
     if (showLabels) {
-      const CLS_ABBR = { car: 'C', truck: 'T', bus: 'B', motorcycle: 'M' };
-      const abbr = labelText || CLS_ABBR[String(det?.cls || '').toLowerCase()] || String(det?.cls || 'V').charAt(0).toUpperCase();
+      const CLS_NAME = { car: 'Car', truck: 'Truck', bus: 'Bus', motorcycle: 'Moto' };
+      const clsStr = labelText || CLS_NAME[String(det?.cls || '').toLowerCase()] || String(det?.cls || 'Vehicle');
+      const confStr = (det.conf != null && !labelText) ? ` ${Math.round(Number(det.conf) * 100)}%` : '';
+      const txt = clsStr + confStr;
       ctx.setLineDash([]);
-      const _lfs = isMobileClient ? "9px" : "10px";
-      ctx.font = `700 ${_lfs} "JetBrains Mono", monospace`;
-      ctx.fillStyle = hexToRgba(color, 0.90);
+      const fs = isMobileClient ? 9 : 10;
+      ctx.font = `700 ${fs}px "JetBrains Mono", monospace`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      const c = Math.max(6, Math.min(20, Math.floor(Math.min(bw, bh) * 0.22)));
-      ctx.fillText(abbr, p1.x + c + 2, p1.y + 2);
+      const tw = ctx.measureText(txt).width;
+      const px = 4, py = 2;
+      const tagW = tw + px * 2;
+      const tagH = fs + py * 2;
+      const tx = p1.x;
+      const ty = (p1.y - tagH >= 0) ? p1.y - tagH : p1.y;
+      ctx.fillStyle = hexToRgba(color, 0.88);
+      ctx.fillRect(tx, ty, tagW, tagH);
+      ctx.fillStyle = '#000000';
+      ctx.fillText(txt, tx + px, ty + py);
     }
   }
 
@@ -579,18 +588,35 @@ const DetectionOverlay = (() => {
 
     if (!showLabels) return;
 
-    const CLS_ABBR = { car: 'C', truck: 'T', bus: 'B', motorcycle: 'M' };
-    const abbr = labelText || CLS_ABBR[String(det?.cls || '').toLowerCase()] || String(det?.cls || 'V').charAt(0).toUpperCase();
+    const CLS_NAME = { car: 'Car', truck: 'Truck', bus: 'Bus', motorcycle: 'Moto' };
+    const clsStr = labelText || CLS_NAME[String(det?.cls || '').toLowerCase()] || String(det?.cls || 'Vehicle');
+    const confStr = (det.conf != null && !labelText) ? ` ${Math.round(Number(det.conf) * 100)}%` : '';
+    const labelStr = clsStr + confStr;
+
+    // background pill via Graphics
+    const bg = getPixiGraphic();
+    if (bg) {
+      const fs = 10;
+      const px = 4, py = 2;
+      const approxCharW = fs * 0.62;
+      const tagW = labelStr.length * approxCharW + px * 2;
+      const tagH = fs + py * 2;
+      const ty = (p1.y - tagH >= 0) ? p1.y - tagH : p1.y;
+      bg.beginFill(colorNum, 0.88);
+      bg.drawRect(p1.x, ty, tagW, tagH);
+      bg.endFill();
+    }
+
     const txt = getPixiText();
     if (!txt) return;
-
-    txt.text = abbr;
-    txt.style.fill = colorNum;
+    const fs = 10;
+    const py = 2;
+    const ty = (p1.y - (fs + py * 2) >= 0) ? p1.y - (fs + py * 2) : p1.y;
+    txt.text = labelStr;
+    txt.style.fill = 0x000000;
     txt.style.fontWeight = '700';
-
-    const c = Math.max(6, Math.min(20, Math.floor(Math.min(bw, bh) * 0.22)));
-    txt.x = p1.x + c + 2;
-    txt.y = p1.y + 2;
+    txt.x = p1.x + 4;
+    txt.y = ty + py;
   }
 
   /**
