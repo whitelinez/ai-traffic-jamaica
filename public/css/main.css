@@ -10131,41 +10131,36 @@ button {
   .cw-vehicle-num { font-size: 15px; }
   .cw-total-val   { font-size: 20px; }
 
-  /* ── AI Pulse HUD — desktop-style compact box, top-LEFT on mobile ── */
+  /* ── Vision HUD — desktop-style box, bottom-RIGHT on mobile ── */
   .ml-hud {
     position: absolute !important;
-    top: 8px  !important;
-    left: 8px !important;
-    right: auto !important;
-    bottom: auto !important;
-    width: 154px !important;
+    top: auto   !important;
+    left: auto  !important;
+    right: 8px  !important;
+    bottom: 48px !important;   /* sit above 40px count strip */
+    width: 175px !important;
     height: auto !important;
     max-width: none !important;
     min-width: unset !important;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
     border: 1px solid rgba(0,212,255,0.25) !important;
-    background: rgba(8,12,20,0.82) !important;
+    background: rgba(8,12,20,0.86) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
-    padding: 7px 9px !important;
+    padding: 8px 10px !important;
     overflow: visible !important;
     z-index: 6;
   }
-  .aip-compact {
-    display: flex !important;
-    flex-direction: row;
-    align-items: center;
-    gap: 6px;
-    padding: 0 !important;
-  }
-  .aip-badge   { gap: 3px; }
-  .aip-pulse-dot { width: 5px; height: 5px; }
-  .aip-stats   { gap: 4px; }
-  .aip-stat    { font-size: 9px; padding: 1px 4px; }
-  .aip-expand-ico { display: flex; width: 10px; height: 10px; }
-  /* Keep expanded panel hidden on mobile — no room */
-  .aip-expanded { display: none !important; }
-  .ml-hud.is-expanded .aip-expanded { display: none !important; }
+  /* Scale inner text down slightly */
+  .ml-hud-title   { font-size: 0.52rem; }
+  .ml-hud-msg     { font-size: 0.62rem; margin-bottom: 4px; }
+  .ml-hud-bot     { font-size: 0.52rem; margin-bottom: 2px; }
+  .ml-hud-verbose { font-size: 0.38rem; margin-bottom: 2px; }
+  .ml-cell-label  { font-size: 0.38rem; }
+  .ml-cell-row strong { font-size: 0.44rem; }
+  .ml-cell-note   { font-size: 0.38rem; }
+  .ml-cell-track  { height: 5px; }
+  .ml-hud-metrics { font-size: 0.40rem; }
 
   /* ── Stream chat overlay — watching count + messages, top-RIGHT ── */
   .stream-chat-overlay {
@@ -10186,8 +10181,8 @@ button {
     font-size: 0.6rem !important;
   }
 
-  /* ── Scene chips: raise above count strip ── */
-  .scene-chips { bottom: 46px; right: 8px; }
+  /* ── Scene chips: hidden on mobile (weather shown in Vision HUD) ── */
+  .scene-chips { display: none !important; }
 
   /* ── Camera pill strip positioning in stream panel ── */
   /* Already outside .stream-wrapper, stays between header and video */
