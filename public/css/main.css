@@ -10286,7 +10286,7 @@ button {
   .chat-tab-header { padding: 10px 14px 6px 14px; flex-shrink: 0; }
   .chat-meta-row   { padding: 0 14px 6px; flex-shrink: 0; }
   #chat-messages {
-    flex: 1 1 auto;
+    flex: 1 1 0;     /* 0 basis — grows to fill, never pushes input out */
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
