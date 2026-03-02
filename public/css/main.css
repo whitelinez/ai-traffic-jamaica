@@ -59,8 +59,7 @@ a:hover { text-decoration: underline; }
 
 /* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .site-header {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
   align-items: center;
   gap: 12px;
   padding: 0 18px;
@@ -118,7 +117,7 @@ a:hover { text-decoration: underline; }
 .header-watching-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
 
 /* Right nav column */
-.header-nav { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.header-nav { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
 
 /* PLAY CTA */
 .header-play-btn {
