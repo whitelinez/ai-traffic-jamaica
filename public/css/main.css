@@ -10182,9 +10182,9 @@ button {
   /* ── FPS overlay — bottom-left, above count widget ── */
   .fps-overlay {
     display: block !important;
-    left: 10px !important;
-    bottom: 50px !important;
-    font-size: 0.6rem !important;
+    left: 4px   !important;
+    bottom: 6px !important;
+    font-size: 0.5rem !important;
   }
 
   /* ── Scene chips: hidden on mobile (weather shown in Vision HUD) ── */
