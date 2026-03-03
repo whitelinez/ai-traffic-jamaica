@@ -72,7 +72,17 @@ export default async function handler(req, res) {
       console.error("[/api/stream] backend status:", upstream.status, body.slice(0, 200));
       return res.status(502).json({ error: "Stream unavailable", upstream_status: upstream.status });
     }
-    const text = await upstream.text();
+    let text = await upstream.text();
+
+    // Rewrite segment URLs so the browser fetches .ts chunks DIRECTLY from
+    // Railway, bypassing Vercel entirely.  Only the small manifest (~1 KB)
+    // passes through Vercel; none of the video data does.
+    // Handles both absolute (https://aitrafficja.com/api/stream?p=…)
+    // and root-relative (/api/stream?p=…) forms written by the backend.
+    text = text
+      .replace(/https?:\/\/[^/\s"']+\/api\/stream\?p=/g, `${backendBase}/stream/ts?p=`)
+      .replace(/\/api\/stream\?p=/g,                      `${backendBase}/stream/ts?p=`);
+
     res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
     res.setHeader("Cache-Control", "no-cache, no-store");
     return res.status(200).send(text);
