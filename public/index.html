@@ -947,6 +947,17 @@
     <!-- ── PANEL: ANALYTICS ──────────────────────────────────── -->
     <div class="gov-panel" id="gov-panel-analytics">
 
+      <!-- Analytics loading progress overlay -->
+      <div id="gov-an-progress" class="gov-an-progress hidden" aria-live="polite" aria-label="Loading analytics">
+        <div class="gov-an-progress-inner">
+          <div class="gov-an-progress-pct" id="gov-an-progress-pct">0%</div>
+          <div class="gov-an-progress-bar-wrap">
+            <div class="gov-an-progress-bar" id="gov-an-progress-bar"></div>
+          </div>
+          <div class="gov-an-progress-label" id="gov-an-progress-label">Initialising…</div>
+        </div>
+      </div>
+
       <!-- Toolbar row 1: Date range + granularity -->
       <div class="gov-an-toolbar gov-an-toolbar-top">
         <div class="gov-date-range">

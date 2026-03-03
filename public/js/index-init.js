@@ -1066,6 +1066,21 @@ function _connectUserWs(session) {
   let _speedChart   = null;
   let _crossingsInterval = null;
   let _activeTab    = "live";
+  let _dbKpisLoaded = false;  // true once analytics data has updated KPI cards from DB
+
+  // ── Analytics loading progress ────────────────────────────────────────────
+  function _setProgress(pct, label) {
+    const wrap = el("gov-an-progress");
+    const bar  = el("gov-an-progress-bar");
+    const pctEl = el("gov-an-progress-pct");
+    const lblEl = el("gov-an-progress-label");
+    if (!wrap) return;
+    if (pct >= 100) { wrap.classList.add("hidden"); return; }
+    wrap.classList.remove("hidden");
+    if (bar)   bar.style.width      = pct + "%";
+    if (pctEl) pctEl.textContent    = pct + "%";
+    if (lblEl) lblEl.textContent    = label || "Loading…";
+  }
 
   // Chart color map
   const CLS_COLOR = { car:"#29B6F6", truck:"#FF7043", bus:"#AB47BC", motorcycle:"#FFD600" };
@@ -1146,9 +1161,11 @@ function _connectUserWs(session) {
     if (_lastPayload) _populateLive(_lastPayload);
 
     // Init charts (lazy-load Chart.js first)
+    // Always fetch analytics data so KPI cards reflect DB totals regardless of tab
+    if (_activeTab === "analytics") _setProgress(10, "Loading Chart.js…");
     _loadChartJs(() => {
       _initDonut();
-      if (_activeTab === "analytics") _initAllCharts(_govHours);
+      _initAllCharts(_govHours); // always run; updates DB-backed KPI cards + builds charts if on analytics tab
     });
 
     // Start crossings refresh
@@ -1192,10 +1209,13 @@ function _connectUserWs(session) {
     txt("gov-hdr-fps",   fps ?? "—");
     txt("gov-hdr-load",  p.traffic_load || "—");
 
-    // KPI cards
-    txt("gov-kpi-total", total.toLocaleString());
-    txt("gov-kpi-in",  p.count_in  != null ? Number(p.count_in).toLocaleString()  : "—");
-    txt("gov-kpi-out", p.count_out != null ? Number(p.count_out).toLocaleString() : "—");
+    // KPI cards — only from WS when DB analytics haven't loaded yet
+    // (once _dbKpisLoaded, analytics API values take priority over session counter)
+    if (!_dbKpisLoaded) {
+      txt("gov-kpi-total", total.toLocaleString());
+      txt("gov-kpi-in",  p.count_in  != null ? Number(p.count_in).toLocaleString()  : "—");
+      txt("gov-kpi-out", p.count_out != null ? Number(p.count_out).toLocaleString() : "—");
+    }
     // gov-kpi-peak is filled from analytics data
 
     // Flow sidebar
@@ -1342,6 +1362,8 @@ function _connectUserWs(session) {
   async function _initAllCharts(hours) {
     if (!window.Chart) return;
     _setAnalyticsLoading(true);
+    _setProgress(30, "Fetching traffic data…");
+
     // Build URL — use date range if set, else fall back to hours
     let url;
     if (_govFrom || _govTo) {
@@ -1352,20 +1374,44 @@ function _connectUserWs(session) {
     try {
       const res  = await fetch(url);
       const json = res.ok ? await res.json() : null;
-      if (!json) { _setAnalyticsLoading(false); return; }
+      if (!json) { _setAnalyticsLoading(false); _setProgress(100); return; }
       _analyticsData = json;
-      const rows    = json.rows    || json.hourly || [];
+      const rows    = json.rows || [];
       const summary = json.summary || {};
 
-      // Update summary strip
-      const totalPeriod = summary.period_total ?? rows.reduce((a,r) => a + (r.total||0), 0);
+      // ── Update KPI cards with DB-backed data ──────────────────────────────
+      const totalPeriod = summary.period_total ?? rows.reduce((a, r) => a + (r.total || 0), 0);
+      const totalIn  = rows.reduce((a, r) => a + (r.in  || 0), 0);
+      const totalOut = rows.reduce((a, r) => a + (r.out || 0), 0);
+      txt("gov-kpi-total", Number(totalPeriod).toLocaleString());
+      if (totalIn  > 0) txt("gov-kpi-in",  totalIn.toLocaleString());
+      if (totalOut > 0) txt("gov-kpi-out", totalOut.toLocaleString());
+      if (totalIn  > 0) txt("gov-inbound",  totalIn.toLocaleString());
+      if (totalOut > 0) txt("gov-outbound", totalOut.toLocaleString());
+      _dbKpisLoaded = true;  // stop WS from overwriting with session counter
+
+      // ── Update class breakdown bars from DB class totals ──────────────────
+      const ct = summary.class_totals || {};
+      const grandTotal = Object.values(ct).reduce((a, b) => a + b, 0) || 1;
+      const barIds = { car:"gov-bar-car", truck:"gov-bar-truck", bus:"gov-bar-bus", motorcycle:"gov-bar-moto" };
+      const valIds = { car:"gov-cars", truck:"gov-trucks", bus:"gov-buses", motorcycle:"gov-motos" };
+      const pctIds = { car:"gov-pct-car", truck:"gov-pct-truck", bus:"gov-pct-bus", motorcycle:"gov-pct-moto" };
+      for (const cls of ["car","truck","bus","motorcycle"]) {
+        const count = ct[cls] || 0;
+        const pct   = Math.round((count / grandTotal) * 100);
+        const barEl = el(barIds[cls]);
+        if (barEl) barEl.style.width = pct + "%";
+        txt(valIds[cls], count.toLocaleString());
+        txt(pctIds[cls], pct + "%");
+      }
+
+      // ── Summary strip ─────────────────────────────────────────────────────
       const peakLabel   = _formatPeriodLabel(summary.peak_period, _govGranularity);
       const peakVal     = summary.peak_value || 0;
       const heavyPct    = summary.class_pct
         ? Math.round(((summary.class_pct.truck||0) + (summary.class_pct.bus||0))) + "%"
         : "—";
       const granLabel = _govGranularity === "week" ? "weekly" : _govGranularity === "day" ? "daily" : "hourly";
-
       txt("gov-sum-total",  Number(totalPeriod).toLocaleString());
       txt("gov-sum-peak",   `${peakLabel} (${peakVal})`);
       txt("gov-sum-heavy",  heavyPct);
@@ -1379,17 +1425,20 @@ function _connectUserWs(session) {
       if (g) txt("gov-sum-global", Number(g.total||0).toLocaleString() + " total");
 
       _populateAgencyMetrics(summary);
+      _setProgress(60, "Rendering charts…");
       _buildTrendChart(rows);
       _buildClsChart(summary);
       _buildPeakChart(rows);
       _setAnalyticsLoading(false);
 
-      // Also fetch zone-based analytics (queue depth + turning movements)
+      // Zone analytics (queue + turnings + speed) — progress continues inside
+      _setProgress(80, "Loading zone analytics…");
       _loadZoneAnalytics();
 
     } catch (err) {
       console.warn("[GovAnalytics] Chart load failed:", err);
       _setAnalyticsLoading(false);
+      _setProgress(100);
     }
   }
 
@@ -1485,6 +1534,7 @@ function _connectUserWs(session) {
       console.warn("[GovAnalytics] Zone analytics failed:", err);
       if (tBody) tBody.innerHTML = `<p class="gov-turnings-empty">Failed to load zone analytics.</p>`;
     }
+    _setProgress(100);
   }
 
   const _ZONE_TYPE_META = {
@@ -1824,40 +1874,42 @@ function _connectUserWs(session) {
 
   function _openKpiModal(type) {
     _loadChartJs(() => {
-      const rows    = _analyticsData?.hourly   || [];
+      const rows    = _analyticsData?.rows     || [];
       const summary = _analyticsData?.summary  || {};
       const ct      = summary.class_totals     || {};
+      const mkLabel = r => _formatPeriodLabel(r.period || r.hour, _govGranularity);
+      const granLbl = _govGranularity === "week" ? "Periods" : _govGranularity === "day" ? "Days" : "Hours";
 
       if (type === "total") {
-        const labels = rows.map(r => `${String(new Date(r.hour).getHours()).padStart(2,"0")}:00`);
+        const labels = rows.map(mkLabel);
         const data   = rows.map(r => r.total || 0);
         const cfg    = { type:"bar", data:{ labels, datasets:[{ data, backgroundColor:"#29B6F6", borderRadius:3, borderWidth:0 }] }, options:{ ...CHART_DARK, plugins:{legend:{display:false}} } };
-        _showModal("VEHICLES TODAY — HOURLY BREAKDOWN", `
+        _showModal("VEHICLES — BREAKDOWN", `
           <div class="gov-modal-kpi-grid">
-            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${Number(summary.today_total||0).toLocaleString()}</div><div class="gov-modal-kpi-lbl">Total Today</div></div>
-            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${summary.peak_value||"—"}</div><div class="gov-modal-kpi-lbl">Peak Hour Count</div></div>
-            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${rows.length}</div><div class="gov-modal-kpi-lbl">Hours Recorded</div></div>
+            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${Number(summary.period_total||0).toLocaleString()}</div><div class="gov-modal-kpi-lbl">Total (period)</div></div>
+            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${summary.peak_value||"—"}</div><div class="gov-modal-kpi-lbl">Peak Count</div></div>
+            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${rows.length}</div><div class="gov-modal-kpi-lbl">${granLbl} Recorded</div></div>
           </div>
           <div class="gov-modal-chart-wrap"><canvas id="gov-modal-chart" data-chart-config='${JSON.stringify(cfg).replace(/'/g,"&#39;")}'></canvas></div>`);
 
       } else if (type === "peak") {
-        const labels = rows.map(r => `${String(new Date(r.hour).getHours()).padStart(2,"0")}:00`);
+        const labels = rows.map(mkLabel);
         const totals = rows.map(r => r.total || 0);
         const maxV   = Math.max(...totals, 1);
         const colors = totals.map(v => v >= maxV * 0.8 ? "#FF7043" : v >= maxV * 0.5 ? "#FFD600" : "rgba(26,45,66,0.8)");
         const cfg    = { type:"bar", data:{ labels, datasets:[{ data:totals, backgroundColor:colors, borderRadius:3, borderWidth:0 }] }, options:{ ...CHART_DARK, plugins:{legend:{display:false}} } };
-        const peakHour = summary.peak_hour ? `${String(new Date(summary.peak_hour).getHours()).padStart(2,"0")}:00` : "—";
-        _showModal("PEAK HOUR ANALYSIS", `
+        const peakLabel = _formatPeriodLabel(summary.peak_period, _govGranularity);
+        _showModal("PEAK PERIOD ANALYSIS", `
           <div class="gov-modal-kpi-grid">
-            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${peakHour}</div><div class="gov-modal-kpi-lbl">Peak Hour</div></div>
+            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${peakLabel}</div><div class="gov-modal-kpi-lbl">Peak Period</div></div>
             <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${summary.peak_value||"—"}</div><div class="gov-modal-kpi-lbl">Vehicles at Peak</div></div>
-            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${totals.filter(v => v >= maxV*0.8).length}</div><div class="gov-modal-kpi-lbl">High-Load Hours</div></div>
+            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${totals.filter(v => v >= maxV*0.8).length}</div><div class="gov-modal-kpi-lbl">High-Load Periods</div></div>
           </div>
           <div class="gov-modal-chart-wrap"><canvas id="gov-modal-chart" data-chart-config='${JSON.stringify(cfg).replace(/'/g,"&#39;")}'></canvas></div>
           <p class="gov-modal-note">Red bars = high load (&ge;80% of peak). Yellow bars = moderate load (&ge;50%).</p>`);
 
       } else if (type === "flow") {
-        const labels  = rows.map(r => `${String(new Date(r.hour).getHours()).padStart(2,"0")}:00`);
+        const labels  = rows.map(mkLabel);
         const inData  = rows.map(r => r.in  || 0);
         const outData = rows.map(r => r.out || 0);
         const cfg     = { type:"line", data:{ labels, datasets:[
@@ -1888,15 +1940,15 @@ function _connectUserWs(session) {
   });
 
   function _openClassModal(cls) {
-    const rows   = _analyticsData?.hourly  || [];
+    const rows   = _analyticsData?.rows    || [];
     const summary = _analyticsData?.summary || {};
     const ct     = summary.class_totals     || {};
     const color  = CLS_COLOR[cls] || "#29B6F6";
     const icon   = CLS_SVG[cls]  || CLS_SVG.car;
-    const labels = rows.map(r => `${String(new Date(r.hour).getHours()).padStart(2,"0")}:00`);
+    const labels = rows.map(r => _formatPeriodLabel(r.period || r.hour, _govGranularity));
     const data   = rows.map(r => r[cls] || 0);
     const total  = ct[cls] || data.reduce((a,b)=>a+b,0);
-    const grandT = summary.today_total || 1;
+    const grandT = summary.period_total || 1;
     const pct    = Math.round((total / grandT) * 100);
     const cfg    = { type:"line", data:{ labels, datasets:[{ label:cls, data, borderColor:color, backgroundColor:`${color}0D`, tension:0.4, pointRadius:0, borderWidth:2 }] }, options:{ ...CHART_DARK, plugins:{legend:{display:false}} } };
     _showModal(`${icon} ${cls.toUpperCase()} — TREND DETAIL`, `
