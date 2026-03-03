@@ -1120,7 +1120,50 @@ function _connectUserWs(session) {
     _setTab(name);
   });
 
-  // ── Move only the video element into a slot (canvases never leave stream-wrapper) ──
+  // ── Move the real WebGL/Canvas2D canvases into gov-video-slot ────────────
+  // The original #zone-canvas and #detection-canvas keep their live renderers.
+  // Moving them into the slot is the only way to render above the GPU-composited video.
+  function _moveOverlaysToGov() {
+    const govSlot  = el("gov-video-slot");
+    const zoneC    = document.getElementById("zone-canvas");
+    const detC     = document.getElementById("detection-canvas");
+    if (!govSlot || !zoneC || !detC) return;
+    govSlot.appendChild(detC);
+    govSlot.appendChild(zoneC);
+    [detC, zoneC].forEach(c => {
+      c.style.position      = "absolute";
+      c.style.top           = "0";
+      c.style.left          = "0";
+      c.style.width         = "100%";
+      c.style.height        = "100%";
+      c.style.pointerEvents = "none";
+    });
+    detC.style.zIndex  = "3";
+    zoneC.style.zIndex = "4";
+    // Force zone overlay to redraw at new canvas dimensions
+    window.ZoneOverlay?.reloadZones?.();
+  }
+
+  function _moveOverlaysBack() {
+    const wrapper = document.querySelector(".stream-wrapper");
+    const zoneC   = document.getElementById("zone-canvas");
+    const detC    = document.getElementById("detection-canvas");
+    if (!wrapper || !zoneC || !detC) return;
+    wrapper.appendChild(detC);
+    wrapper.appendChild(zoneC);
+    [detC, zoneC].forEach(c => {
+      c.style.removeProperty("width");
+      c.style.removeProperty("height");
+      c.style.removeProperty("top");
+      c.style.removeProperty("left");
+      c.style.removeProperty("pointer-events");
+      c.style.removeProperty("position");
+    });
+    detC.style.zIndex  = "1";
+    zoneC.style.zIndex = "2";
+  }
+
+  // ── Move only the video element into a slot ───────────────────────────────
   function _moveVideoGroup(slotId) {
     const slot  = el(slotId);
     const video = el("live-video");
@@ -1145,7 +1188,7 @@ function _connectUserWs(session) {
     if (name === "analytics") {
       _moveVideoGroup("gov-an-video-slot");
       _startZoneCanvas();
-      if (window.Chart && !_trendChart) _initAllCharts(_govHours);
+      if (window.Chart && !_trendChart) _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart());
       if (_govHours) _loadGovCrossings();
     } else {
       _stopZoneCanvas();
@@ -1188,8 +1231,10 @@ function _connectUserWs(session) {
   }
 
   function _drawGovZones() {
-    const canvasId = _activeTab === "analytics" ? "gov-an-zone-canvas" : "gov-live-zone-canvas";
-    const canvas = el(canvasId);
+    // Live tab: original #zone-canvas (moved into gov-video-slot) handles zones itself.
+    // Only run this for the analytics tab which has its own dedicated canvas.
+    if (_activeTab !== "analytics") return;
+    const canvas = el("gov-an-zone-canvas");
     const video  = el("live-video");
     if (!canvas || !video || !window.getContentBounds) return;
     const ctx = _syncZoneCanvas(canvas, video);
@@ -1265,10 +1310,9 @@ function _connectUserWs(session) {
 
   function _stopZoneCanvas() {
     if (_govAnZoneRaf) { cancelAnimationFrame(_govAnZoneRaf); _govAnZoneRaf = null; }
-    ["gov-an-zone-canvas", "gov-live-zone-canvas"].forEach(id => {
-      const c = el(id);
-      if (c) { const ctx = c.getContext("2d"); ctx?.clearRect(0, 0, c.width, c.height); }
-    });
+    // Only clear the analytics canvas (gov-live-zone-canvas removed; live tab uses moved canvases)
+    const c = el("gov-an-zone-canvas");
+    if (c) { const ctx = c.getContext("2d"); ctx?.clearRect(0, 0, c.width, c.height); }
   }
 
 
@@ -1360,6 +1404,7 @@ function _connectUserWs(session) {
     _open = true;
     overlay.classList.remove("hidden");
     document.body.style.overflow = "hidden";
+    _moveOverlaysToGov();
 
     // Show loading bar until first live data arrives
     if (!_lastPayload) _setKpiLoading(true);
@@ -1387,6 +1432,7 @@ function _connectUserWs(session) {
         _initDonut();
         _buildTrendChart(_analyticsData.rows || []);
         _buildClsChart(_analyticsData.summary || {});
+        _buildPeakChart(_analyticsData.rows || []);
         _populateAgencyMetrics(_analyticsData.summary || {});
         _dbKpisLoaded = true;
         const rows = _analyticsData.rows || [];
@@ -1398,10 +1444,11 @@ function _connectUserWs(session) {
         if (totalIn  > 0) txt("gov-kpi-in",    totalIn.toLocaleString());
         if (totalIn  > 0) txt("gov-inbound",   totalIn.toLocaleString());
         if (totalOut > 0) { txt("gov-kpi-out", totalOut.toLocaleString()); txt("gov-outbound", totalOut.toLocaleString()); }
+        _updatePeakKpiFromChart();
         _loadZoneAnalytics();
       } else {
         // Fallback: run full chart init
-        _loadChartJs(() => { _initDonut(); _initAllCharts(_govHours); });
+        _loadChartJs(() => { _initDonut(); _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()); });
       }
     } else {
       _moveVideoGroup("gov-video-slot");
@@ -1410,7 +1457,7 @@ function _connectUserWs(session) {
       if (_lastPayload) _populateLive(_lastPayload);
       // Auto-set "Today" so peak hour, class totals etc. query from midnight today
       if (!_govFrom) _setPreset("1d");
-      _loadChartJs(() => { _initDonut(); _initAllCharts(_govHours); });
+      _loadChartJs(() => { _initDonut(); _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()); });
     }
 
     // Start crossings refresh
@@ -1433,8 +1480,9 @@ function _connectUserWs(session) {
     clearInterval(_crossingsInterval);
     _crossingsInterval = null;
     _stopZoneCanvas();
+    _moveOverlaysBack();
 
-    // Return video to stream-wrapper (canvases never leave stream-wrapper)
+    // Return video to stream-wrapper
     const wrapper = document.querySelector(".stream-wrapper");
     const video   = el("live-video");
     if (wrapper && video && !wrapper.contains(video)) {
@@ -1767,6 +1815,32 @@ function _connectUserWs(session) {
     });
   }
 
+  // ── Peak KPI back-fill from chart data ───────────────────────────────────
+  // Called after _initAllCharts() resolves. Extracts peak from the already-built
+  // _peakChart (which holds per-period totals) and writes it into gov-kpi-peak
+  // if the tile still shows "—" (i.e. summary.peak_period was null/empty from API).
+  function _updatePeakKpiFromChart() {
+    const canvas = el("gov-peak-canvas");
+    if (!canvas || !window.Chart) return;
+    const chart = window.Chart.getChart(canvas);
+    if (!chart) return;
+    const data   = chart.data.datasets[0]?.data || [];
+    const labels = chart.data.labels || [];
+    if (!data.length) return;
+    let peakIdx = 0;
+    data.forEach((v, i) => { if ((v || 0) > (data[peakIdx] || 0)) peakIdx = i; });
+    const peakLabel = labels[peakIdx] || "—";
+    const peakCount = data[peakIdx]   || 0;
+    const kpiEl = el("gov-kpi-peak");
+    if (kpiEl && (kpiEl.textContent === "—" || !kpiEl.textContent.trim())) {
+      kpiEl.textContent = peakLabel;
+    }
+    const sumEl = el("gov-sum-peak");
+    if (sumEl && (sumEl.textContent === "—" || !sumEl.textContent.trim() || sumEl.textContent.startsWith("—"))) {
+      sumEl.textContent = `${peakLabel} (${peakCount})`;
+    }
+  }
+
   // ── Zone analytics (queue depth + turning movements + speed) ──────────────
   async function _loadZoneAnalytics() {
     if (!_camId) return;
@@ -2056,7 +2130,7 @@ function _connectUserWs(session) {
       document.querySelectorAll(".gov-period-pills .gov-pill").forEach(p => p.classList.remove("active"));
       pill.classList.add("active");
       _setPreset(pill.dataset.preset || "1d");
-      _loadChartJs(() => _initAllCharts(_govHours));
+      _loadChartJs(() => _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()));
       return;
     }
 
@@ -2065,7 +2139,7 @@ function _connectUserWs(session) {
       document.querySelectorAll(".gov-gran-pill").forEach(p => p.classList.remove("active"));
       gran.classList.add("active");
       _govGranularity = gran.dataset.gran || "hour";
-      _loadChartJs(() => _initAllCharts(_govHours));
+      _loadChartJs(() => _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()));
       return;
     }
   });
@@ -2073,11 +2147,11 @@ function _connectUserWs(session) {
   // Date input changes
   el("gov-date-from")?.addEventListener("change", (e) => {
     _govFrom = e.target.value || null;
-    _loadChartJs(() => _initAllCharts(_govHours));
+    _loadChartJs(() => _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()));
   });
   el("gov-date-to")?.addEventListener("change", (e) => {
     _govTo = e.target.value ? e.target.value + "T23:59:59Z" : null;
-    _loadChartJs(() => _initAllCharts(_govHours));
+    _loadChartJs(() => _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()));
   });
 
   // ── Export (analytics toolbar quick-export) ───────────────────────────────
