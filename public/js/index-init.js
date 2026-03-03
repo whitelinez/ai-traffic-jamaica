@@ -1279,9 +1279,61 @@ function _connectUserWs(session) {
     });
   }
 
+  // ── Analytics loading skeleton helpers ───────────────────────────────────
+  function _skelBars(count) {
+    const heights = [60,80,45,90,55,70,40,85,65,75,50,88].slice(0, count);
+    return `<div class="gov-chart-skel-bars">${heights.map(h => `<span style="height:${h}%"></span>`).join("")}</div>`;
+  }
+
+  function _setAnalyticsLoading(on) {
+    // Summary strip — add/remove class that CSS uses to render shimmer placeholders
+    const strip = document.querySelector(".gov-an-toolbar-strip");
+    if (strip) strip.classList.toggle("is-loading", on);
+
+    // Chart cards — show/hide loading overlay + skeleton bars placeholder
+    document.querySelectorAll(".gov-chart-card").forEach(card => {
+      card.classList.toggle("is-loading", on);
+      const body = card.querySelector(".gov-chart-body");
+      if (!body) return;
+      const skelId = "gov-skel-" + (card.id || Math.random());
+      if (on) {
+        if (!body.querySelector(".gov-chart-skel-bars")) {
+          const d = document.createElement("div");
+          d.className = "gov-chart-skel-bars"; d.id = skelId;
+          d.innerHTML = [60,80,45,90,55,70,40,85,65,75,50,88].map(h => `<span style="height:${h}%"></span>`).join("");
+          body.appendChild(d);
+        }
+      } else {
+        body.querySelectorAll(".gov-chart-skel-bars").forEach(el => el.remove());
+      }
+    });
+  }
+
+  function _turningsSkeleton() {
+    const rows = Array.from({length:5}, (_,i) => {
+      const w1 = 60 + i * 10, w2 = 40 + (i % 3) * 15;
+      return `<div class="gov-tur-skel-row">
+        <div class="gov-tur-skel-label" style="width:${w1}px"></div>
+        <div class="gov-tur-skel-bar" style="max-width:${w2}%"></div>
+      </div>`;
+    }).join("");
+    return `<div class="gov-turnings-skel">${rows}</div>`;
+  }
+
+  function _crossingsSkeleton(count) {
+    const widths = [[55,48,24,32,60,28],[60,52,28,36,55,30],[50,44,22,30,65,24]];
+    return Array.from({length: count || 6}, (_, i) => {
+      const w = widths[i % widths.length];
+      return `<tr class="gov-xing-skel-row">
+        ${w.map(pw => `<td><div class="gov-xing-skel-cell" style="width:${pw}px"></div></td>`).join("")}
+      </tr>`;
+    }).join("");
+  }
+
   // ── Analytics charts (ANALYTICS panel) ───────────────────────────────────
   async function _initAllCharts(hours) {
     if (!window.Chart) return;
+    _setAnalyticsLoading(true);
     // Build URL — use date range if set, else fall back to hours
     let url;
     if (_govFrom || _govTo) {
@@ -1292,7 +1344,7 @@ function _connectUserWs(session) {
     try {
       const res  = await fetch(url);
       const json = res.ok ? await res.json() : null;
-      if (!json) return;
+      if (!json) { _setAnalyticsLoading(false); return; }
       _analyticsData = json;
       const rows    = json.rows    || json.hourly || [];
       const summary = json.summary || {};
@@ -1322,12 +1374,14 @@ function _connectUserWs(session) {
       _buildTrendChart(rows);
       _buildClsChart(summary);
       _buildPeakChart(rows);
+      _setAnalyticsLoading(false);
 
       // Also fetch zone-based analytics (queue depth + turning movements)
       _loadZoneAnalytics();
 
     } catch (err) {
       console.warn("[GovAnalytics] Chart load failed:", err);
+      _setAnalyticsLoading(false);
     }
   }
 
@@ -1393,6 +1447,9 @@ function _connectUserWs(session) {
   // ── Zone analytics (queue depth + turning movements + speed) ──────────────
   async function _loadZoneAnalytics() {
     if (!_camId) return;
+    // Show turnings skeleton while loading
+    const tBody = el("gov-turnings-body");
+    if (tBody) tBody.innerHTML = _turningsSkeleton();
     try {
       const fromParam = _govFrom || new Date(Date.now() - _govHours * 3600 * 1000).toISOString();
       const toParam   = _govTo   || new Date().toISOString();
@@ -1404,6 +1461,7 @@ function _connectUserWs(session) {
       _renderTurningMovements(data);
     } catch (err) {
       console.warn("[GovAnalytics] Zone analytics failed:", err);
+      if (tBody) tBody.innerHTML = `<p class="gov-turnings-empty">Failed to load zone analytics.</p>`;
     }
   }
 
@@ -1536,13 +1594,14 @@ function _connectUserWs(session) {
   // ── Crossings table ───────────────────────────────────────────────────────
   async function _loadGovCrossings() {
     if (!window.sb) return;
+    const tbody = el("gov-crossings-body");
+    if (tbody) tbody.innerHTML = _crossingsSkeleton(6);
     try {
       let q = window.sb.from("vehicle_crossings")
         .select("captured_at,vehicle_class,direction,confidence,scene_lighting,scene_weather,dwell_frames")
         .order("captured_at", { ascending: false }).limit(20);
       if (_camId) q = q.eq("camera_id", _camId);
       const { data } = await q;
-      const tbody = el("gov-crossings-body");
       if (!tbody || !data?.length) {
         if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">No crossings recorded yet</td></tr>`;
         return;

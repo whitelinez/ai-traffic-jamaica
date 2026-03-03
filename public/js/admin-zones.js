@@ -97,7 +97,7 @@ const AdminZones = (() => {
     const sel = document.getElementById("az-camera-select");
     if (!sel) return;
     try {
-      const { data } = await window._supabase
+      const { data } = await window.sb
         .from("cameras")
         .select("id,name,alias")
         .order("name");

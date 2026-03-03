@@ -11051,4 +11051,80 @@ button {
   bottom: auto         !important;
 }
 
+/* ── Analytics loading skeletons ───────────────────────────────────────────── */
+@keyframes gov-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+.gov-skel {
+  display: inline-block;
+  width: 60px; height: 11px; border-radius: 4px;
+  background: linear-gradient(90deg, var(--bg2) 25%, rgba(122,155,181,0.12) 50%, var(--bg2) 75%);
+  background-size: 400px 100%;
+  animation: gov-shimmer 1.4s infinite linear;
+  vertical-align: middle;
+}
+.gov-skel-sm  { width: 40px; }
+.gov-skel-lg  { width: 90px; }
+.gov-skel-xl  { width: 120px; }
+
+/* Chart card loading overlay */
+.gov-chart-card.is-loading .gov-chart-body {
+  position: relative;
+  overflow: hidden;
+}
+.gov-chart-card.is-loading .gov-chart-body::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, var(--bg2) 25%, rgba(122,155,181,0.08) 50%, var(--bg2) 75%);
+  background-size: 600px 100%;
+  animation: gov-shimmer 1.6s infinite linear;
+  border-radius: 4px;
+  z-index: 2;
+}
+/* Skeleton bars inside chart body while loading */
+.gov-chart-skel-bars {
+  display: flex; align-items: flex-end; gap: 4px;
+  height: 100%; padding: 16px 8px 8px; box-sizing: border-box;
+  opacity: 0.35;
+}
+.gov-chart-skel-bars span {
+  flex: 1; border-radius: 3px 3px 0 0;
+  background: rgba(122,155,181,0.2);
+  animation: gov-shimmer 1.6s infinite linear;
+  background-size: 400px 100%;
+}
+
+/* Summary strip skeleton values */
+.gov-an-toolbar-strip.is-loading span[id] {
+  display: inline-block;
+  width: 48px; height: 10px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--bg2) 25%, rgba(122,155,181,0.12) 50%, var(--bg2) 75%);
+  background-size: 400px 100%;
+  animation: gov-shimmer 1.3s infinite linear;
+  vertical-align: middle;
+}
+
+/* Turnings skeleton rows */
+.gov-turnings-skel { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; }
+.gov-tur-skel-row  { display: flex; align-items: center; gap: 10px; }
+.gov-tur-skel-label { width: 110px; height: 10px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--bg2) 25%, rgba(122,155,181,0.1) 50%, var(--bg2) 75%);
+  background-size: 400px 100%; animation: gov-shimmer 1.5s infinite linear; }
+.gov-tur-skel-bar { flex: 1; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--bg2) 25%, rgba(122,155,181,0.1) 50%, var(--bg2) 75%);
+  background-size: 400px 100%; animation: gov-shimmer 1.5s infinite linear; }
+
+/* Crossings skeleton rows */
+.gov-xing-skel-row td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(26,45,66,0.4);
+}
+.gov-xing-skel-cell {
+  display: inline-block; border-radius: 3px;
+  background: linear-gradient(90deg, var(--bg2) 25%, rgba(122,155,181,0.1) 50%, var(--bg2) 75%);
+  background-size: 400px 100%; animation: gov-shimmer 1.4s infinite linear;
+  height: 9px;
+}
+
 
