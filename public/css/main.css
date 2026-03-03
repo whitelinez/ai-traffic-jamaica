@@ -9566,7 +9566,7 @@ button {
 /* ── Header ─────────────────────────────────────────────────── */
 .gov-hdr {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   padding: 0 20px; height: 60px;
   background: #ffffff; border-bottom: 1px solid #e2e8f0;
@@ -9612,11 +9612,11 @@ button {
 
 /* ── Logo stack in header — static + hover only ──────────────── */
 .gov-hdr-logo-wrap {
-  position: relative; width: 36px; height: 36px; flex-shrink: 0;
+  position: relative; width: 48px; height: 48px; flex-shrink: 0;
 }
 .gov-hdr-logo {
   position: relative; z-index: 1;
-  width: 36px; height: 36px; object-fit: contain; display: block;
+  width: 48px; height: 48px; object-fit: contain; display: block;
 }
 .gov-hdr-aiframe {
   position: absolute; inset: 0; z-index: 2;
@@ -9733,7 +9733,6 @@ button {
   font-size: 10px; color: #64748b; letter-spacing: 0.02em;
 }
 .gov-close-btn {
-  position: absolute; top: 14px; right: 16px; z-index: 10;
   display: flex; align-items: center; gap: 7px;
   background: #0f1c2e; border: none;
   color: #ffffff; border-radius: 6px; padding: 8px 16px;
@@ -11981,25 +11980,27 @@ button {
 
   /* ── Header ─────────────────────────────────────── */
   .gov-hdr {
-    grid-template-columns: auto 1fr;
-    height: auto; padding: 10px 14px 8px; gap: 0;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    height: auto; padding: 10px 14px; gap: 6px 0;
   }
-  /* Left: logo + title */
+  /* Left: logo + title on row 1 */
   .gov-hdr-left  { gap: 10px; padding-right: 0; }
-  /* Metric: full-width second row */
+  /* Metric: full-width row 2 */
   .gov-hdr-metric {
     grid-column: 1 / -1;
     justify-content: flex-start; gap: 6px;
-    padding: 6px 0 0;
+    padding: 4px 0 0;
     border-top: 1px solid #f1f5f9;
   }
   .gov-hdr-metric-val { font-size: 22px; }
-  /* Close button — keep absolute positioning, adjust for mobile */
-  .gov-close-btn { top: 10px; right: 12px; padding: 6px 12px; font-size: 11px; }
+  /* Right: close btn aligned to row 1 */
+  .gov-hdr-right { padding-left: 0; align-self: start; }
+  .gov-close-btn { padding: 7px 12px; font-size: 11px; }
   .gov-hdr-rule  { display: none; }
   .gov-hdr-logo-wrap,
   .gov-hdr-logo,
-  .gov-hdr-aiframe { width: 28px; height: 28px; }
+  .gov-hdr-aiframe { width: 38px; height: 38px; }
   .gov-title    { font-size: 12px !important; }
   .gov-subtitle { font-size: 9px; }
 
