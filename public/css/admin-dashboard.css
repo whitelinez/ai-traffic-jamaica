@@ -1765,6 +1765,72 @@
   .mp-hero { flex-direction: column; align-items: flex-start; }
 }
 
+/* AI Intelligence stats bar */
+.mp-intel {
+  background: var(--bg2, #12161e);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+.mp-intel-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.mp-intel-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  background: rgba(0,212,255,0.04);
+  border-radius: 6px;
+  border: 1px solid rgba(0,212,255,0.1);
+}
+.mp-intel-val {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #00d4ff;
+  line-height: 1;
+  margin-bottom: 5px;
+}
+.mp-intel-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #475569;
+  text-align: center;
+}
+.mp-intel-classes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.mp-intel-cls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+.mp-intel-cls-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mp-intel-cls-count {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+@media (max-width: 600px) {
+  .mp-intel-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* ══════════════════════════════════════════════════════════════
    LANDMARK EDITOR
    ══════════════════════════════════════════════════════════════ */

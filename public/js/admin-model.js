@@ -57,6 +57,32 @@ const AdminModel = (() => {
     return data?.[0] ?? null;
   }
 
+  async function _fetchIntelStats() {
+    const since24h = new Date(Date.now() - 86400000).toISOString();
+    const [xTotal, x24h, zones, turns24h] = await Promise.allSettled([
+      window.sb.from('vehicle_crossings').select('id', { count: 'exact', head: true }),
+      window.sb.from('vehicle_crossings').select('id', { count: 'exact', head: true }).gte('captured_at', since24h),
+      window.sb.from('camera_zones').select('id', { count: 'exact', head: true }).eq('active', true),
+      window.sb.from('turning_movements').select('id', { count: 'exact', head: true }).gte('captured_at', since24h),
+    ]);
+    // Class breakdown for 24h crossings
+    const { data: clsData } = await window.sb
+      .from('vehicle_crossings')
+      .select('vehicle_class')
+      .gte('captured_at', since24h);
+    const classCounts = {};
+    (clsData || []).forEach(r => {
+      classCounts[r.vehicle_class] = (classCounts[r.vehicle_class] || 0) + 1;
+    });
+    return {
+      crossings_total: xTotal.status === 'fulfilled' ? (xTotal.value.count ?? 0) : 0,
+      crossings_24h:   x24h.status === 'fulfilled'   ? (x24h.value.count ?? 0) : 0,
+      zones_active:    zones.status === 'fulfilled'   ? (zones.value.count ?? 0) : 0,
+      turnings_24h:    turns24h.status === 'fulfilled' ? (turns24h.value.count ?? 0) : 0,
+      class_counts_24h: classCounts,
+    };
+  }
+
   async function _fetchCameraName(cameraId) {
     if (!cameraId) return null;
     const { data } = await window.sb
@@ -93,7 +119,7 @@ const AdminModel = (() => {
 
   // ── Render ────────────────────────────────────────────────────
   async function render() {
-    let health = null, det = null, camName = null;
+    let health = null, det = null, camName = null, intel = null;
 
     try {
       [health, det] = await Promise.all([_fetchHealth(), _fetchLatestDetection()]);
@@ -104,6 +130,12 @@ const AdminModel = (() => {
       document.getElementById('mp-status-dot')?.setAttribute('data-state', 'offline');
       return;
     }
+
+    // Fetch intel stats in background (non-blocking)
+    _fetchIntelStats().then(stats => {
+      intel = stats;
+      _renderIntel(intel);
+    }).catch(() => {});
 
     // ── Hero ──────────────────────────────────────────────────
     const frameAge = health.ai_last_frame_age_sec ?? null;
@@ -227,6 +259,28 @@ const AdminModel = (() => {
           ${rBadge}
         </div>`;
       }).join('');
+    }
+  }
+
+  // ── Intel stats render ────────────────────────────────────────
+  function _renderIntel(stats) {
+    if (!stats) return;
+    _set('mp-crossings-24h',   _fmtNum(stats.crossings_24h));
+    _set('mp-crossings-total', _fmtNum(stats.crossings_total));
+    _set('mp-zones-active',    String(stats.zones_active));
+    _set('mp-turnings-24h',    _fmtNum(stats.turnings_24h));
+
+    const clsColors = { car: '#00d4ff', truck: '#f59e0b', bus: '#a78bfa', motorcycle: '#34d399' };
+    const clsEl = document.getElementById('mp-intel-classes');
+    if (clsEl && stats.class_counts_24h) {
+      const sorted = Object.entries(stats.class_counts_24h).sort((a, b) => b[1] - a[1]);
+      clsEl.innerHTML = sorted.map(([cls, cnt]) =>
+        `<span class="mp-intel-cls">
+          <span class="mp-intel-cls-dot" style="background:${clsColors[cls] || '#64748b'}"></span>
+          <span>${cls}</span>
+          <span class="mp-intel-cls-count" style="color:${clsColors[cls] || '#94a3b8'}">${_fmtNum(cnt)}</span>
+        </span>`
+      ).join('');
     }
   }
 
