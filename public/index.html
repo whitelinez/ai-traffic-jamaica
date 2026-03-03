@@ -80,7 +80,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" />
   <meta name="theme-color" content="#080C14" />
-  <link rel="stylesheet" href="/css/main.css?v=12" />
+  <link rel="stylesheet" href="/css/main.css?v=13" />
   <script src="/js/vercel-analytics-init.js"></script>
   <script defer src="/_vercel/insights/script.js"></script>
 </head>
@@ -833,7 +833,7 @@
           <span class="gov-hdr-sep">|</span>
           <span class="gov-hdr-stat"><span id="gov-hdr-fps" class="gov-hdr-num">—</span><span class="gov-hdr-lbl">fps</span></span>
         </div>
-        <button id="btn-close-gov" class="gov-close-btn">
+        <button id="btn-close-gov" class="gov-close-btn" data-tip="Close Traffic Intelligence">
           <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 4L4 12M4 4l8 8"/></svg>
           EXIT
         </button>
@@ -842,32 +842,43 @@
 
     <!-- Tab Bar -->
     <div class="gov-tabbar" id="gov-tabbar">
-      <button class="gov-tab active" data-tab="live">LIVE</button>
-      <button class="gov-tab" data-tab="analytics">ANALYTICS</button>
-      <button class="gov-tab" data-tab="agencies">AGENCIES</button>
-      <button class="gov-tab" data-tab="export">EXPORT</button>
+      <button class="gov-tab active" data-tab="live"      data-tip="Watch the live camera feed and real-time vehicle counts">LIVE</button>
+      <button class="gov-tab"        data-tab="analytics" data-tip="Explore charts, trends and turning movement data over time">ANALYTICS</button>
+      <button class="gov-tab"        data-tab="agencies"  data-tip="See how traffic data helps government agencies and planners">AGENCIES</button>
+      <button class="gov-tab"        data-tab="export"    data-tip="Download vehicle count data as a CSV file">EXPORT</button>
     </div>
 
     <!-- ── PANEL: LIVE ───────────────────────────────────────── -->
     <div class="gov-panel active" id="gov-panel-live">
+
+      <!-- Intro callout -->
+      <div class="gov-intro" id="gov-intro-live">
+        <div class="gov-intro-icon">📡</div>
+        <div class="gov-intro-body">
+          <div class="gov-intro-title">Welcome to Traffic Intelligence</div>
+          <div class="gov-intro-text">You are viewing a live AI camera feed that counts vehicles at this intersection around the clock. The numbers at the top show today's totals. Use the tabs above to explore charts, agency data, and to download reports.</div>
+        </div>
+        <button class="gov-intro-dismiss" onclick="this.closest('.gov-intro').remove()" aria-label="Dismiss instructions">Got it ✓</button>
+      </div>
+
       <!-- KPI strip -->
       <div class="gov-kpi-strip">
-        <div class="gov-kpi-card" data-modal="total">
+        <div class="gov-kpi-card" data-modal="total" data-tip="Total vehicles the AI has counted at this intersection today">
           <div class="gov-kpi-val" id="gov-kpi-total">—</div>
           <div class="gov-kpi-lbl">Vehicles Today</div>
           <div class="gov-kpi-hint">tap for hourly trend</div>
         </div>
-        <div class="gov-kpi-card" data-modal="peak">
+        <div class="gov-kpi-card" data-modal="peak" data-tip="The busiest single hour recorded today — tap to see the breakdown">
           <div class="gov-kpi-val" id="gov-kpi-peak">—</div>
           <div class="gov-kpi-lbl">Peak Hour</div>
           <div class="gov-kpi-hint">tap for peak breakdown</div>
         </div>
-        <div class="gov-kpi-card" data-modal="flow">
+        <div class="gov-kpi-card" data-modal="flow" data-tip="Vehicles travelling into the intersection today">
           <div class="gov-kpi-val" id="gov-kpi-in">—</div>
           <div class="gov-kpi-lbl">Inbound</div>
           <div class="gov-kpi-hint">tap for flow detail</div>
         </div>
-        <div class="gov-kpi-card" data-modal="flow">
+        <div class="gov-kpi-card" data-modal="flow" data-tip="Vehicles that have exited through a named zone today — from the Traffic Intelligence system">
           <div class="gov-kpi-val gov-kpi-out" id="gov-kpi-out">—</div>
           <div class="gov-kpi-lbl">Outbound</div>
           <div class="gov-kpi-hint">tap for flow detail</div>
@@ -972,6 +983,16 @@
 
     <!-- ── PANEL: ANALYTICS ──────────────────────────────────── -->
     <div class="gov-panel" id="gov-panel-analytics">
+
+      <!-- Intro callout -->
+      <div class="gov-intro" id="gov-intro-analytics">
+        <div class="gov-intro-icon">📊</div>
+        <div class="gov-intro-body">
+          <div class="gov-intro-title">Analytics Dashboard</div>
+          <div class="gov-intro-text">See vehicle counts over time, traffic flow charts, and turning movement data showing which direction vehicles travel through the intersection. Use the date picker or quick buttons (1H · 6H · 24H) to change the time period.</div>
+        </div>
+        <button class="gov-intro-dismiss" onclick="this.closest('.gov-intro').remove()" aria-label="Dismiss instructions">Got it ✓</button>
+      </div>
 
       <!-- Analytics loading progress overlay -->
       <div id="gov-an-progress" class="gov-an-progress hidden" aria-live="polite" aria-label="Loading analytics">
@@ -1095,6 +1116,16 @@
 
     <!-- ── PANEL: AGENCIES ───────────────────────────────────── -->
     <div class="gov-panel" id="gov-panel-agencies">
+
+      <!-- Intro callout -->
+      <div class="gov-intro" id="gov-intro-agencies">
+        <div class="gov-intro-icon">🏛</div>
+        <div class="gov-intro-body">
+          <div class="gov-intro-title">Agency Data Portal</div>
+          <div class="gov-intro-text">This section shows how real-time vehicle count data from this AI system can help your organisation make better decisions — from road planning and public transport scheduling to advertising and logistics.</div>
+        </div>
+        <button class="gov-intro-dismiss" onclick="this.closest('.gov-intro').remove()" aria-label="Dismiss instructions">Got it ✓</button>
+      </div>
 
       <!-- Header — value pitch -->
       <div class="gov-agencies-hdr">
@@ -1310,6 +1341,17 @@
 
     <!-- ── PANEL: EXPORT ─────────────────────────────────────── -->
     <div class="gov-panel" id="gov-panel-export">
+
+      <!-- Intro callout -->
+      <div class="gov-intro" id="gov-intro-export">
+        <div class="gov-intro-icon">⬇️</div>
+        <div class="gov-intro-body">
+          <div class="gov-intro-title">Download Your Data</div>
+          <div class="gov-intro-text">Choose a date range and file format, then press the Download button. You will receive a file containing all vehicle counts for that period — ready to open in Excel or any spreadsheet application.</div>
+        </div>
+        <button class="gov-intro-dismiss" onclick="this.closest('.gov-intro').remove()" aria-label="Dismiss instructions">Got it ✓</button>
+      </div>
+
       <div class="gov-export-panel">
         <div class="gov-export-title">EXPORT TRAFFIC DATA</div>
         <div class="gov-export-form">
