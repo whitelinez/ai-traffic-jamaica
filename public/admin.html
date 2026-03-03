@@ -1188,7 +1188,20 @@
               <canvas id="az-draw-canvas"></canvas>
               <div class="az-canvas-overlay-msg" id="az-canvas-msg">Loading stream…</div>
             </div>
-            <div class="az-canvas-toolbar">
+            <!-- Helper toggles row -->
+          <div class="az-helpers-bar">
+            <button class="az-helper-btn active" id="az-grid-btn" title="Toggle grid overlay">Grid</button>
+            <button class="az-helper-btn active" id="az-snap-btn" title="Snap vertices to grid intersections">Snap</button>
+            <button class="az-helper-btn active" id="az-compass-btn" title="Toggle N/S/E/W direction labels">Compass</button>
+            <select class="az-select az-select-sm" id="az-grid-size" title="Grid density">
+              <option value="8">8×8</option>
+              <option value="10" selected>10×10</option>
+              <option value="16">16×16</option>
+              <option value="20">20×20</option>
+            </select>
+            <span class="az-coord-display" id="az-coord-display" title="Cursor position (snapped)">—</span>
+          </div>
+          <div class="az-canvas-toolbar">
               <span class="az-hint" id="az-canvas-hint">Click to place polygon vertices</span>
               <button class="az-tool-btn" id="az-undo-btn" disabled>Undo</button>
               <button class="az-tool-btn" id="az-cancel-btn" disabled>Cancel</button>

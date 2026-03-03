@@ -1942,6 +1942,27 @@
   background: rgba(8,12,20,0.6);
 }
 
+/* Helpers toggle bar */
+.az-helpers-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 0 4px; flex-wrap: wrap;
+}
+.az-helper-btn {
+  padding: 3px 10px; font-size: 10px;
+  font-family: "JetBrains Mono", monospace; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  background: var(--as); border: 1px solid var(--abr);
+  color: var(--am); border-radius: 4px; cursor: pointer; transition: all 120ms;
+}
+.az-helper-btn.active { border-color: var(--acc); color: var(--acc); background: rgba(171,71,188,0.12); }
+.az-helper-btn:hover  { border-color: var(--acc); color: var(--at); }
+.az-select-sm { padding: 3px 6px; font-size: 10px; height: 26px; }
+.az-coord-display {
+  margin-left: auto; font-family: "JetBrains Mono", monospace;
+  font-size: 10px; color: var(--acc); min-width: 72px;
+  text-align: right; letter-spacing: 0.04em;
+}
+
 .az-canvas-toolbar {
   display: flex;
   align-items: center;

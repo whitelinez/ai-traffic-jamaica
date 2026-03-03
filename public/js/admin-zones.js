@@ -27,6 +27,14 @@ window.AdminZones = (() => {
   let rafId      = null;
   let isInitialized = false;
 
+  // ── Helper state ───────────────────────────────────────────────────────────
+  let _showGrid    = true;
+  let _snapToGrid  = true;
+  let _showCompass = true;
+  let _gridCells   = 10;      // n×n grid
+  let _mouseRx     = -1;      // normalized mouse position (0–1)
+  let _mouseRy     = -1;
+
   // ── Init ──────────────────────────────────────────────────────────────────
   function init() {
     if (isInitialized) return;
@@ -39,6 +47,23 @@ window.AdminZones = (() => {
     bgCtx   = bgCanvas.getContext("2d");
     drawCtx = drawCanvas.getContext("2d");
 
+    // Helper toggles
+    document.getElementById("az-grid-btn")?.addEventListener("click", () => {
+      _showGrid = !_showGrid;
+      document.getElementById("az-grid-btn")?.classList.toggle("active", _showGrid);
+    });
+    document.getElementById("az-snap-btn")?.addEventListener("click", () => {
+      _snapToGrid = !_snapToGrid;
+      document.getElementById("az-snap-btn")?.classList.toggle("active", _snapToGrid);
+    });
+    document.getElementById("az-compass-btn")?.addEventListener("click", () => {
+      _showCompass = !_showCompass;
+      document.getElementById("az-compass-btn")?.classList.toggle("active", _showCompass);
+    });
+    document.getElementById("az-grid-size")?.addEventListener("change", e => {
+      _gridCells = parseInt(e.target.value, 10) || 10;
+    });
+
     // Zone type → show/hide speed distance, update legend
     document.getElementById("az-zone-type")?.addEventListener("change", updateTypeUI);
     updateTypeUI();
@@ -49,6 +74,7 @@ window.AdminZones = (() => {
     // Canvas clicks for polygon placement
     drawCanvas.addEventListener("click", handleCanvasClick);
     drawCanvas.addEventListener("mousemove", handleMouseMove);
+    drawCanvas.addEventListener("mouseleave", handleMouseLeave);
 
     // Undo / cancel
     document.getElementById("az-undo-btn")?.addEventListener("click", undoPoint);
@@ -198,17 +224,20 @@ window.AdminZones = (() => {
 
     drawCtx.clearRect(0, 0, W, H);
 
-    // Saved zones (filled polygons)
+    // 1. Grid (bottom layer)
+    drawGrid();
+
+    // 2. Saved zones (filled polygons)
     for (const z of savedZones) {
       drawZonePoly(z.points, ZONE_CONFIG[z.zone_type]?.color || "#FFB800", z.name, 0.22, false);
     }
 
-    // Draft zones
+    // 3. Draft zones
     for (const z of draftZones) {
       drawZonePoly(z.points, ZONE_CONFIG[z.zone_type]?.color || "#FFB800", z.name, 0.28, true);
     }
 
-    // In-progress polygon
+    // 4. In-progress polygon + placed vertices
     if (drawing && draftPts.length > 0) {
       const color = ZONE_CONFIG[getZoneType()]?.color || "#FFB800";
       drawCtx.save();
@@ -232,9 +261,21 @@ window.AdminZones = (() => {
         drawCtx.strokeStyle = color;
         drawCtx.lineWidth = 1.5;
         drawCtx.stroke();
+        // Vertex index label
+        drawCtx.fillStyle = "#fff";
+        drawCtx.font = "bold 9px 'JetBrains Mono', monospace";
+        drawCtx.textAlign = "center";
+        drawCtx.textBaseline = "middle";
+        drawCtx.fillText(i + 1, x, y);
       });
       drawCtx.restore();
     }
+
+    // 5. Compass labels (top layer, above zones)
+    drawCompass();
+
+    // 6. Crosshair, rubber-band, snap preview, coordinate badge
+    drawCrosshairAndPreview();
   }
 
   function drawZonePoly(points, color, label, alpha, isDraft) {
@@ -288,8 +329,9 @@ window.AdminZones = (() => {
   function handleCanvasClick(e) {
     if (!drawing) return;
     const rect = drawCanvas.getBoundingClientRect();
-    const rx = (e.clientX - rect.left) / drawCanvas.width;
-    const ry = (e.clientY - rect.top)  / drawCanvas.height;
+    const rawRx = (e.clientX - rect.left) / drawCanvas.width;
+    const rawRy = (e.clientY - rect.top)  / drawCanvas.height;
+    const { rx, ry } = snapPoint(rawRx, rawRy);
     // Check if click is near first point (close polygon)
     if (draftPts.length >= 3) {
       const [fx, fy] = toPixel(draftPts[0].rx, draftPts[0].ry);
@@ -305,6 +347,22 @@ window.AdminZones = (() => {
     const rect = drawCanvas.getBoundingClientRect();
     _mouseX = e.clientX - rect.left;
     _mouseY = e.clientY - rect.top;
+    _mouseRx = _mouseX / drawCanvas.width;
+    _mouseRy = _mouseY / drawCanvas.height;
+    // Update coord display
+    const coordEl = document.getElementById("az-coord-display");
+    if (coordEl) {
+      const snapped = snapPoint(_mouseRx, _mouseRy);
+      const xPct = Math.round(snapped.rx * 100);
+      const yPct = Math.round(snapped.ry * 100);
+      coordEl.textContent = `${xPct}%, ${yPct}%`;
+    }
+  }
+
+  function handleMouseLeave() {
+    _mouseRx = -1; _mouseRy = -1;
+    const coordEl = document.getElementById("az-coord-display");
+    if (coordEl) coordEl.textContent = "—";
   }
 
   function closePoly() {
@@ -470,6 +528,183 @@ window.AdminZones = (() => {
     e.style.color = isErr ? "#ef4444" : "var(--ok, #4CAF50)";
     clearTimeout(e._t);
     e._t = setTimeout(() => { e.textContent = ""; }, 4000);
+  }
+
+  // ── Grid / compass / snap helpers ─────────────────────────────────────────
+  function snapPoint(rx, ry) {
+    if (!_snapToGrid) return { rx, ry };
+    const step = 1 / _gridCells;
+    return {
+      rx: Math.round(rx / step) * step,
+      ry: Math.round(ry / step) * step,
+    };
+  }
+
+  function drawGrid() {
+    if (!_showGrid || !drawCtx) return;
+    const W = drawCanvas.width, H = drawCanvas.height;
+    drawCtx.save();
+
+    // Minor grid lines
+    drawCtx.strokeStyle = "rgba(255,255,255,0.07)";
+    drawCtx.lineWidth = 0.5;
+    for (let i = 1; i < _gridCells; i++) {
+      const x = (i / _gridCells) * W;
+      const y = (i / _gridCells) * H;
+      drawCtx.beginPath(); drawCtx.moveTo(x, 0); drawCtx.lineTo(x, H); drawCtx.stroke();
+      drawCtx.beginPath(); drawCtx.moveTo(0, y); drawCtx.lineTo(W, y); drawCtx.stroke();
+    }
+
+    // Center cross (stronger)
+    drawCtx.strokeStyle = "rgba(255,255,255,0.18)";
+    drawCtx.lineWidth = 1;
+    drawCtx.setLineDash([5, 5]);
+    drawCtx.beginPath(); drawCtx.moveTo(W / 2, 0); drawCtx.lineTo(W / 2, H); drawCtx.stroke();
+    drawCtx.beginPath(); drawCtx.moveTo(0, H / 2); drawCtx.lineTo(W, H / 2); drawCtx.stroke();
+    drawCtx.setLineDash([]);
+
+    // Ruler ticks along top + left edges
+    drawCtx.fillStyle = "rgba(255,255,255,0.55)";
+    drawCtx.font = "8px 'JetBrains Mono', monospace";
+    drawCtx.textBaseline = "top";
+    for (let i = 1; i < _gridCells; i++) {
+      const pct = Math.round((i / _gridCells) * 100);
+      const x   = (i / _gridCells) * W;
+      const y   = (i / _gridCells) * H;
+      // Top ticks + labels every 20%
+      drawCtx.fillRect(x - 0.5, 0, 1, 4);
+      if (pct % 20 === 0) {
+        drawCtx.textAlign = "center";
+        drawCtx.fillText(`${pct}`, x, 5);
+      }
+      // Left ticks + labels every 20%
+      drawCtx.fillRect(0, y - 0.5, 4, 1);
+      if (pct % 20 === 0) {
+        drawCtx.textAlign = "left";
+        drawCtx.fillText(`${pct}`, 5, y - 9);
+      }
+    }
+
+    // Snap dot highlights at every intersection
+    if (_snapToGrid) {
+      drawCtx.fillStyle = "rgba(255,255,255,0.12)";
+      for (let ix = 0; ix <= _gridCells; ix++) {
+        for (let iy = 0; iy <= _gridCells; iy++) {
+          drawCtx.beginPath();
+          drawCtx.arc((ix / _gridCells) * W, (iy / _gridCells) * H, 2, 0, Math.PI * 2);
+          drawCtx.fill();
+        }
+      }
+    }
+
+    drawCtx.restore();
+  }
+
+  function drawCompass() {
+    if (!_showCompass || !drawCtx) return;
+    const W = drawCanvas.width, H = drawCanvas.height;
+    const dirs = [
+      { t: "N", x: W / 2, y: 18  },
+      { t: "S", x: W / 2, y: H - 8 },
+      { t: "W", x: 14,    y: H / 2 },
+      { t: "E", x: W - 14, y: H / 2 },
+    ];
+    drawCtx.save();
+    drawCtx.font = "bold 12px 'JetBrains Mono', monospace";
+    drawCtx.textAlign = "center";
+    drawCtx.textBaseline = "middle";
+    for (const d of dirs) {
+      // Badge background
+      drawCtx.fillStyle = "rgba(8,12,20,0.78)";
+      drawCtx.beginPath();
+      drawCtx.roundRect(d.x - 11, d.y - 9, 22, 18, 4);
+      drawCtx.fill();
+      // Border
+      drawCtx.strokeStyle = "rgba(255,184,0,0.5)";
+      drawCtx.lineWidth = 1;
+      drawCtx.stroke();
+      // Label
+      drawCtx.fillStyle = "#FFB800";
+      drawCtx.fillText(d.t, d.x, d.y);
+    }
+    drawCtx.restore();
+  }
+
+  function drawCrosshairAndPreview() {
+    if (_mouseRx < 0 || !drawCtx) return;
+    const W = drawCanvas.width, H = drawCanvas.height;
+    const color = ZONE_CONFIG[getZoneType()]?.color || "#FFB800";
+    const snapped = snapPoint(_mouseRx, _mouseRy);
+    const sx = snapped.rx * W, sy = snapped.ry * H;
+    const mx = _mouseRx  * W, my = _mouseRy  * H;
+
+    drawCtx.save();
+
+    // Full crosshair at mouse pos
+    drawCtx.strokeStyle = "rgba(255,255,255,0.22)";
+    drawCtx.lineWidth   = 0.5;
+    drawCtx.setLineDash([4, 4]);
+    drawCtx.beginPath(); drawCtx.moveTo(mx, 0); drawCtx.lineTo(mx, H); drawCtx.stroke();
+    drawCtx.beginPath(); drawCtx.moveTo(0, my); drawCtx.lineTo(W, my); drawCtx.stroke();
+    drawCtx.setLineDash([]);
+
+    if (drawing) {
+      // Rubber-band line from last placed point to snap target
+      if (draftPts.length > 0) {
+        const [lx, ly] = toPixel(draftPts[draftPts.length - 1].rx, draftPts[draftPts.length - 1].ry);
+        drawCtx.strokeStyle = hexAlpha(color, 0.55);
+        drawCtx.lineWidth   = 1.5;
+        drawCtx.setLineDash([5, 3]);
+        drawCtx.beginPath(); drawCtx.moveTo(lx, ly); drawCtx.lineTo(sx, sy); drawCtx.stroke();
+        drawCtx.setLineDash([]);
+        // Also draw closing line preview back to first point
+        if (draftPts.length >= 2) {
+          const [fx, fy] = toPixel(draftPts[0].rx, draftPts[0].ry);
+          drawCtx.strokeStyle = hexAlpha(color, 0.22);
+          drawCtx.lineWidth   = 1;
+          drawCtx.setLineDash([3, 5]);
+          drawCtx.beginPath(); drawCtx.moveTo(sx, sy); drawCtx.lineTo(fx, fy); drawCtx.stroke();
+          drawCtx.setLineDash([]);
+        }
+      }
+
+      // Snap target dot
+      if (_snapToGrid) {
+        drawCtx.beginPath();
+        drawCtx.arc(sx, sy, 5, 0, Math.PI * 2);
+        drawCtx.fillStyle = hexAlpha(color, 0.35);
+        drawCtx.fill();
+        drawCtx.strokeStyle = color;
+        drawCtx.lineWidth   = 1.5;
+        drawCtx.stroke();
+        // Connector from raw mouse to snap dot
+        if (Math.hypot(mx - sx, my - sy) > 4) {
+          drawCtx.strokeStyle = hexAlpha(color, 0.4);
+          drawCtx.lineWidth   = 1;
+          drawCtx.setLineDash([2, 3]);
+          drawCtx.beginPath(); drawCtx.moveTo(mx, my); drawCtx.lineTo(sx, sy); drawCtx.stroke();
+          drawCtx.setLineDash([]);
+        }
+      }
+    }
+
+    // Coordinate badge near cursor
+    const xPct  = Math.round(snapped.rx * 100);
+    const yPct  = Math.round(snapped.ry * 100);
+    const label = `${xPct}%,${yPct}%`;
+    drawCtx.font    = "9px 'JetBrains Mono', monospace";
+    drawCtx.textBaseline = "top";
+    drawCtx.textAlign    = "left";
+    const tw = drawCtx.measureText(label).width;
+    // Keep badge inside canvas
+    const bx = sx + 12 + tw + 6 > W ? sx - tw - 18 : sx + 12;
+    const by = sy + 26 > H ? sy - 22 : sy + 8;
+    drawCtx.fillStyle = "rgba(8,12,20,0.82)";
+    drawCtx.fillRect(bx - 4, by - 2, tw + 8, 14);
+    drawCtx.fillStyle = "#fff";
+    drawCtx.fillText(label, bx, by);
+
+    drawCtx.restore();
   }
 
   function toPixel(rx, ry) {
