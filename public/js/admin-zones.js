@@ -2,7 +2,7 @@
  * admin-zones.js — Analytics Zone Editor
  * Draws named polygon zones over a live camera frame.
  * Zone types: queue | entry | exit | speed_a | speed_b | roi
- * Zones are stored in the camera_zones Supabase table via /api/analytics/zones.
+ * Zones are stored in the camera_zones Supabase table via /api/analytics/data?type=zones.
  */
 
 const AdminZones = (() => {
@@ -315,7 +315,7 @@ const AdminZones = (() => {
   async function loadZones() {
     if (!cameraId) return;
     try {
-      const res = await fetch(`/api/analytics/zones?camera_id=${cameraId}`);
+      const res = await fetch(`/api/analytics/data?type=zones&camera_id=${cameraId}`);
       if (res.ok) {
         savedZones = await res.json();
         renderZoneList();
@@ -333,7 +333,7 @@ const AdminZones = (() => {
     btn.textContent = "Saving…";
     btn.setAttribute("disabled", "");
     try {
-      const res = await fetch("/api/analytics/zones", {
+      const res = await fetch("/api/analytics/data?type=zones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ camera_id: cameraId, zones: draftZones }),
@@ -359,7 +359,7 @@ const AdminZones = (() => {
       draftZones = draftZones.filter((_, i) => i !== zoneId);
     } else {
       try {
-        await fetch(`/api/analytics/zones?zone_id=${zoneId}`, { method: "DELETE" });
+        await fetch(`/api/analytics/data?type=zones&zone_id=${zoneId}`, { method: "DELETE" });
         savedZones = savedZones.filter(z => z.id !== zoneId);
       } catch (e) {
         setStatus("Delete failed: " + e.message, true);

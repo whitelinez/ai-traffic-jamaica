@@ -1396,7 +1396,7 @@ function _connectUserWs(session) {
     try {
       const fromParam = _govFrom || new Date(Date.now() - _govHours * 3600 * 1000).toISOString();
       const toParam   = _govTo   || new Date().toISOString();
-      const res = await fetch(`/api/analytics/turnings?camera_id=${_camId}&from=${fromParam}&to=${toParam}`);
+      const res = await fetch(`/api/analytics/data?type=turnings&camera_id=${_camId}&from=${fromParam}&to=${toParam}`);
       if (!res.ok) return;
       const data = await res.json();
       _buildQueueChart(data.queue_series || []);
