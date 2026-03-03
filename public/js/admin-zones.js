@@ -102,7 +102,6 @@ const AdminZones = (() => {
     if (hiddenSel) hiddenSel.value = camId;
 
     // Resolve camera name for display
-    const lbl = document.getElementById("az-cam-label");
     if (lbl) {
       try {
         const { data } = await window.sb

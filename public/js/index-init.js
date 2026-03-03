@@ -1111,11 +1111,18 @@ function _connectUserWs(session) {
   closeBtn?.addEventListener("click", closeGov);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && _open) closeGov(); });
 
+  function _setKpiLoading(on) {
+    document.querySelector(".gov-kpi-strip")?.classList.toggle("is-loading", on);
+  }
+
   async function openGov() {
     if (_open) return;
     _open = true;
     overlay.classList.remove("hidden");
     document.body.style.overflow = "hidden";
+
+    // Show loading bar until first live data arrives
+    if (!_lastPayload) _setKpiLoading(true);
 
     // Resolve camera
     if (!_camId && window.sb) {
@@ -1175,6 +1182,7 @@ function _connectUserWs(session) {
 
   // ── Live stats population ─────────────────────────────────────────────────
   function _populateLive(p) {
+    _setKpiLoading(false);
     const bd    = p.per_class_total || p.vehicle_breakdown || {};
     const total = p.total ?? p.confirmed_crossings_total ?? 0;
     const fps   = p.fps != null ? Number(p.fps).toFixed(1) : null;
