@@ -1163,7 +1163,9 @@ function _connectUserWs(session) {
   // passed canvas element, never a stale reference from another canvas.
   function _syncZoneCanvas(canvas, video) {
     const dpr = window.devicePixelRatio || 1;
-    const w = video.clientWidth, h = video.clientHeight;
+    // Use canvas parent dimensions as fallback if video hasn't reflowed yet
+    let w = video.clientWidth, h = video.clientHeight;
+    if (!w || !h) { w = canvas.parentElement?.clientWidth || 0; h = canvas.parentElement?.clientHeight || 0; }
     if (!w || !h) return null;
     const nw = Math.round(w * dpr), nh = Math.round(h * dpr);
     if (canvas.width !== nw || canvas.height !== nh) {
@@ -1384,9 +1386,8 @@ function _connectUserWs(session) {
         const totalOut = rows.reduce((a, r) => a + (r.out || 0), 0);
         txt("gov-kpi-total", Number(totalPeriod).toLocaleString());
         if (totalIn  > 0) txt("gov-kpi-in",    totalIn.toLocaleString());
-        if (totalOut > 0) txt("gov-kpi-out",   totalOut.toLocaleString());
         if (totalIn  > 0) txt("gov-inbound",   totalIn.toLocaleString());
-        if (totalOut > 0) txt("gov-outbound",  totalOut.toLocaleString());
+        if (totalOut > 0) { txt("gov-kpi-out", totalOut.toLocaleString()); txt("gov-outbound", totalOut.toLocaleString()); }
         _loadZoneAnalytics();
       } else {
         // Fallback: run full chart init
@@ -1397,6 +1398,8 @@ function _connectUserWs(session) {
       _startZoneCanvas(); // draw admin zones over live feed
       // Populate live stats from last known payload
       if (_lastPayload) _populateLive(_lastPayload);
+      // Auto-set "Today" so peak hour, class totals etc. query from midnight today
+      if (!_govFrom) _setPreset("1d");
       _loadChartJs(() => { _initDonut(); _initAllCharts(_govHours); });
     }
 
@@ -1436,19 +1439,21 @@ function _connectUserWs(session) {
     const bd    = p.per_class_total || p.vehicle_breakdown || {};
     const total = p.total ?? p.confirmed_crossings_total ?? 0;
     const fps   = p.fps != null ? Number(p.fps).toFixed(1) : null;
+    const profile = p.runtime_profile || p.traffic_load || null;
 
     // Header strip
     txt("gov-hdr-total", total.toLocaleString());
     txt("gov-hdr-fps",   fps ?? "—");
-    txt("gov-hdr-load",  p.traffic_load || "—");
+    txt("gov-hdr-load",  profile ? profile.replace(/_/g, " ").toUpperCase() : "—");
 
-    // KPI cards — only from WS when DB analytics haven't loaded yet
-    // (once _dbKpisLoaded, analytics API values take priority over session counter)
+    // KPI cards — total + in only from WS before DB analytics load
+    // count_out always comes from WS (vehicle_crossings table is often empty so DB returns 0)
     if (!_dbKpisLoaded) {
       txt("gov-kpi-total", total.toLocaleString());
       txt("gov-kpi-in",  p.count_in  != null ? Number(p.count_in).toLocaleString()  : "—");
-      txt("gov-kpi-out", p.count_out != null ? Number(p.count_out).toLocaleString() : "—");
     }
+    // Outbound: always prefer live WS value — DB table may be empty
+    txt("gov-kpi-out", p.count_out != null ? Number(p.count_out).toLocaleString() : "—");
     // gov-kpi-peak is filled from analytics data
 
     // Flow sidebar
@@ -1458,6 +1463,11 @@ function _connectUserWs(session) {
     // Scene
     const scene = [p.scene_lighting, p.scene_weather].filter(Boolean).join(" / ") || p.scene_lighting || "—";
     txt("gov-scene", scene.toUpperCase());
+
+    // AI health stripe
+    const qs = p.quality?.quality_score != null ? Number(p.quality.quality_score).toFixed(1) + "%" : null;
+    const aiParts = [qs ? `Quality ${qs}` : null, fps ? `${fps} fps` : null, profile ? profile.replace(/_/g, " ") : null].filter(Boolean);
+    txt("gov-ai-stripe", aiParts.length ? aiParts.join("  ·  ") : "—");
 
     // Class breakdown with progress bars
     const classes  = ["car","truck","bus","motorcycle"];
@@ -1618,10 +1628,11 @@ function _connectUserWs(session) {
       const totalOut = rows.reduce((a, r) => a + (r.out || 0), 0);
       txt("gov-kpi-total", Number(totalPeriod).toLocaleString());
       if (totalIn  > 0) txt("gov-kpi-in",  totalIn.toLocaleString());
-      if (totalOut > 0) txt("gov-kpi-out", totalOut.toLocaleString());
+      // gov-kpi-out is always from WS (vehicle_crossings often empty → totalOut=0)
+      // Only update it from DB if DB actually has direction data
+      if (totalOut > 0) { txt("gov-kpi-out", totalOut.toLocaleString()); txt("gov-outbound", totalOut.toLocaleString()); }
       if (totalIn  > 0) txt("gov-inbound",  totalIn.toLocaleString());
-      if (totalOut > 0) txt("gov-outbound", totalOut.toLocaleString());
-      _dbKpisLoaded = true;  // stop WS from overwriting with session counter
+      _dbKpisLoaded = true;  // stop WS from overwriting total/in with session counter
 
       // ── Update class breakdown bars from DB class totals ──────────────────
       const ct = summary.class_totals || {};
