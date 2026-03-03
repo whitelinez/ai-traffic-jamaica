@@ -1140,6 +1140,7 @@ function _connectUserWs(session) {
     } else {
       _stopZoneCanvas();
       _moveVideoGroup("gov-video-slot");
+      if (name === "live") _startZoneCanvas(); // zones on live tab too
     }
     if (name === "agencies" && _analyticsData) _populateAgencyMetrics(_analyticsData.summary);
   }
@@ -1173,7 +1174,8 @@ function _connectUserWs(session) {
   }
 
   function _drawGovZones() {
-    const canvas = el("gov-an-zone-canvas");
+    const canvasId = _activeTab === "analytics" ? "gov-an-zone-canvas" : "gov-live-zone-canvas";
+    const canvas = el(canvasId);
     const video  = el("live-video");
     if (!canvas || !video || !window.getContentBounds) return;
     _syncZoneCanvas(canvas, video);
@@ -1245,8 +1247,12 @@ function _connectUserWs(session) {
 
   function _stopZoneCanvas() {
     if (_govAnZoneRaf) { cancelAnimationFrame(_govAnZoneRaf); _govAnZoneRaf = null; }
-    const canvas = el("gov-an-zone-canvas");
-    if (canvas && _govAnZoneCtx) _govAnZoneCtx.clearRect(0, 0, canvas.width, canvas.height);
+    if (_govAnZoneCtx) {
+      ["gov-an-zone-canvas", "gov-live-zone-canvas"].forEach(id => {
+        const c = el(id); if (c) _govAnZoneCtx.clearRect(0, 0, c.width, c.height);
+      });
+    }
+    _govAnZoneCtx = null;
   }
 
 
@@ -1384,6 +1390,7 @@ function _connectUserWs(session) {
       }
     } else {
       _moveVideoGroup("gov-video-slot");
+      _startZoneCanvas(); // draw admin zones over live feed
       // Populate live stats from last known payload
       if (_lastPayload) _populateLive(_lastPayload);
       _loadChartJs(() => { _initDonut(); _initAllCharts(_govHours); });
