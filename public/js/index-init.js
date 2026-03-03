@@ -1194,7 +1194,10 @@ function _connectUserWs(session) {
     } else {
       _stopZoneCanvas();
       _moveVideoGroup("gov-video-slot");
-      if (name === "live") _startZoneCanvas(); // zones on live tab too
+      if (name === "live") {
+        _startZoneCanvas();
+        if (!_govAnalyticsZones.length) _loadZoneAnalytics();
+      }
     }
     if (name === "agencies" && _analyticsData) _populateAgencyMetrics(_analyticsData.summary);
   }
@@ -1232,10 +1235,12 @@ function _connectUserWs(session) {
   }
 
   function _drawGovZones() {
-    // Live tab: original #zone-canvas (moved into gov-video-slot) handles zones itself.
-    // Only run this for the analytics tab which has its own dedicated canvas.
-    if (_activeTab !== "analytics") return;
-    const canvas = el("gov-an-zone-canvas");
+    const isAnalytics = _activeTab === "analytics";
+    const isLive      = _activeTab === "live";
+    if (!isAnalytics && !isLive) return;
+
+    const canvasId = isAnalytics ? "gov-an-zone-canvas" : "gov-live-zone-canvas";
+    const canvas = el(canvasId);
     const video  = el("live-video");
     if (!canvas || !video || !window.getContentBounds) return;
     const ctx = _syncZoneCanvas(canvas, video);
@@ -1308,9 +1313,10 @@ function _connectUserWs(session) {
 
   function _stopZoneCanvas() {
     if (_govAnZoneRaf) { cancelAnimationFrame(_govAnZoneRaf); _govAnZoneRaf = null; }
-    // Only clear the analytics canvas (gov-live-zone-canvas removed; live tab uses moved canvases)
-    const c = el("gov-an-zone-canvas");
-    if (c) { const ctx = c.getContext("2d"); ctx?.clearRect(0, 0, c.width, c.height); }
+    for (const id of ["gov-an-zone-canvas", "gov-live-zone-canvas"]) {
+      const c = el(id);
+      if (c) { const ctx = c.getContext("2d"); ctx?.clearRect(0, 0, c.width, c.height); }
+    }
   }
 
 
@@ -1451,6 +1457,7 @@ function _connectUserWs(session) {
     } else {
       _moveVideoGroup("gov-video-slot");
       _startZoneCanvas(); // draw admin zones over live feed
+      if (!_govAnalyticsZones.length) _loadZoneAnalytics(); // fetch entry/exit/speed zones
       // Populate live stats from last known payload
       if (_lastPayload) _populateLive(_lastPayload);
       // Auto-set "Today" so peak hour, class totals etc. query from midnight today
