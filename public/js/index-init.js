@@ -1458,12 +1458,26 @@ function _connectUserWs(session) {
     // Show turnings skeleton while loading
     const tBody = el("gov-turnings-body");
     if (tBody) tBody.innerHTML = _turningsSkeleton();
+
+    // Load zone list + turnings in parallel
+    const fromParam = _govFrom || new Date(Date.now() - _govHours * 3600 * 1000).toISOString();
+    const toParam   = _govTo   || new Date().toISOString();
+
+    const [zonesRes, turningsRes] = await Promise.allSettled([
+      fetch(`/api/analytics/data?type=zones&camera_id=${_camId}`),
+      fetch(`/api/analytics/data?type=turnings&camera_id=${_camId}&from=${fromParam}&to=${toParam}`),
+    ]);
+
+    // Render active zones bar
+    if (zonesRes.status === "fulfilled" && zonesRes.value.ok) {
+      const zones = await zonesRes.value.json();
+      _renderZonesBar(zones);
+    }
+
+    // Render turnings / queue / speed
     try {
-      const fromParam = _govFrom || new Date(Date.now() - _govHours * 3600 * 1000).toISOString();
-      const toParam   = _govTo   || new Date().toISOString();
-      const res = await fetch(`/api/analytics/data?type=turnings&camera_id=${_camId}&from=${fromParam}&to=${toParam}`);
-      if (!res.ok) return;
-      const data = await res.json();
+      if (turningsRes.status !== "fulfilled" || !turningsRes.value.ok) throw new Error("turnings fetch failed");
+      const data = await turningsRes.value.json();
       _buildQueueChart(data.queue_series || []);
       _buildSpeedChart(data);
       _renderTurningMovements(data);
@@ -1471,6 +1485,45 @@ function _connectUserWs(session) {
       console.warn("[GovAnalytics] Zone analytics failed:", err);
       if (tBody) tBody.innerHTML = `<p class="gov-turnings-empty">Failed to load zone analytics.</p>`;
     }
+  }
+
+  const _ZONE_TYPE_META = {
+    entry:   { label: "Entry",    color: "#4CAF50" },
+    exit:    { label: "Exit",     color: "#F44336" },
+    queue:   { label: "Queue",    color: "#FF9800" },
+    roi:     { label: "ROI",      color: "#AB47BC" },
+    speed_a: { label: "Speed A",  color: "#00BCD4" },
+    speed_b: { label: "Speed B",  color: "#009688" },
+  };
+
+  function _renderZonesBar(zones) {
+    const chips = el("gov-zones-chips");
+    if (!chips) return;
+    if (!zones || !zones.length) {
+      chips.innerHTML = `<span class="gov-zone-chip gov-zone-chip-loading">No active zones</span>`;
+      return;
+    }
+    // Group by zone_type
+    const groups = {};
+    for (const z of zones) {
+      const t = z.zone_type || "roi";
+      groups[t] = (groups[t] || 0) + 1;
+    }
+    const order = ["entry", "exit", "queue", "roi", "speed_a", "speed_b"];
+    chips.innerHTML = order
+      .filter(t => groups[t])
+      .map(t => {
+        const meta  = _ZONE_TYPE_META[t] || { label: t, color: "#64748b" };
+        const count = groups[t];
+        const bg    = meta.color + "18";
+        return `<span class="gov-zone-chip" style="background:${bg};border-color:${meta.color}60;color:${meta.color}">
+          <span class="gov-zone-chip-dot" style="background:${meta.color}"></span>
+          ${meta.label} ×${count}
+        </span>`;
+      }).join("") +
+      `<span class="gov-zone-chip" style="background:rgba(122,155,181,0.06);border-color:rgba(122,155,181,0.2);color:#7A9BB5">
+        Total ${zones.length}
+      </span>`;
   }
 
   function _buildQueueChart(series) {

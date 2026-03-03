@@ -33,6 +33,19 @@ const DetectionOverlay = (() => {
   let ghostSeq = 0;
   const laneSmoothing = new Map();
 
+  // ── Analytics zone overlay ────────────────────────────────────
+  let _analyticsZones  = [];
+  let _zonesLoadedAt   = 0;
+  const _ZONE_CACHE_MS = 120000;
+  const _ZONE_TYPE_COLOR = {
+    entry:   "#4CAF50",
+    exit:    "#F44336",
+    queue:   "#FF9800",
+    roi:     "#AB47BC",
+    speed_a: "#00BCD4",
+    speed_b: "#009688",
+  };
+
   let settings = {
     box_style: "corner",
     line_width: 1.5,
@@ -727,6 +740,94 @@ const DetectionOverlay = (() => {
     return bestDelta <= QUEUE_MATCH_TOL_MS ? best.detections : latestDetections;
   }
 
+  // ── Zone overlay helpers ──────────────────────────────────────
+  async function _loadZones() {
+    if (Date.now() - _zonesLoadedAt < _ZONE_CACHE_MS) return;
+    if (!window.sb) return;
+    try {
+      const { data } = await window.sb
+        .from("camera_zones")
+        .select("id,name,zone_type,points,color")
+        .eq("active", true);
+      if (data) {
+        _analyticsZones = data;
+        _zonesLoadedAt  = Date.now();
+        forceRender = true;
+      }
+    } catch { /* silent — telemetry overlay is non-critical */ }
+  }
+
+  function _drawZonesCanvas(bounds) {
+    if (!ctx || !_analyticsZones.length) return;
+    ctx.save();
+    for (const zone of _analyticsZones) {
+      const pts = zone.points || [];
+      if (pts.length < 3) continue;
+      const px = pts.map(p => contentToPixel(p.x, p.y, bounds));
+      const col = zone.color || _ZONE_TYPE_COLOR[zone.zone_type] || "#64748b";
+
+      // filled polygon
+      ctx.beginPath();
+      ctx.moveTo(px[0].x, px[0].y);
+      for (let i = 1; i < px.length; i++) ctx.lineTo(px[i].x, px[i].y);
+      ctx.closePath();
+      ctx.fillStyle   = hexToRgba(col, 0.07);
+      ctx.fill();
+      ctx.strokeStyle = hexToRgba(col, 0.60);
+      ctx.lineWidth   = 1.2;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // name label at centroid
+      const cx = px.reduce((s, p) => s + p.x, 0) / px.length;
+      const cy = px.reduce((s, p) => s + p.y, 0) / px.length;
+      const label = zone.name || zone.zone_type;
+      ctx.font = "700 9px 'JetBrains Mono', monospace";
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "middle";
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = "rgba(0,0,0,0.65)";
+      ctx.fillRect(cx - tw / 2 - 3, cy - 7, tw + 6, 14);
+      ctx.fillStyle = col;
+      ctx.fillText(label, cx, cy);
+    }
+    ctx.restore();
+  }
+
+  function _drawZonesPixi(bounds) {
+    if (!_analyticsZones.length) return;
+    for (const zone of _analyticsZones) {
+      const pts = zone.points || [];
+      if (pts.length < 3) continue;
+      const px   = pts.map(p => contentToPixel(p.x, p.y, bounds));
+      const col  = zone.color || _ZONE_TYPE_COLOR[zone.zone_type] || "#64748b";
+      const colN = hexToPixi(col);
+
+      const g = getPixiGraphic();
+      g.clear();
+      g.visible = true;
+      g.lineStyle(1.2, colN, 0.65, 0.5, false);
+      g.beginFill(colN, 0.07);
+      g.drawPolygon(px.flatMap(p => [p.x, p.y]));
+      g.endFill();
+
+      // label
+      const cx = px.reduce((s, p) => s + p.x, 0) / px.length;
+      const cy = px.reduce((s, p) => s + p.y, 0) / px.length;
+      const t  = getPixiText();
+      t.text   = zone.name || zone.zone_type;
+      t.style.fill     = col;
+      t.style.fontSize = 9;
+      t.style.fontFamily = "JetBrains Mono, monospace";
+      t.style.fontWeight = "700";
+      t.anchor.set(0.5);
+      t.x = cx;
+      t.y = cy;
+      t.visible = true;
+    }
+  }
+
   function init(videoEl, canvasEl) {
     video  = videoEl;
     canvas = canvasEl;
@@ -734,6 +835,10 @@ const DetectionOverlay = (() => {
     loadSettings();
 
     syncSize();
+    // Kick off zone load immediately; cache refreshes every 2 min
+    _loadZones();
+    setInterval(_loadZones, _ZONE_CACHE_MS);
+
     if (!initPixiRenderer()) {
       ctx = canvas.getContext("2d");
       ctx.setTransform(_dpr, 0, 0, _dpr, 0, 0);
@@ -847,6 +952,11 @@ const DetectionOverlay = (() => {
       if (pixiEnabled) drawGroundOverlayPixi(bounds);
       else drawGroundOverlayCanvas(bounds, detections);
     }
+
+    // Draw analytics zone polygons (always, even with no detections)
+    if (pixiEnabled) _drawZonesPixi(bounds);
+    else _drawZonesCanvas(bounds);
+
     if (!detections.length) {
       if (pixiEnabled) endPixiFrame();
       return;
@@ -949,7 +1059,7 @@ const DetectionOverlay = (() => {
     return true;
   }
 
-  return { init, clearDetections, setDetectZone };
+  return { init, clearDetections, setDetectZone, reloadZones: _loadZones };
 })();
 
 window.DetectionOverlay = DetectionOverlay;
