@@ -1052,7 +1052,8 @@ function _connectUserWs(session) {
   let _camId        = null;
   let _camName      = null;
   let _lastPayload  = null;   // most recent count:update payload
-  let _analyticsData = null;  // most recent analytics API response
+  let _analyticsData      = null;  // most recent analytics API response
+  let _govAnalyticsZones  = [];    // camera_zones for current camera (entry/exit/speed/etc)
   let _govHours     = 24;
   let _govFrom      = null;   // ISO date string or null
   let _govTo        = null;   // ISO date string or null
@@ -1242,12 +1243,9 @@ function _connectUserWs(session) {
     const bounds = window.getContentBounds(video);
     ctx.clearRect(0, 0, video.clientWidth, video.clientHeight);
 
-    const zones = window.DetectionOverlay?.getZones?.() || [];
-    // If zones haven't loaded yet, trigger a fetch and wait for next frame
-    if (!zones.length) {
-      window.DetectionOverlay?.reloadZones?.();
-      return;
-    }
+    const zones = _govAnalyticsZones;
+    // Wait for _loadZoneAnalytics() to populate — no fallback needed
+    if (!zones.length) return;
 
     ctx.save();
     const now = Date.now();
@@ -1481,6 +1479,7 @@ function _connectUserWs(session) {
     _crossingsInterval = null;
     _stopZoneCanvas();
     _moveOverlaysBack();
+    _govAnalyticsZones = [];
 
     // Return video to stream-wrapper
     const wrapper = document.querySelector(".stream-wrapper");
@@ -1857,9 +1856,10 @@ function _connectUserWs(session) {
       fetch(`/api/analytics/data?type=turnings&camera_id=${_camId}&from=${fromParam}&to=${toParam}`),
     ]);
 
-    // Render active zones bar
+    // Render active zones bar + store for canvas draw loop
     if (zonesRes.status === "fulfilled" && zonesRes.value.ok) {
       const zones = await zonesRes.value.json();
+      _govAnalyticsZones = zones;   // used by _drawGovZones() RAF loop
       _renderZonesBar(zones);
     }
 
