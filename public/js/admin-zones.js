@@ -5,7 +5,7 @@
  * Zones are stored in the camera_zones Supabase table via /api/analytics/data?type=zones.
  */
 
-const AdminZones = (() => {
+window.AdminZones = (() => {
   // ── Zone type config ───────────────────────────────────────────────────────
   const ZONE_CONFIG = {
     queue:   { color: "#FF9800", label: "Queue / Stop-line",  desc: "Polygon covering the queue area near the stop line. Measures how many vehicles are waiting at any given moment." },
@@ -115,13 +115,25 @@ const AdminZones = (() => {
       }
     }
 
-    // Enable draw button and kick off frame + zones load
+    // Enable draw button and kick off zones load
     document.getElementById("az-draw-btn")?.removeAttribute("disabled");
     savedZones = [];
     draftZones = [];
     cancelDraw();
-    captureFrame();
     loadZones();
+
+    // Hide overlay message once video is feeding into canvas
+    const msgEl = document.getElementById("az-canvas-msg");
+    const waitForVideo = () => {
+      const v = document.getElementById("admin-video");
+      if (v && v.readyState >= 2 && v.videoWidth > 0) {
+        if (msgEl) msgEl.style.display = "none";
+        resizeCanvas();
+      } else {
+        setTimeout(waitForVideo, 500);
+      }
+    };
+    waitForVideo();
   }
 
   // ── Frame capture ──────────────────────────────────────────────────────────
@@ -149,9 +161,12 @@ const AdminZones = (() => {
     const wrap = document.getElementById("az-canvas-wrap");
     if (!wrap || !bgCanvas) return;
     const w = wrap.clientWidth;
-    const h = frameImg
-      ? Math.round(w * (frameImg.height / frameImg.width))
-      : Math.round(w * (9 / 16));
+    const liveVid = document.getElementById("admin-video");
+    const h = (liveVid?.videoWidth && liveVid?.videoHeight)
+      ? Math.round(w * (liveVid.videoHeight / liveVid.videoWidth))
+      : frameImg
+        ? Math.round(w * (frameImg.height / frameImg.width))
+        : Math.round(w * (9 / 16));
     bgCanvas.width   = w;
     bgCanvas.height  = h;
     drawCanvas.width  = w;
@@ -169,9 +184,12 @@ const AdminZones = (() => {
     if (!bgCtx || !drawCtx) return;
     const W = bgCanvas.width, H = bgCanvas.height;
 
-    // Background
+    // Background — prefer live admin-video feed for real-time preview
     bgCtx.clearRect(0, 0, W, H);
-    if (frameImg) {
+    const liveVid = document.getElementById("admin-video");
+    if (liveVid && liveVid.readyState >= 2 && liveVid.videoWidth > 0) {
+      bgCtx.drawImage(liveVid, 0, 0, W, H);
+    } else if (frameImg) {
       bgCtx.drawImage(frameImg, 0, 0, W, H);
     } else {
       bgCtx.fillStyle = "#080C14";

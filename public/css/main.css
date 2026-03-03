@@ -4336,7 +4336,6 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: 0.9rem;
 
 #recent-rounds,
 #recent-bets,
-#health-overview,
 #ml-last-seen {
   max-height: 260px;
   overflow: auto;
