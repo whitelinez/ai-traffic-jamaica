@@ -1055,8 +1055,11 @@ function _connectUserWs(session) {
   let _analyticsData      = null;  // most recent analytics API response
   let _govAnalyticsZones  = [];    // camera_zones for current camera (entry/exit/speed/etc)
   let _govExitTotal       = null;  // total exit completions from turnings matrix (Traffic Intelligence)
-  let _fpFrom             = null;  // Flatpickr instance for from-date
-  let _fpTo               = null;  // Flatpickr instance for to-date
+  // Custom calendar state
+  let _calMonth    = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  let _calAvailSet = new Set();    // "YYYY-MM-DD" strings with traffic_daily data
+  let _calFetched  = false;
+  let _calPicking  = null;         // "from" | "to"
   let _govHours     = 24;
   let _govFrom      = null;   // ISO date string or null
   let _govTo        = null;   // ISO date string or null
@@ -2141,76 +2144,179 @@ function _connectUserWs(session) {
   }
 
   // ── Date range controls ───────────────────────────────────────────────────
-  function _initDatePickers() {
-    const MIN_DATE = "2026-03-03"; // earliest count_snapshots.captured_at
-    const today    = new Date().toISOString().slice(0, 10);
+  // ── Custom date calendar ─────────────────────────────────────────────────
 
-    const commonOpts = {
-      dateFormat: "Y-m-d",
-      disableMobile: false,
-      minDate: MIN_DATE,
-      maxDate: today,
-      appendTo: document.body,  // avoid clip inside fixed overlay
-    };
+  async function _fetchAvailDates() {
+    if (_calFetched || !window.sb) return;
+    _calFetched = true;
+    try {
+      const { data } = await window.sb
+        .from("traffic_daily").select("date").order("date");
+      if (data) data.forEach(r => { if (r.date) _calAvailSet.add(r.date); });
+      _renderCal();
+    } catch {}
+  }
 
-    if (!_fpFrom) {
-      _fpFrom = flatpickr("#gov-date-from", {
-        ...commonOpts,
-        defaultDate: today,
-        onChange([d]) {
-          if (!d) return;
-          _govFrom = d.toISOString().slice(0, 10);
-          // keep "to" >= "from"
-          if (_fpTo) _fpTo.set("minDate", _govFrom);
-          _loadChartJs(() => _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()));
-        },
-      });
+  function _openCal(field) {
+    _calPicking = field;
+    // Navigate to the currently-selected date's month
+    const d = field === "from" ? _govFrom : (_govTo ? _govTo.slice(0, 10) : null);
+    if (d) _calMonth = new Date(d.slice(0, 7) + "-01");
+    _fetchAvailDates();
+    _renderCal();
+    const popup   = el("wl-cal-popup");
+    const trigger = el("gov-date-" + field);
+    if (!popup || !trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    popup.style.top  = (rect.bottom + 6) + "px";
+    popup.style.left = Math.min(rect.left, window.innerWidth - 320) + "px";
+    popup.classList.remove("hidden");
+    setTimeout(() => {
+      const close = (e) => {
+        if (!popup.contains(e.target) && e.target !== trigger) {
+          popup.classList.add("hidden");
+          document.removeEventListener("click", close, true);
+        }
+      };
+      document.addEventListener("click", close, true);
+    }, 0);
+  }
+
+  function _renderCal() {
+    const popup = el("wl-cal-popup");
+    if (!popup || popup.classList.contains("hidden")) return;
+
+    const y    = _calMonth.getFullYear();
+    const m    = _calMonth.getMonth();
+    const mTitle = _calMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" }).toUpperCase();
+    const today  = new Date().toISOString().slice(0, 10);
+
+    const firstDow   = new Date(y, m, 1).getDay();
+    const offset     = firstDow === 0 ? 6 : firstDow - 1; // Mon-first grid
+    const daysInMon  = new Date(y, m + 1, 0).getDate();
+
+    const fromD = _govFrom || null;
+    const toD   = _govTo ? _govTo.slice(0, 10) : null;
+
+    let cells = "";
+    for (let i = 0; i < offset; i++) cells += `<div class="wl-cal-day wl-cal-empty"></div>`;
+    for (let d = 1; d <= daysInMon; d++) {
+      const ds    = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const avail = _calAvailSet.has(ds) && ds <= today;
+      const isTod = ds === today;
+      const isSel = ds === fromD || ds === toD;
+      const inRng = fromD && toD && ds > fromD && ds < toD;
+
+      let cls = "wl-cal-day";
+      if (avail) cls += " wl-cal-avail";
+      if (isTod) cls += " wl-cal-today";
+      if (isSel) cls += " wl-cal-sel";
+      else if (inRng) cls += " wl-cal-inrange";
+      cells += `<div class="${cls}" data-date="${ds}">${d}</div>`;
     }
 
-    if (!_fpTo) {
-      _fpTo = flatpickr("#gov-date-to", {
-        ...commonOpts,
-        defaultDate: today,
-        onChange([d]) {
-          _govTo = d ? d.toISOString().slice(0, 10) + "T23:59:59Z" : null;
-          _loadChartJs(() => _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()));
-        },
+    const hint = !_calFetched
+      ? `<div class="wl-cal-hint">Loading data dates…</div>`
+      : _calAvailSet.size === 0
+        ? `<div class="wl-cal-hint">No recorded data yet</div>` : "";
+
+    popup.innerHTML = `
+      <div class="wl-cal-hdr-row">
+        <button class="wl-cal-nav" id="wl-cal-prev" aria-label="Prev">‹</button>
+        <span class="wl-cal-title">${mTitle}</span>
+        <button class="wl-cal-nav" id="wl-cal-next" aria-label="Next">›</button>
+      </div>
+      <div class="wl-cal-wdays">
+        <div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div><div>Su</div>
+      </div>
+      <div class="wl-cal-grid">${cells}</div>
+      ${hint}
+      <div class="wl-cal-actions">
+        <button class="wl-cal-btn wl-cal-btn--today" id="wl-cal-today">Today</button>
+        <button class="wl-cal-btn wl-cal-btn--clear" id="wl-cal-clear">Clear</button>
+      </div>
+      <div class="wl-cal-mode">Selecting <strong>${_calPicking === "from" ? "start date" : "end date"}</strong></div>
+    `;
+
+    el("wl-cal-prev")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      _calMonth = new Date(y, m - 1, 1); _renderCal();
+    });
+    el("wl-cal-next")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      _calMonth = new Date(y, m + 1, 1); _renderCal();
+    });
+    el("wl-cal-today")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      _setCalDate("from", today); _setCalDate("to", today);
+      popup.classList.add("hidden");
+      _loadChartJs(() => _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()));
+    });
+    el("wl-cal-clear")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      _govFrom = null; _govTo = null;
+      _updateCalBtns();
+      popup.classList.add("hidden");
+      _loadChartJs(() => _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()));
+    });
+
+    popup.querySelectorAll(".wl-cal-avail").forEach(cell => {
+      cell.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const ds = cell.dataset.date;
+        if (_calPicking === "from") {
+          _setCalDate("from", ds);
+          if (_govTo && _govTo.slice(0, 10) < ds) { _govTo = null; _updateCalBtns(); }
+          _calPicking = "to";
+          _renderCal();
+        } else {
+          if (fromD && ds < fromD) {
+            _setCalDate("from", ds); _calPicking = "to"; _renderCal();
+          } else {
+            _setCalDate("to", ds);
+            popup.classList.add("hidden");
+            _loadChartJs(() => _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()));
+          }
+        }
       });
-    }
+    });
+  }
+
+  function _setCalDate(field, ds) {
+    if (field === "from") _govFrom = ds;
+    else _govTo = ds + "T23:59:59Z";
+    _updateCalBtns();
+  }
+
+  function _updateCalBtns() {
+    const fromEl = el("gov-date-from");
+    const toEl   = el("gov-date-to");
+    if (fromEl) fromEl.textContent = _govFrom
+      ? new Date(_govFrom + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      : "From";
+    if (toEl) toEl.textContent = _govTo
+      ? new Date(_govTo.slice(0, 10) + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      : "To";
   }
 
   function _setPreset(preset) {
-    const today = new Date();
+    const today    = new Date();
     const todayStr = today.toISOString().slice(0, 10);
     _govTo = null;
-    if (_fpTo) _fpTo.setDate(todayStr, false);
-    else { const el2 = el("gov-date-to"); if (el2) el2.value = todayStr; }
     if (preset === "1d") {
       _govFrom = todayStr;
-      if (_fpFrom) _fpFrom.setDate(todayStr, false);
-      else { const el2 = el("gov-date-from"); if (el2) el2.value = todayStr; }
       _govGranularity = "hour";
     } else if (preset === "7d") {
-      const d = new Date(today - 7 * 86400000);
-      _govFrom = d.toISOString().slice(0, 10);
-      if (_fpFrom) _fpFrom.setDate(_govFrom, false);
-      else { const el2 = el("gov-date-from"); if (el2) el2.value = _govFrom; }
+      _govFrom = new Date(today - 7 * 86400000).toISOString().slice(0, 10);
       _govGranularity = "day";
     } else if (preset === "30d") {
-      const d = new Date(today - 30 * 86400000);
-      _govFrom = d.toISOString().slice(0, 10);
-      if (_fpFrom) _fpFrom.setDate(_govFrom, false);
-      else { const el2 = el("gov-date-from"); if (el2) el2.value = _govFrom; }
+      _govFrom = new Date(today - 30 * 86400000).toISOString().slice(0, 10);
       _govGranularity = "day";
     } else if (preset === "all") {
-      _govFrom = null;
-      _govTo   = null;
-      if (_fpFrom) _fpFrom.clear(false);
-      else { const el2 = el("gov-date-from"); if (el2) el2.value = ""; }
-      if (_fpTo) _fpTo.clear(false);
-      else { const el2 = el("gov-date-to"); if (el2) el2.value = ""; }
+      _govFrom = null; _govTo = null;
       _govGranularity = "day";
     }
+    _updateCalBtns();
     // Sync granularity pills
     document.querySelectorAll(".gov-gran-pill").forEach(p => {
       p.classList.toggle("active", p.dataset.gran === _govGranularity);
@@ -2238,8 +2344,9 @@ function _connectUserWs(session) {
     }
   });
 
-  // Date pickers — initialised here so Flatpickr attaches before first use
-  _initDatePickers();
+  // Custom calendar — wire date buttons
+  el("gov-date-from")?.addEventListener("click", (e) => { e.stopPropagation(); _openCal("from"); });
+  el("gov-date-to")?.addEventListener("click",   (e) => { e.stopPropagation(); _openCal("to"); });
 
   // ── Export (analytics toolbar quick-export) ───────────────────────────────
   el("gov-export-btn")?.addEventListener("click", _triggerExport);

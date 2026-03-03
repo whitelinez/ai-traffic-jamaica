@@ -2,65 +2,84 @@
  * GET /api/stream           — HLS manifest proxy
  * GET /api/stream?p=<enc>   — HLS segment proxy (keeps CDN URL hidden from browser)
  *
+ * Edge Function: runs at Vercel's global edge nodes for lower latency.
  * Dual-mode keeps us within Vercel Hobby's 12-function limit.
  */
-import crypto from "crypto";
+export const config = { runtime: "edge" };
 
-function generateHmacToken(secret) {
-  const ts    = Math.floor(Date.now() / 1000).toString();
-  const nonce = crypto.randomBytes(8).toString("hex"); // v2: ts.nonce.sig
-  const payload = `${ts}.${nonce}.`;                   // extra="" → trailing dot
-  const sig = crypto
-    .createHmac("sha256", secret)
-    .update(payload)
-    .digest("hex");
+async function generateHmacToken(secret) {
+  const ts          = Math.floor(Date.now() / 1000).toString();
+  const nonceBytes  = new Uint8Array(8);
+  crypto.getRandomValues(nonceBytes);
+  const nonce       = Array.from(nonceBytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  const payload     = `${ts}.${nonce}.`;
+
+  const encoder = new TextEncoder();
+  const key     = await crypto.subtle.importKey(
+    "raw", encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false, ["sign"]
+  );
+  const sigBuf = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  const sig    = Array.from(new Uint8Array(sigBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
   return `${ts}.${nonce}.${sig}`;
 }
 
-export default async function handler(req, res) {
+export default async function handler(req) {
   if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const railwayUrl = process.env.RAILWAY_BACKEND_URL;
   if (!railwayUrl) {
-    return res.status(500).json({ error: "Stream not configured" });
+    return new Response(JSON.stringify({ error: "Stream not configured" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const backendBase = railwayUrl.replace(/\/+$/, "");
+  const url         = new URL(req.url);
+  const p           = url.searchParams.get("p");
 
   // ── Segment proxy mode ──────────────────────────────────────────────────
-  // When ?p= is present, forward to Railway /stream/ts which proxies to CDN.
-  const p = req.query?.p;
   if (p) {
-    if (typeof p !== "string" || p.length > 512) {
-      return res.status(400).end();
-    }
+    if (p.length > 512) return new Response("", { status: 400 });
     try {
       const upstream = await fetch(
         `${backendBase}/stream/ts?p=${encodeURIComponent(p)}`,
         { headers: { "User-Agent": "Vercel-SegmentProxy/1.0" } }
       );
-      if (!upstream.ok) return res.status(502).end();
+      if (!upstream.ok) return new Response("", { status: 502 });
       const contentType = upstream.headers.get("content-type") || "video/MP2T";
-      const buffer = await upstream.arrayBuffer();
-      res.setHeader("Content-Type", contentType);
-      res.setHeader("Cache-Control", "public, max-age=10");
-      return res.status(200).send(Buffer.from(buffer));
+      const buffer      = await upstream.arrayBuffer();
+      return new Response(buffer, {
+        status: 200,
+        headers: {
+          "Content-Type":  contentType,
+          "Cache-Control": "public, max-age=10",
+        },
+      });
     } catch {
-      return res.status(502).end();
+      return new Response("", { status: 502 });
     }
   }
 
   // ── Manifest proxy mode ─────────────────────────────────────────────────
   const secret = process.env.WS_AUTH_SECRET;
   if (!secret) {
-    return res.status(500).json({ error: "Stream not configured" });
+    return new Response(JSON.stringify({ error: "Stream not configured" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  const token = generateHmacToken(secret);
-  const aliasRaw = String(req.query?.alias || "").trim();
-  const alias = /^[A-Za-z0-9_-]+$/.test(aliasRaw) ? aliasRaw : "";
+  const token    = await generateHmacToken(secret);
+  const aliasRaw = (url.searchParams.get("alias") || "").trim();
+  const alias    = /^[A-Za-z0-9_-]+$/.test(aliasRaw) ? aliasRaw : "";
   const manifestUrl =
     `${backendBase}/stream/live.m3u8?token=${encodeURIComponent(token)}`
     + (alias ? `&alias=${encodeURIComponent(alias)}` : "");
@@ -70,24 +89,33 @@ export default async function handler(req, res) {
     if (!upstream.ok) {
       const body = await upstream.text().catch(() => "");
       console.error("[/api/stream] backend status:", upstream.status, body.slice(0, 200));
-      return res.status(502).json({ error: "Stream unavailable", upstream_status: upstream.status });
+      return new Response(
+        JSON.stringify({ error: "Stream unavailable", upstream_status: upstream.status }),
+        { status: 502, headers: { "Content-Type": "application/json" } }
+      );
     }
+
     let text = await upstream.text();
 
     // Rewrite segment URLs so the browser fetches .ts chunks DIRECTLY from
     // Railway, bypassing Vercel entirely.  Only the small manifest (~1 KB)
     // passes through Vercel; none of the video data does.
-    // Handles both absolute (https://aitrafficja.com/api/stream?p=…)
-    // and root-relative (/api/stream?p=…) forms written by the backend.
     text = text
       .replace(/https?:\/\/[^/\s"']+\/api\/stream\?p=/g, `${backendBase}/stream/ts?p=`)
       .replace(/\/api\/stream\?p=/g,                      `${backendBase}/stream/ts?p=`);
 
-    res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-    res.setHeader("Cache-Control", "no-cache, no-store");
-    return res.status(200).send(text);
+    return new Response(text, {
+      status: 200,
+      headers: {
+        "Content-Type":  "application/vnd.apple.mpegurl",
+        "Cache-Control": "no-cache, no-store",
+      },
+    });
   } catch (err) {
     console.error("[/api/stream] manifest fetch error:", err);
-    return res.status(502).json({ error: "Stream unavailable" });
+    return new Response(JSON.stringify({ error: "Stream unavailable" }), {
+      status: 502,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

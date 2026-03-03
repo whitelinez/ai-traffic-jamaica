@@ -1,23 +1,42 @@
 /**
  * GET /api/health
  * Proxy backend health to keep Railway URL out of the client.
+ *
+ * Edge Function: s-maxage=10 lets Vercel CDN cache the response at edge nodes,
+ * so most health polls never hit Railway at all.
  */
-export default async function handler(req, res) {
+export const config = { runtime: "edge" };
+
+export default async function handler(req) {
   if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const railwayUrl = process.env.RAILWAY_BACKEND_URL;
   if (!railwayUrl) {
-    return res.status(500).json({ error: "Server misconfiguration" });
+    return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   try {
-    const upstream = await fetch(`${railwayUrl}/health`, { method: "GET" });
-    const data = await upstream.json();
-    return res.status(upstream.status).json(data);
-  } catch (err) {
-    console.error("[/api/health] Upstream error:", err);
-    return res.status(502).json({ error: "Upstream request failed" });
+    const upstream = await fetch(`${railwayUrl}/health`);
+    const data     = await upstream.json();
+    return new Response(JSON.stringify(data), {
+      status: upstream.status,
+      headers: {
+        "Content-Type":  "application/json",
+        "Cache-Control": "public, s-maxage=10, stale-while-revalidate=20",
+      },
+    });
+  } catch {
+    return new Response(JSON.stringify({ error: "Upstream request failed" }), {
+      status: 502,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

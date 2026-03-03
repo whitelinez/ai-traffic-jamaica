@@ -9964,18 +9964,18 @@ button {
   flex-shrink: 0;
 }
 .gov-an-sumcard {
-  padding: 12px 16px;
+  padding: 18px 20px;
   border-right: 1px solid var(--border);
 }
 .gov-an-sumcard:last-child { border-right: none; }
 .gov-an-sumcard-val {
   font-family: "Rajdhani", "Archivo", sans-serif;
-  font-size: 22px; font-weight: 700; color: var(--text); line-height: 1;
+  font-size: 28px; font-weight: 700; color: var(--text); line-height: 1;
 }
 .gov-an-sumcard-lbl {
   font-family: "Inter", sans-serif;
-  font-size: 10px; font-weight: 600; color: var(--muted);
-  letter-spacing: 0.06em; text-transform: uppercase; margin-top: 4px;
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  letter-spacing: 0.06em; text-transform: uppercase; margin-top: 5px;
 }
 .gov-an-sumcard--accent .gov-an-sumcard-val { color: var(--accent); }
 
@@ -12070,9 +12070,10 @@ button {
   }
   /* Summary stat cards — 3 × 2 on mobile */
   .gov-an-sumbar { grid-template-columns: repeat(3, 1fr); }
-  .gov-an-sumcard { padding: 10px 12px; }
-  .gov-an-sumcard-val { font-size: 18px; }
-  .gov-an-sumcard-lbl { font-size: 9px; }
+  .gov-an-sumcard { padding: 14px 14px; }
+  .gov-an-sumcard-val { font-size: 22px; }
+  .gov-an-sumcard-lbl { font-size: 10px; }
+  .wl-cal-popup { width: calc(100vw - 24px); max-width: 308px; }
 
   /* ── Analytics charts — single column ───────────── */
   .gov-an-charts {
@@ -12125,77 +12126,92 @@ button {
 }
 
 /* =====================================================
-   FLATPICKR — WHITE THEME for gov overlay
+   CUSTOM CALENDAR PICKER
    ===================================================== */
-.flatpickr-calendar {
-  font-family: "Inter", sans-serif !important;
-  background: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
-  border-radius: 10px !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.16) !important;
-  color: #0f1c2e !important;
-  /* Must sit above the gov-overlay (z-index:900) when appended to body */
-  position: fixed !important;
-  z-index: 9900 !important;
+.wl-cal-popup {
+  position: fixed;
+  z-index: 9900;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.20);
+  padding: 16px;
+  width: 308px;
+  font-family: "Inter", sans-serif;
+  user-select: none;
 }
-.flatpickr-months {
-  background: #f8fafc !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  border-radius: 10px 10px 0 0 !important;
+.wl-cal-popup.hidden { display: none; }
+.wl-cal-hdr-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
 }
-.flatpickr-month { color: #0f1c2e !important; }
-.flatpickr-current-month input.cur-year { color: #0f1c2e !important; }
-.flatpickr-current-month .flatpickr-monthDropdown-months {
-  color: #0f1c2e !important;
-  background: transparent !important;
+.wl-cal-nav {
+  background: none; border: none; cursor: pointer;
+  width: 30px; height: 30px; border-radius: 7px;
+  font-size: 18px; color: #475569; display: flex; align-items: center; justify-content: center;
+  line-height: 1;
 }
-.flatpickr-current-month .flatpickr-monthDropdown-months option { background: #ffffff; }
-.flatpickr-prev-month svg, .flatpickr-next-month svg { fill: #64748b !important; }
-.flatpickr-prev-month:hover svg, .flatpickr-next-month:hover svg { fill: #0f1c2e !important; }
-.flatpickr-weekdays { background: #f8fafc !important; }
-span.flatpickr-weekday {
-  color: #94a3b8 !important;
-  font-family: "JetBrains Mono", monospace !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
+.wl-cal-nav:hover { background: #f1f5f9; color: #0f1c2e; }
+.wl-cal-title {
+  font-family: "Rajdhani", "Archivo", sans-serif;
+  font-size: 14px; font-weight: 700; color: #0f1c2e;
+  letter-spacing: 0.06em; text-transform: uppercase;
 }
-.flatpickr-day {
-  color: #0f1c2e !important;
-  border-radius: 6px !important;
-  font-size: 13px !important;
+.wl-cal-wdays {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
 }
-.flatpickr-day:hover, .flatpickr-day.prevMonthDay:hover, .flatpickr-day.nextMonthDay:hover {
-  background: #f1f5f9 !important;
-  border-color: #e2e8f0 !important;
-  color: #0f1c2e !important;
+.wl-cal-wdays div {
+  text-align: center; font-size: 10px; font-weight: 700;
+  color: #94a3b8; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 0;
+  font-family: "JetBrains Mono", monospace;
 }
-.flatpickr-day.today {
-  border-color: #0284c7 !important;
-  color: #0284c7 !important;
-  font-weight: 700 !important;
+.wl-cal-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
 }
-.flatpickr-day.today:hover {
-  background: #dbeafe !important;
-  border-color: #0284c7 !important;
-  color: #1d4ed8 !important;
+.wl-cal-day {
+  text-align: center; padding: 7px 0; border-radius: 7px;
+  font-size: 13px; font-weight: 500; color: #cbd5e1; cursor: default;
+  min-height: 34px; display: flex; align-items: center; justify-content: center;
 }
-.flatpickr-day.selected, .flatpickr-day.selected:hover {
-  background: #0f1c2e !important;
-  border-color: #0f1c2e !important;
-  color: #ffffff !important;
+.wl-cal-day.wl-cal-avail {
+  color: #1e293b; cursor: pointer; font-weight: 600;
 }
-.flatpickr-day.disabled, .flatpickr-day.disabled:hover {
-  color: #cbd5e1 !important;
-  background: transparent !important;
-  cursor: not-allowed;
+.wl-cal-day.wl-cal-avail:hover { background: #e0f2fe; color: #0284c7; }
+.wl-cal-day.wl-cal-today { outline: 2px solid #bae6fd; outline-offset: -2px; }
+.wl-cal-day.wl-cal-sel {
+  background: #0f1c2e !important; color: #ffffff !important;
+  font-weight: 700; outline: none;
 }
-.flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay {
-  color: #cbd5e1 !important;
+.wl-cal-day.wl-cal-inrange { background: #e0f2fe; color: #0369a1; }
+.wl-cal-hint {
+  text-align: center; font-size: 11px; color: #94a3b8;
+  padding: 8px 0 4px; font-family: "JetBrains Mono", monospace;
 }
-.numInputWrapper span.arrowUp:after  { border-bottom-color: #64748b !important; }
-.numInputWrapper span.arrowDown:after { border-top-color: #64748b !important; }
-/* Date input inside analytics panel */
+.wl-cal-actions {
+  display: flex; gap: 6px;
+  margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+.wl-cal-btn {
+  flex: 1; padding: 7px; border-radius: 7px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; border: none; cursor: pointer;
+  font-family: "JetBrains Mono", monospace;
+}
+.wl-cal-btn--today { background: #0f1c2e; color: #ffffff; }
+.wl-cal-btn--today:hover { background: #1e3a5f; }
+.wl-cal-btn--clear { background: transparent; color: #64748b; border: 1px solid #e2e8f0; }
+.wl-cal-btn--clear:hover { border-color: #94a3b8; color: #0f1c2e; }
+.wl-cal-mode {
+  text-align: center; font-size: 10px; color: #94a3b8;
+  margin-top: 8px; font-family: "JetBrains Mono", monospace;
+  letter-spacing: 0.04em;
+}
+.wl-cal-mode strong { color: #0284c7; }
+/* Date button inside analytics toolbar */
 #gov-panel-analytics .gov-date-input,
-.gov-an-toolbar .gov-date-input { color-scheme: light; }
+.gov-an-toolbar .gov-date-input { background: var(--bg3); }
 
 

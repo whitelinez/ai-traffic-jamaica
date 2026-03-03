@@ -80,8 +80,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" />
   <meta name="theme-color" content="#080C14" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
-  <link rel="stylesheet" href="/css/main.css?v=18" />
+  <link rel="stylesheet" href="/css/main.css?v=19" />
   <script src="/js/vercel-analytics-init.js"></script>
   <script defer src="/_vercel/insights/script.js"></script>
 </head>
@@ -1010,9 +1009,9 @@
       <!-- Toolbar row 1: Date range + granularity -->
       <div class="gov-an-toolbar gov-an-toolbar-top">
         <div class="gov-date-range">
-          <input type="text" id="gov-date-from" class="gov-date-input" readonly placeholder="From" />
+          <button type="button" id="gov-date-from" class="gov-date-input">From</button>
           <span class="gov-date-sep">→</span>
-          <input type="text" id="gov-date-to" class="gov-date-input" readonly placeholder="To" />
+          <button type="button" id="gov-date-to" class="gov-date-input">To</button>
         </div>
         <div class="gov-period-pills">
           <span class="gov-pill active" data-preset="1d">Today</span>
@@ -1027,6 +1026,9 @@
         </div>
         <button id="gov-export-btn" class="gov-export-btn">↓ Export CSV</button>
       </div>
+
+      <!-- Custom calendar popup (shared for from/to, rendered by JS) -->
+      <div id="wl-cal-popup" class="wl-cal-popup hidden"></div>
 
       <!-- Toolbar row 2: Summary stat cards -->
       <div class="gov-an-sumbar">
@@ -1216,7 +1218,7 @@
           <div class="gov-card-frame"><span></span><span></span><span></span><span></span></div>
           <div class="gov-agency-top">
             <div class="gov-agency-icon">
-              <img src="/img/agencies/nwa.png" alt="NWA" class="gov-agency-logo">
+              <img src="/_vercel/image?url=%2Fimg%2Fagencies%2Fnwa.png&w=80&q=80" alt="NWA" class="gov-agency-logo" loading="lazy" decoding="async">
             </div>
             <div>
               <div class="gov-agency-abbr" style="color:#29B6F6">NWA</div>
@@ -1242,7 +1244,7 @@
           <div class="gov-card-frame"><span></span><span></span><span></span><span></span></div>
           <div class="gov-agency-top">
             <div class="gov-agency-icon">
-              <img src="/img/agencies/taj.png" alt="TAJ" class="gov-agency-logo">
+              <img src="/_vercel/image?url=%2Fimg%2Fagencies%2Ftaj.png&w=80&q=80" alt="TAJ" class="gov-agency-logo" loading="lazy" decoding="async">
             </div>
             <div>
               <div class="gov-agency-abbr" style="color:#FF7043">TAJ</div>
@@ -1268,7 +1270,7 @@
           <div class="gov-card-frame"><span></span><span></span><span></span><span></span></div>
           <div class="gov-agency-top">
             <div class="gov-agency-icon">
-              <img src="/img/agencies/jutc.png" alt="JUTC" class="gov-agency-logo">
+              <img src="/_vercel/image?url=%2Fimg%2Fagencies%2Fjutc.png&w=80&q=80" alt="JUTC" class="gov-agency-logo" loading="lazy" decoding="async">
             </div>
             <div>
               <div class="gov-agency-abbr" style="color:#AB47BC">JUTC</div>
@@ -1294,7 +1296,7 @@
           <div class="gov-card-frame"><span></span><span></span><span></span><span></span></div>
           <div class="gov-agency-top">
             <div class="gov-agency-icon">
-              <img src="/img/agencies/jtb.png" alt="JTB" class="gov-agency-logo">
+              <img src="/_vercel/image?url=%2Fimg%2Fagencies%2Fjtb.png&w=80&q=80" alt="JTB" class="gov-agency-logo" loading="lazy" decoding="async">
             </div>
             <div>
               <div class="gov-agency-abbr" style="color:#FFD600">JTB</div>
@@ -1320,7 +1322,7 @@
           <div class="gov-card-frame"><span></span><span></span><span></span><span></span></div>
           <div class="gov-agency-top">
             <div class="gov-agency-icon">
-              <img src="/img/agencies/ins.png" alt="FSC" class="gov-agency-logo">
+              <img src="/_vercel/image?url=%2Fimg%2Fagencies%2Fins.png&w=80&q=80" alt="FSC" class="gov-agency-logo" loading="lazy" decoding="async">
             </div>
             <div>
               <div class="gov-agency-abbr" style="color:#66BB6A">FSC</div>
@@ -1410,7 +1412,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.3/dist/pixi.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
   <script src="/js/config.js"></script>
   <script src="/js/supabase-init.js"></script>

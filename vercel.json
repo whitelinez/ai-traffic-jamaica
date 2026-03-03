@@ -59,5 +59,11 @@
                                           "memory":  128,
                                           "maxDuration":  25
                                       }
+                  },
+    "images":     {
+                      "sizes":           [32, 64, 96, 128, 256],
+                      "formats":         ["image/avif", "image/webp"],
+                      "minimumCacheTTL": 86400,
+                      "domains":         []
                   }
 }
