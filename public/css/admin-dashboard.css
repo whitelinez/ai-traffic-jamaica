@@ -1898,3 +1898,193 @@
 @media (max-width: 860px) {
   .ae-inference-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Analytics Zones Panel ───────────────────────────────────────────────── */
+.az-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 300px;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .az-layout { grid-template-columns: 1fr; }
+}
+
+.az-canvas-col { display: flex; flex-direction: column; gap: 8px; }
+
+.az-canvas-wrap {
+  position: relative;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(171,71,188,0.4);
+  overflow: hidden;
+  background: #080C14;
+  cursor: crosshair;
+}
+.az-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  position: absolute;
+  top: 0; left: 0;
+}
+.az-canvas-wrap canvas:first-child { position: relative; }
+.az-canvas-wrap canvas:last-of-type { cursor: crosshair; }
+
+.az-canvas-overlay-msg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--am);
+  pointer-events: none;
+  background: rgba(8,12,20,0.6);
+}
+
+.az-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.az-hint {
+  font-size: 11px;
+  color: var(--am);
+  flex: 1;
+}
+.az-tool-btn {
+  background: var(--as);
+  border: 1px solid var(--abr);
+  color: var(--am);
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 100ms;
+}
+.az-tool-btn:hover:not(:disabled) { border-color: var(--acc); color: var(--at); }
+.az-tool-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Controls column */
+.az-controls-col { display: flex; flex-direction: column; gap: 10px; }
+
+.az-card {
+  background: var(--as2);
+  border: 1px solid var(--abr);
+  border-radius: var(--r-md);
+  padding: 12px;
+}
+.az-card-head {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--am);
+  margin: 0 0 10px;
+}
+
+.az-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.az-label { font-size: 11px; color: var(--am); font-weight: 500; }
+.az-select, .az-input {
+  background: var(--as);
+  border: 1px solid var(--abr);
+  color: var(--at);
+  border-radius: var(--r-sm);
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  width: 100%;
+}
+.az-select:focus, .az-input:focus {
+  outline: none;
+  border-color: rgba(171,71,188,0.6);
+}
+
+.az-type-legend {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px;
+  background: var(--as);
+  border-radius: var(--r-sm);
+  margin: 6px 0 10px;
+}
+.az-type-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+#az-type-desc { font-size: 11px; color: var(--am); line-height: 1.5; }
+
+.az-btn-full {
+  width: 100%;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.az-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.az-draft-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--at);
+}
+#az-draft-pts { font-weight: 700; color: #AB47BC; }
+
+/* Zone list items */
+.az-zone-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 6px;
+  border-radius: var(--r-sm);
+  transition: background 100ms;
+}
+.az-zone-item:hover { background: var(--as); }
+.az-zone-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.az-zone-item-info { flex: 1; min-width: 0; }
+.az-zone-item-name { display: block; font-size: 12px; font-weight: 600; color: var(--at); }
+.az-zone-item-type { font-size: 10px; color: var(--am); }
+.az-zone-del-btn {
+  background: none;
+  border: none;
+  color: var(--am);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  transition: all 100ms;
+}
+.az-zone-del-btn:hover { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+.az-zone-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: rgba(171,71,188,0.25);
+  color: #ce93d8;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 5px;
+  margin-left: 4px;
+}
+
+.az-empty-msg { font-size: 11px; color: var(--am); padding: 6px 0; margin: 0; }
+.az-status-msg { font-size: 11px; min-height: 16px; }

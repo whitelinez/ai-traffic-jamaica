@@ -946,19 +946,40 @@
 
     <!-- ── PANEL: ANALYTICS ──────────────────────────────────── -->
     <div class="gov-panel" id="gov-panel-analytics">
-      <div class="gov-an-toolbar">
-        <div class="gov-period-pills">
-          <span class="gov-pill active" data-val="24">24H</span>
-          <span class="gov-pill" data-val="168">7D</span>
+
+      <!-- Toolbar row 1: Date range + granularity -->
+      <div class="gov-an-toolbar gov-an-toolbar-top">
+        <div class="gov-date-range">
+          <input type="date" id="gov-date-from" class="gov-date-input" />
+          <span class="gov-date-sep">→</span>
+          <input type="date" id="gov-date-to" class="gov-date-input" />
         </div>
-        <div class="gov-an-summary-strip">
-          <span class="gov-an-sum-item">Total: <span id="gov-sum-total">—</span></span>
-          <span class="gov-an-sum-sep">·</span>
-          <span class="gov-an-sum-item">Peak: <span id="gov-sum-peak">—</span></span>
-          <span class="gov-an-sum-sep">·</span>
-          <span class="gov-an-sum-item">Heavy: <span id="gov-sum-heavy">—</span></span>
+        <div class="gov-period-pills">
+          <span class="gov-pill active" data-preset="1d">Today</span>
+          <span class="gov-pill" data-preset="7d">7D</span>
+          <span class="gov-pill" data-preset="30d">30D</span>
+          <span class="gov-pill" data-preset="all">All Time</span>
+        </div>
+        <div class="gov-gran-pills">
+          <span class="gov-gran-pill active" data-gran="hour">Hour</span>
+          <span class="gov-gran-pill" data-gran="day">Day</span>
+          <span class="gov-gran-pill" data-gran="week">Week</span>
         </div>
         <button id="gov-export-btn" class="gov-export-btn">↓ Export CSV</button>
+      </div>
+
+      <!-- Toolbar row 2: Summary strip -->
+      <div class="gov-an-toolbar gov-an-toolbar-strip">
+        <span class="gov-an-sum-item">Period: <span id="gov-sum-total">—</span></span>
+        <span class="gov-an-sum-sep">·</span>
+        <span class="gov-an-sum-item">Peak: <span id="gov-sum-peak">—</span></span>
+        <span class="gov-an-sum-sep">·</span>
+        <span class="gov-an-sum-item">Heavy: <span id="gov-sum-heavy">—</span></span>
+        <span class="gov-an-sum-sep">·</span>
+        <span class="gov-an-sum-item">Avg Queue: <span id="gov-sum-queue">—</span></span>
+        <span class="gov-an-sum-sep">·</span>
+        <span class="gov-an-sum-item">Avg Speed: <span id="gov-sum-speed">—</span></span>
+        <span class="gov-an-sum-global">All-time: <span id="gov-sum-global">—</span></span>
       </div>
 
       <div class="gov-an-charts">
@@ -976,8 +997,28 @@
 
         <!-- Peak hours bar -->
         <div class="gov-chart-card">
-          <div class="gov-chart-head">PEAK HOURS</div>
+          <div class="gov-chart-head">PEAK PERIOD</div>
           <div class="gov-chart-body"><canvas id="gov-peak-canvas"></canvas></div>
+        </div>
+
+        <!-- Queue depth chart -->
+        <div class="gov-chart-card">
+          <div class="gov-chart-head">QUEUE DEPTH <span class="gov-head-muted">— vehicles waiting at stop line</span></div>
+          <div class="gov-chart-body"><canvas id="gov-queue-canvas"></canvas></div>
+        </div>
+
+        <!-- Speed distribution -->
+        <div class="gov-chart-card">
+          <div class="gov-chart-head">SPEED DISTRIBUTION <span class="gov-head-muted">km/h</span></div>
+          <div class="gov-chart-body"><canvas id="gov-speed-canvas"></canvas></div>
+        </div>
+
+        <!-- Turning movements: full width -->
+        <div class="gov-chart-card gov-chart-full" id="gov-turnings-card">
+          <div class="gov-chart-head">TURNING MOVEMENTS <span class="gov-head-muted">— entry→exit flows</span></div>
+          <div id="gov-turnings-body" class="gov-turnings-body">
+            <p class="gov-turnings-empty">No turning movement zones defined yet. Use Admin → Analytics Zones to draw entry/exit zones.</p>
+          </div>
         </div>
 
         <!-- Crossings table: full width -->

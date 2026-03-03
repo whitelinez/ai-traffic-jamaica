@@ -1054,11 +1054,16 @@ function _connectUserWs(session) {
   let _lastPayload  = null;   // most recent count:update payload
   let _analyticsData = null;  // most recent analytics API response
   let _govHours     = 24;
+  let _govFrom      = null;   // ISO date string or null
+  let _govTo        = null;   // ISO date string or null
+  let _govGranularity = "hour"; // "hour" | "day" | "week"
   let _chartJsReady = false;
   let _trendChart   = null;
   let _donutChart   = null;
   let _clsChart     = null;
   let _peakChart    = null;
+  let _queueChart   = null;
+  let _speedChart   = null;
   let _crossingsInterval = null;
   let _activeTab    = "live";
 
@@ -1277,53 +1282,68 @@ function _connectUserWs(session) {
   // ── Analytics charts (ANALYTICS panel) ───────────────────────────────────
   async function _initAllCharts(hours) {
     if (!window.Chart) return;
+    // Build URL — use date range if set, else fall back to hours
+    let url;
+    if (_govFrom || _govTo) {
+      url = `/api/analytics/traffic?granularity=${_govGranularity}${_govFrom?`&from=${_govFrom}`:""}${_govTo?`&to=${_govTo}`:""}${_camId?`&camera_id=${_camId}`:""}`;
+    } else {
+      url = `/api/analytics/traffic?hours=${hours || _govHours}&granularity=${_govGranularity}${_camId?`&camera_id=${_camId}`:""}`;
+    }
     try {
-      const url = `/api/analytics/traffic?hours=${hours}${_camId ? `&camera_id=${_camId}` : ""}`;
       const res  = await fetch(url);
       const json = res.ok ? await res.json() : null;
       if (!json) return;
       _analyticsData = json;
-      const rows    = json.hourly   || [];
-      const summary = json.summary  || {};
+      const rows    = json.rows    || json.hourly || [];
+      const summary = json.summary || {};
 
-      // Update analytics summary strip
-      const totalPeriod = summary.today_total ?? rows.reduce((a,r) => a + (r.total||0), 0);
-      const peakVal     = summary.peak_value  ?? 0;
-      const peakHour    = summary.peak_hour   != null
-        ? `${String(new Date(summary.peak_hour).getHours()).padStart(2,"0")}:00` : "—";
+      // Update summary strip
+      const totalPeriod = summary.period_total ?? rows.reduce((a,r) => a + (r.total||0), 0);
+      const peakLabel   = _formatPeriodLabel(summary.peak_period, _govGranularity);
+      const peakVal     = summary.peak_value || 0;
       const heavyPct    = summary.class_pct
-        ? Math.round(((summary.class_pct.truck||0) + (summary.class_pct.bus||0)) * 100) + "%"
+        ? Math.round(((summary.class_pct.truck||0) + (summary.class_pct.bus||0))) + "%"
         : "—";
+      const granLabel = _govGranularity === "week" ? "weekly" : _govGranularity === "day" ? "daily" : "hourly";
 
-      txt("gov-sum-total", Number(totalPeriod).toLocaleString());
-      txt("gov-sum-peak",  `${peakHour} (${peakVal})`);
-      txt("gov-sum-heavy", heavyPct);
-      txt("gov-kpi-peak",  peakHour);
-      txt("gov-trend-label", `— ${hours === 168 ? "7-day" : "24-hour"} rolling`);
+      txt("gov-sum-total",  Number(totalPeriod).toLocaleString());
+      txt("gov-sum-peak",   `${peakLabel} (${peakVal})`);
+      txt("gov-sum-heavy",  heavyPct);
+      txt("gov-sum-queue",  summary.avg_queue_depth != null ? summary.avg_queue_depth.toFixed(1) : "—");
+      txt("gov-sum-speed",  summary.avg_speed_kmh   != null ? `${summary.avg_speed_kmh} km/h` : "—");
+      txt("gov-kpi-peak",   peakLabel);
+      txt("gov-trend-label", `— ${granLabel} view`);
 
-      // Populate agency metrics from analytics summary
+      // Global lifetime total
+      const g = summary.global;
+      if (g) txt("gov-sum-global", Number(g.total||0).toLocaleString() + " total");
+
       _populateAgencyMetrics(summary);
-
-      // 1. Trend line
       _buildTrendChart(rows);
-      // 2. Class distribution bar
       _buildClsChart(summary);
-      // 3. Peak hours bar
       _buildPeakChart(rows);
+
+      // Also fetch zone-based analytics (queue depth + turning movements)
+      _loadZoneAnalytics();
 
     } catch (err) {
       console.warn("[GovAnalytics] Chart load failed:", err);
     }
   }
 
+  function _formatPeriodLabel(period, gran) {
+    if (!period) return "—";
+    if (gran === "day" || gran === "week") return period.slice(0, 10);
+    const d = new Date(period);
+    if (isNaN(d)) return period;
+    return `${String(d.getHours()).padStart(2,"0")}:00`;
+  }
+
   function _buildTrendChart(rows) {
     const canvas = el("gov-trend-canvas");
     if (!canvas) return;
     if (_trendChart) { _trendChart.destroy(); _trendChart = null; }
-    const labels = rows.map(r => {
-      const d = new Date(r.hour);
-      return `${String(d.getHours()).padStart(2,"0")}:00`;
-    });
+    const labels = rows.map(r => _formatPeriodLabel(r.period || r.hour, _govGranularity));
     const mk = (f) => rows.map(r => r[f] || 0);
     _trendChart = new window.Chart(canvas, {
       type: "line",
@@ -1359,7 +1379,7 @@ function _connectUserWs(session) {
     const canvas = el("gov-peak-canvas");
     if (!canvas) return;
     if (_peakChart) { _peakChart.destroy(); _peakChart = null; }
-    const labels = rows.map(r => `${String(new Date(r.hour).getHours()).padStart(2,"0")}:00`);
+    const labels = rows.map(r => _formatPeriodLabel(r.period || r.hour, _govGranularity));
     const totals = rows.map(r => r.total || 0);
     const maxVal = Math.max(...totals, 1);
     const colors = totals.map(v => v >= maxVal * 0.8 ? "#FF7043" : v >= maxVal * 0.5 ? "#FFD600" : "#29B6F6");
@@ -1367,6 +1387,132 @@ function _connectUserWs(session) {
       type: "bar",
       data: { labels, datasets: [{ data: totals, backgroundColor: colors, borderRadius: 2, borderWidth: 0 }] },
       options: { ...CHART_DARK, plugins: { legend: { display:false }, tooltip: { mode:"index", intersect:false } } },
+    });
+  }
+
+  // ── Zone analytics (queue depth + turning movements + speed) ──────────────
+  async function _loadZoneAnalytics() {
+    if (!_camId) return;
+    try {
+      const fromParam = _govFrom || new Date(Date.now() - _govHours * 3600 * 1000).toISOString();
+      const toParam   = _govTo   || new Date().toISOString();
+      const res = await fetch(`/api/analytics/turnings?camera_id=${_camId}&from=${fromParam}&to=${toParam}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      _buildQueueChart(data.queue_series || []);
+      _buildSpeedChart(data);
+      _renderTurningMovements(data);
+    } catch (err) {
+      console.warn("[GovAnalytics] Zone analytics failed:", err);
+    }
+  }
+
+  function _buildQueueChart(series) {
+    const canvas = el("gov-queue-canvas");
+    if (!canvas || !window.Chart) return;
+    if (_queueChart) { _queueChart.destroy(); _queueChart = null; }
+    if (!series.length) return;
+    const labels = series.map(r => new Date(r.ts).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }));
+    const data   = series.map(r => r.depth || 0);
+    _queueChart = new window.Chart(canvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "Queue Depth",
+          data,
+          borderColor: "#FF9800",
+          backgroundColor: "rgba(255,152,0,0.08)",
+          tension: 0.3,
+          pointRadius: 0,
+          borderWidth: 1.5,
+          fill: true,
+        }],
+      },
+      options: {
+        ...CHART_DARK,
+        plugins: { legend: { display: false }, tooltip: { mode:"index", intersect:false, callbacks: { label: (c) => ` ${c.parsed.y} vehicles` } } },
+      },
+    });
+  }
+
+  function _buildSpeedChart(data) {
+    const canvas = el("gov-speed-canvas");
+    if (!canvas || !window.Chart) return;
+    if (_speedChart) { _speedChart.destroy(); _speedChart = null; }
+    const sp = data.speed;
+    if (!sp || !sp.samples) {
+      if (_speedChart) { _speedChart.destroy(); _speedChart = null; }
+      return;
+    }
+    // Create simple bar showing avg, p85, max
+    _speedChart = new window.Chart(canvas, {
+      type: "bar",
+      data: {
+        labels: ["Average", "85th Pct", "Max"],
+        datasets: [{
+          data: [sp.avg_kmh, sp.p85_kmh, sp.max_kmh],
+          backgroundColor: ["#29B6F6","#FFD600","#FF7043"],
+          borderRadius: 3,
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        ...CHART_DARK,
+        plugins: { legend: { display:false }, tooltip: { mode:"index", intersect:false, callbacks: { label: (c) => ` ${c.parsed.y} km/h` } } },
+      },
+    });
+  }
+
+  function _renderTurningMovements(data) {
+    const body = el("gov-turnings-body");
+    if (!body) return;
+    const top = data.top_movements || [];
+    if (!top.length) {
+      body.innerHTML = `<p class="gov-turnings-empty">No turning movement data for this period. Ensure entry and exit zones are defined in Admin → Analytics Zones.</p>`;
+      return;
+    }
+    const maxTotal = Math.max(...top.map(m => m.total), 1);
+    const qs = data.queue_summary || {};
+    const sp = data.speed || {};
+    body.innerHTML = `
+      <div class="gov-turnings-summary">
+        <div class="gov-tur-kpi"><div class="gov-tur-kpi-val">${data.period?.total_movements?.toLocaleString() || "—"}</div><div class="gov-tur-kpi-lbl">Total Movements</div></div>
+        <div class="gov-tur-kpi"><div class="gov-tur-kpi-val">${qs.avg?.toFixed?.(1) || "—"}</div><div class="gov-tur-kpi-lbl">Avg Queue Depth</div></div>
+        <div class="gov-tur-kpi"><div class="gov-tur-kpi-val">${qs.peak || "—"}</div><div class="gov-tur-kpi-lbl">Peak Queue</div></div>
+        ${sp ? `<div class="gov-tur-kpi"><div class="gov-tur-kpi-val">${sp.avg_kmh || "—"}</div><div class="gov-tur-kpi-lbl">Avg Speed km/h</div></div>` : ""}
+      </div>
+      <div class="gov-turnings-list">
+        ${top.map(m => {
+          const pct = Math.round((m.total / maxTotal) * 100);
+          const dominant = ["car","truck","bus","motorcycle"].reduce((a,b) => (m[a]||0) > (m[b]||0) ? a : b, "car");
+          const color = { car:"#29B6F6", truck:"#FF7043", bus:"#AB47BC", motorcycle:"#FFD600" }[dominant] || "#29B6F6";
+          return `<div class="gov-turning-row" data-from="${m.from}" data-to="${m.to}">
+            <div class="gov-turning-route"><span class="gov-turning-from">${m.from}</span><span class="gov-turning-arrow">→</span><span class="gov-turning-to">${m.to}</span></div>
+            <div class="gov-turning-bar-wrap"><div class="gov-turning-bar" style="width:${pct}%;background:${color}"></div></div>
+            <span class="gov-turning-count" style="color:${color}">${m.total.toLocaleString()}</span>
+          </div>`;
+        }).join("")}
+      </div>`;
+
+    // Click turning row → modal with class breakdown
+    body.querySelectorAll(".gov-turning-row").forEach(row => {
+      row.addEventListener("click", () => {
+        const from = row.dataset.from, toZone = row.dataset.to;
+        const m = top.find(x => x.from === from && x.to === toZone);
+        if (!m) return;
+        _showModal(`${from} → ${toZone}`, `
+          <div class="gov-modal-kpi-grid">
+            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${m.total.toLocaleString()}</div><div class="gov-modal-kpi-lbl">Total Vehicles</div></div>
+            <div class="gov-modal-kpi"><div class="gov-modal-kpi-val">${m.avg_dwell_ms ? (m.avg_dwell_ms/1000).toFixed(1)+"s" : "—"}</div><div class="gov-modal-kpi-lbl">Avg Dwell Time</div></div>
+          </div>
+          <div class="gov-modal-data-rows">
+            <div class="gov-modal-data-row"><span class="gov-modal-data-key">Cars</span><span class="gov-modal-data-val" style="color:#29B6F6">${m.car||0}</span></div>
+            <div class="gov-modal-data-row"><span class="gov-modal-data-key">Trucks</span><span class="gov-modal-data-val" style="color:#FF7043">${m.truck||0}</span></div>
+            <div class="gov-modal-data-row"><span class="gov-modal-data-key">Buses</span><span class="gov-modal-data-val" style="color:#AB47BC">${m.bus||0}</span></div>
+            <div class="gov-modal-data-row"><span class="gov-modal-data-key">Motorcycles</span><span class="gov-modal-data-val" style="color:#FFD600">${m.motorcycle||0}</span></div>
+          </div>`);
+      });
     });
   }
 
@@ -1424,13 +1570,69 @@ function _connectUserWs(session) {
     }
   }
 
-  // ── Period toggle ─────────────────────────────────────────────────────────
+  // ── Date range controls ───────────────────────────────────────────────────
+  function _setPreset(preset) {
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const fromEl   = el("gov-date-from");
+    const toEl     = el("gov-date-to");
+    _govTo = null;
+    if (toEl) toEl.value = todayStr;
+    if (preset === "1d") {
+      _govFrom = todayStr;
+      if (fromEl) fromEl.value = todayStr;
+      _govGranularity = "hour";
+    } else if (preset === "7d") {
+      const d = new Date(today - 7 * 86400000);
+      _govFrom = d.toISOString().slice(0, 10);
+      if (fromEl) fromEl.value = _govFrom;
+      _govGranularity = "day";
+    } else if (preset === "30d") {
+      const d = new Date(today - 30 * 86400000);
+      _govFrom = d.toISOString().slice(0, 10);
+      if (fromEl) fromEl.value = _govFrom;
+      _govGranularity = "day";
+    } else if (preset === "all") {
+      _govFrom = null;
+      _govTo   = null;
+      if (fromEl) fromEl.value = "";
+      if (toEl)   toEl.value   = "";
+      _govGranularity = "day";
+    }
+    // Sync granularity pills
+    document.querySelectorAll(".gov-gran-pill").forEach(p => {
+      p.classList.toggle("active", p.dataset.gran === _govGranularity);
+    });
+  }
+
+  // Preset pill clicks
   overlay.addEventListener("click", (e) => {
     const pill = e.target.closest(".gov-period-pills .gov-pill");
-    if (!pill) return;
-    document.querySelectorAll(".gov-period-pills .gov-pill").forEach(p => p.classList.remove("active"));
-    pill.classList.add("active");
-    _govHours = parseInt(pill.dataset.val, 10) || 24;
+    if (pill) {
+      document.querySelectorAll(".gov-period-pills .gov-pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      _setPreset(pill.dataset.preset || "1d");
+      _loadChartJs(() => _initAllCharts(_govHours));
+      return;
+    }
+
+    const gran = e.target.closest(".gov-gran-pill");
+    if (gran) {
+      document.querySelectorAll(".gov-gran-pill").forEach(p => p.classList.remove("active"));
+      gran.classList.add("active");
+      _govGranularity = gran.dataset.gran || "hour";
+      _loadChartJs(() => _initAllCharts(_govHours));
+      return;
+    }
+  });
+
+  // Date input changes
+  el("gov-date-from")?.addEventListener("change", (e) => {
+    _govFrom = e.target.value || null;
+    _loadChartJs(() => _initAllCharts(_govHours));
+  });
+  el("gov-date-to")?.addEventListener("change", (e) => {
+    _govTo = e.target.value ? e.target.value + "T23:59:59Z" : null;
     _loadChartJs(() => _initAllCharts(_govHours));
   });
 

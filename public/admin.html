@@ -95,6 +95,15 @@
         <span>Profiles</span>
       </button>
 
+      <button class="admin-nav-btn" data-panel="analytics-zones">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <polygon points="8,1.5 14.5,5 14.5,11 8,14.5 1.5,11 1.5,5"/>
+          <circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none"/>
+          <line x1="8" y1="1.5" x2="8" y2="5.5"/>
+        </svg>
+        <span>Analytics Zones</span>
+      </button>
+
       <span class="sidebar-section-label">Intelligence</span>
 
       <button class="admin-nav-btn" data-panel="model">
@@ -1161,6 +1170,97 @@
         </div>
       </section>
 
+      <!-- ═══════════════════════════════════════════════════════
+           ANALYTICS ZONES PANEL
+           ═══════════════════════════════════════════════════════ -->
+      <section class="admin-panel" id="panel-analytics-zones">
+        <div class="panel-head">
+          <h2>Analytics Zones</h2>
+          <p>Draw named detection zones for queue depth, turning movements, speed estimation, and occupancy. Each zone type generates distinct analytics data.</p>
+        </div>
+
+        <div class="az-layout">
+
+          <!-- ── Canvas editor column ── -->
+          <div class="az-canvas-col">
+            <div class="az-canvas-wrap" id="az-canvas-wrap">
+              <canvas id="az-bg-canvas"></canvas>
+              <canvas id="az-draw-canvas"></canvas>
+              <div class="az-canvas-overlay-msg" id="az-canvas-msg">Select a camera to begin</div>
+            </div>
+            <div class="az-canvas-toolbar">
+              <span class="az-hint" id="az-canvas-hint">Click to place polygon vertices</span>
+              <button class="az-tool-btn" id="az-undo-btn" disabled>Undo</button>
+              <button class="az-tool-btn" id="az-cancel-btn" disabled>Cancel</button>
+            </div>
+          </div>
+
+          <!-- ── Controls column ── -->
+          <div class="az-controls-col">
+
+            <!-- Camera select -->
+            <div class="az-card">
+              <div class="az-card-head">Camera</div>
+              <select class="az-select" id="az-camera-select">
+                <option value="">— select camera —</option>
+              </select>
+            </div>
+
+            <!-- New zone form -->
+            <div class="az-card">
+              <div class="az-card-head">New Zone</div>
+              <div class="az-field">
+                <label class="az-label">Type</label>
+                <select class="az-select" id="az-zone-type">
+                  <option value="queue">Queue / Stop-line</option>
+                  <option value="entry">Entry Approach</option>
+                  <option value="exit">Exit Lane</option>
+                  <option value="speed_a">Speed Trap — Line A</option>
+                  <option value="speed_b">Speed Trap — Line B</option>
+                  <option value="roi">Region of Interest</option>
+                </select>
+              </div>
+              <div class="az-field">
+                <label class="az-label">Zone Name</label>
+                <input class="az-input" id="az-zone-name" placeholder="e.g. North Approach" maxlength="40" />
+              </div>
+              <div class="az-field" id="az-speed-dist-row" style="display:none">
+                <label class="az-label">Distance (metres)</label>
+                <input class="az-input" id="az-speed-dist" type="number" min="1" max="200" value="10" />
+                <span class="az-hint" style="margin-top:3px">Real-world distance between Line A and Line B</span>
+              </div>
+              <div class="az-type-legend" id="az-type-legend">
+                <span class="az-type-dot" id="az-type-dot"></span>
+                <span id="az-type-desc">Polygon covering the queue area near the stop line.</span>
+              </div>
+              <button class="btn-primary az-btn-full" id="az-draw-btn" disabled>Draw Zone</button>
+            </div>
+
+            <!-- Active draft zones -->
+            <div class="az-card" id="az-draft-card" style="display:none">
+              <div class="az-card-head">Drawing in Progress</div>
+              <div id="az-draft-info" class="az-draft-info">
+                <span id="az-draft-pts">0 points placed</span>
+                <span class="az-hint">Click near the first point to close the polygon, or press Enter</span>
+              </div>
+            </div>
+
+            <!-- Saved zones list -->
+            <div class="az-card">
+              <div class="az-card-head" style="display:flex;align-items:center;justify-content:space-between">
+                <span>Defined Zones <span class="az-zone-count" id="az-zone-count">0</span></span>
+                <button class="btn-primary az-btn" id="az-save-btn" disabled>Save All</button>
+              </div>
+              <div id="az-zones-list">
+                <p class="az-empty-msg">No zones defined. Select a camera and draw a zone.</p>
+              </div>
+            </div>
+
+            <p id="az-status" class="az-status-msg"></p>
+          </div>
+        </div>
+      </section>
+
     </div><!-- .admin-workspace -->
   </main>
 </div><!-- .admin-layout -->
@@ -1185,5 +1285,6 @@
 <script src="/js/admin-landmarks.js"></script>
 <script src="/js/admin-mapping.js"></script>
 <script src="/js/admin-model.js"></script>
+<script src="/js/admin-zones.js"></script>
 </body>
 </html>

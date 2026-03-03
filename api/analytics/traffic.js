@@ -1,22 +1,40 @@
 /**
- * GET /api/analytics/traffic?camera_id=X&hours=24
- * Returns hourly vehicle crossing aggregates + daily summary.
- * Falls back to ml_detection_events if vehicle_crossings has no data yet.
+ * GET /api/analytics/traffic
+ *
+ * Query params:
+ *   camera_id   — UUID (optional)
+ *   hours       — 1-168 (legacy, default 24; used when from/to not supplied)
+ *   from        — ISO date/datetime (e.g. "2025-03-01")
+ *   to          — ISO date/datetime (e.g. "2025-03-07")
+ *   granularity — "hour" | "day" | "week"  (default: "hour")
+ *
+ * When granularity=day or granularity=week, queries traffic_daily (pre-aggregated).
+ * When granularity=hour, queries vehicle_crossings grouped by hour.
+ * Always returns global lifetime totals in summary.global.
+ *
+ * Response:
+ * {
+ *   rows: [{period, total, car, truck, bus, motorcycle, in, out, avg_queue, avg_speed}],
+ *   summary: {
+ *     period_total, peak_period, peak_value,
+ *     class_totals, class_pct,
+ *     avg_queue_depth, peak_queue_depth,
+ *     avg_speed_kmh,
+ *     global: {total, car, truck, bus, motorcycle},
+ *     granularity, from, to
+ *   }
+ * }
  */
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
+  if (req.method !== "GET")
     return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const { camera_id, hours = "24" } = req.query;
-  const hoursInt = Math.min(168, Math.max(1, parseInt(hours, 10) || 24));
 
   const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!SUPABASE_URL || !SERVICE_KEY) {
+  const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SUPABASE_URL || !SERVICE_KEY)
     return res.status(500).json({ error: "Server misconfiguration" });
-  }
+
+  const { camera_id, hours = "24", from, to, granularity = "hour" } = req.query;
 
   const headers = {
     apikey: SERVICE_KEY,
@@ -24,86 +42,190 @@ export default async function handler(req, res) {
     "Content-Type": "application/json",
   };
 
+  // ── Resolve date range ────────────────────────────────────────────────────
+  let fromISO, toISO;
+  if (from || to) {
+    fromISO = from ? new Date(from).toISOString() : new Date(0).toISOString();
+    toISO   = to   ? new Date(to).toISOString()   : new Date().toISOString();
+  } else {
+    const hoursInt = Math.min(168, Math.max(1, parseInt(hours, 10) || 24));
+    toISO   = new Date().toISOString();
+    fromISO = new Date(Date.now() - hoursInt * 3600 * 1000).toISOString();
+  }
+
   try {
-    const since = new Date(Date.now() - hoursInt * 3600 * 1000).toISOString();
+    let rows = [];
 
-    // ── Primary: vehicle_crossings grouped by hour ──────────────────────────
-    const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/analytics_traffic_hourly`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ p_camera_id: camera_id || null, p_since: since }),
-    });
+    // ── Day/Week granularity → traffic_daily table ─────────────────────────
+    if (granularity === "day" || granularity === "week") {
+      const fromDate = fromISO.slice(0, 10);
+      const toDate   = toISO.slice(0, 10);
+      let url = `${SUPABASE_URL}/rest/v1/traffic_daily`
+        + `?date=gte.${fromDate}&date=lte.${toDate}`
+        + `&order=date.asc&limit=400`;
+      if (camera_id) url += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
 
-    let hourlyRows = null;
-    if (rpcRes.ok) {
-      hourlyRows = await rpcRes.json();
-    }
+      const r = await fetch(url, { headers });
+      const dailyRows = r.ok ? (await r.json()) : [];
 
-    // ── Fallback: ml_detection_events class_counts JSONB ───────────────────
-    if (!hourlyRows || hourlyRows.length === 0) {
-      let q = `${SUPABASE_URL}/rest/v1/ml_detection_events?select=captured_at,class_counts,new_crossings&captured_at=gte.${encodeURIComponent(since)}&order=captured_at.asc&limit=2000`;
-      if (camera_id) q += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
-
-      const fbRes = await fetch(q, { headers });
-      const fbRows = fbRes.ok ? await fbRes.json() : [];
-
-      // Aggregate into hourly buckets
-      const buckets = {};
-      for (const row of fbRows) {
-        const hour = row.captured_at?.slice(0, 13) + ":00:00Z";
-        if (!buckets[hour]) {
-          buckets[hour] = { hour, total: 0, car: 0, truck: 0, bus: 0, motorcycle: 0, in: 0, out: 0 };
+      if (granularity === "week") {
+        // Aggregate into ISO weeks
+        const weeks = {};
+        for (const d of dailyRows) {
+          const monday = getMondayISO(d.date);
+          if (!weeks[monday]) weeks[monday] = { period: monday, total: 0, car: 0, truck: 0, bus: 0, motorcycle: 0, in: 0, out: 0, avg_queue: 0, avg_speed: 0, _q_sum: 0, _q_n: 0, _s_sum: 0, _s_n: 0 };
+          const w = weeks[monday];
+          w.total       += d.total_crossings || 0;
+          w.car         += d.car_count       || 0;
+          w.truck       += d.truck_count     || 0;
+          w.bus         += d.bus_count       || 0;
+          w.motorcycle  += d.motorcycle_count || 0;
+          w.in          += d.count_in        || 0;
+          w.out         += d.count_out       || 0;
+          if (d.avg_queue_depth != null) { w._q_sum += parseFloat(d.avg_queue_depth); w._q_n += 1; }
+          if (d.avg_speed_kmh   != null) { w._s_sum += parseFloat(d.avg_speed_kmh);   w._s_n += 1; }
         }
-        const cc = row.class_counts || {};
-        const rowTotal = (cc.car || 0) + (cc.truck || 0) + (cc.bus || 0) + (cc.motorcycle || 0);
-        buckets[hour].total += rowTotal;
-        buckets[hour].car += cc.car || 0;
-        buckets[hour].truck += cc.truck || 0;
-        buckets[hour].bus += cc.bus || 0;
-        buckets[hour].motorcycle += cc.motorcycle || 0;
-        buckets[hour].in += row.new_crossings || 0;
+        rows = Object.values(weeks).map(w => ({
+          period: w.period, total: w.total, car: w.car, truck: w.truck, bus: w.bus, motorcycle: w.motorcycle,
+          in: w.in, out: w.out,
+          avg_queue: w._q_n > 0 ? +(w._q_sum / w._q_n).toFixed(2) : null,
+          avg_speed: w._s_n > 0 ? +(w._s_sum / w._s_n).toFixed(1) : null,
+        })).sort((a, b) => a.period.localeCompare(b.period));
+      } else {
+        rows = dailyRows.map(d => ({
+          period: d.date, total: d.total_crossings, car: d.car_count, truck: d.truck_count,
+          bus: d.bus_count, motorcycle: d.motorcycle_count, in: d.count_in, out: d.count_out,
+          avg_queue: d.avg_queue_depth, avg_speed: d.avg_speed_kmh,
+          peak_queue: d.peak_queue_depth, peak_hour: d.peak_hour,
+        }));
       }
-      hourlyRows = Object.values(buckets).sort((a, b) => a.hour.localeCompare(b.hour));
+
+      // If no daily data yet, fall back to vehicle_crossings hourly
+      if (rows.length === 0) {
+        rows = await _hourlyFallback(SUPABASE_URL, headers, camera_id, fromISO, toISO, "day");
+      }
+    } else {
+      // ── Hour granularity → vehicle_crossings via RPC ────────────────────
+      rows = await _hourlyData(SUPABASE_URL, headers, camera_id, fromISO, toISO);
     }
 
-    // ── Summary stats ───────────────────────────────────────────────────────
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    let todayTotal = 0, peakHour = null, peakVal = 0;
+    // ── Summary ────────────────────────────────────────────────────────────
+    let periodTotal = 0, peakPeriod = null, peakVal = 0;
     const classTotals = { car: 0, truck: 0, bus: 0, motorcycle: 0 };
+    const qDepths = [], speeds = [];
 
-    for (const row of hourlyRows) {
-      const rowDate = new Date(row.hour);
-      if (rowDate >= todayStart) todayTotal += row.total || 0;
-      if ((row.total || 0) > peakVal) { peakVal = row.total; peakHour = row.hour; }
-      classTotals.car += row.car || 0;
-      classTotals.truck += row.truck || 0;
-      classTotals.bus += row.bus || 0;
-      classTotals.motorcycle += row.motorcycle || 0;
+    for (const r of rows) {
+      const t = r.total || 0;
+      periodTotal += t;
+      if (t > peakVal) { peakVal = t; peakPeriod = r.period || r.hour; }
+      classTotals.car         += r.car          || 0;
+      classTotals.truck       += r.truck        || 0;
+      classTotals.bus         += r.bus          || 0;
+      classTotals.motorcycle  += r.motorcycle   || 0;
+      if (r.avg_queue != null) qDepths.push(parseFloat(r.avg_queue));
+      if (r.avg_speed != null) speeds.push(parseFloat(r.avg_speed));
     }
 
-    const grandTotal = classTotals.car + classTotals.truck + classTotals.bus + classTotals.motorcycle || 1;
-    const classPct = {
-      car: Math.round((classTotals.car / grandTotal) * 100),
-      truck: Math.round((classTotals.truck / grandTotal) * 100),
-      bus: Math.round((classTotals.bus / grandTotal) * 100),
-      motorcycle: Math.round((classTotals.motorcycle / grandTotal) * 100),
-    };
+    const grand    = Object.values(classTotals).reduce((a, b) => a + b, 0) || 1;
+    const classPct = Object.fromEntries(
+      Object.entries(classTotals).map(([k, v]) => [k, Math.round((v / grand) * 100)])
+    );
+
+    // ── Global lifetime totals ──────────────────────────────────────────────
+    const globalTotals = await _globalTotals(SUPABASE_URL, headers, camera_id);
 
     return res.status(200).json({
-      hourly: hourlyRows,
+      rows,
       summary: {
-        today_total: todayTotal,
-        peak_hour: peakHour,
-        peak_value: peakVal,
-        class_totals: classTotals,
-        class_pct: classPct,
-        hours_range: hoursInt,
+        period_total:    periodTotal,
+        peak_period:     peakPeriod,
+        peak_value:      peakVal,
+        class_totals:    classTotals,
+        class_pct:       classPct,
+        avg_queue_depth: qDepths.length > 0 ? +(qDepths.reduce((a, b) => a + b, 0) / qDepths.length).toFixed(2) : null,
+        peak_queue_depth: qDepths.length > 0 ? Math.max(...qDepths) : null,
+        avg_speed_kmh:   speeds.length > 0   ? +(speeds.reduce((a, b) => a + b, 0) / speeds.length).toFixed(1) : null,
+        global:          globalTotals,
+        granularity,
+        from: fromISO,
+        to:   toISO,
       },
     });
   } catch (err) {
     console.error("[/api/analytics/traffic]", err);
     return res.status(502).json({ error: "Analytics query failed" });
   }
+}
+
+// ── Hourly data via RPC (or fallback) ────────────────────────────────────────
+async function _hourlyData(SUPABASE_URL, headers, camera_id, fromISO, toISO) {
+  // Try the existing RPC
+  const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/analytics_traffic_hourly`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ p_camera_id: camera_id || null, p_since: fromISO }),
+  });
+  if (rpcRes.ok) {
+    const rows = await rpcRes.json();
+    if (rows && rows.length > 0) {
+      return rows.map(r => ({ ...r, period: r.hour }));
+    }
+  }
+  // Fallback: direct query
+  return _hourlyFallback(SUPABASE_URL, headers, camera_id, fromISO, toISO, "hour");
+}
+
+async function _hourlyFallback(SUPABASE_URL, headers, camera_id, fromISO, toISO, targetGranularity) {
+  let url = `${SUPABASE_URL}/rest/v1/vehicle_crossings`
+    + `?select=captured_at,vehicle_class,direction`
+    + `&captured_at=gte.${encodeURIComponent(fromISO)}`
+    + `&captured_at=lte.${encodeURIComponent(toISO)}`
+    + `&limit=10000`;
+  if (camera_id) url += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
+
+  const r = await fetch(url, { headers });
+  if (!r.ok) return [];
+  const rows = await r.json();
+
+  const buckets = {};
+  for (const row of rows) {
+    const dt   = new Date(row.captured_at);
+    const key  = targetGranularity === "hour"
+      ? dt.toISOString().slice(0, 13) + ":00:00Z"
+      : dt.toISOString().slice(0, 10);
+    if (!buckets[key]) buckets[key] = { period: key, total: 0, car: 0, truck: 0, bus: 0, motorcycle: 0, in: 0, out: 0 };
+    buckets[key].total += 1;
+    const cls = (row.vehicle_class || "car").toLowerCase();
+    if (cls in buckets[key]) buckets[key][cls] += 1;
+    if (row.direction === "in")  buckets[key].in  += 1;
+    if (row.direction === "out") buckets[key].out += 1;
+  }
+  return Object.values(buckets).sort((a, b) => a.period.localeCompare(b.period));
+}
+
+async function _globalTotals(SUPABASE_URL, headers, camera_id) {
+  try {
+    // Use traffic_daily for fast global sum
+    let url = `${SUPABASE_URL}/rest/v1/traffic_daily?select=total_crossings,car_count,truck_count,bus_count,motorcycle_count&limit=10000`;
+    if (camera_id) url += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
+    const r = await fetch(url, { headers });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    if (!rows || rows.length === 0) return null;
+    return {
+      total:      rows.reduce((s, r) => s + (r.total_crossings || 0), 0),
+      car:        rows.reduce((s, r) => s + (r.car_count || 0), 0),
+      truck:      rows.reduce((s, r) => s + (r.truck_count || 0), 0),
+      bus:        rows.reduce((s, r) => s + (r.bus_count || 0), 0),
+      motorcycle: rows.reduce((s, r) => s + (r.motorcycle_count || 0), 0),
+    };
+  } catch { return null; }
+}
+
+function getMondayISO(dateStr) {
+  const d = new Date(dateStr + "T00:00:00Z");
+  const day = d.getUTCDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
 }
