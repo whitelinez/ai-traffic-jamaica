@@ -1344,6 +1344,13 @@ function _connectUserWs(session) {
     await new Promise(resolve => _loadChartJs(resolve));
     _pl.set(65, "Chart engine ready");
 
+    // Default to today's data if no date range has been chosen yet
+    if (!_govFrom) {
+      _setPreset("1d");
+      document.querySelectorAll(".gov-period-pills .gov-pill").forEach(p =>
+        p.classList.toggle("active", p.dataset.preset === "1d"));
+    }
+
     // Step 3 — pre-fetch analytics data + camera id
     _pl.set(70, "Fetching analytics data…");
     if (!_camId && window.sb) {
