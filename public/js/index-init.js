@@ -2148,6 +2148,7 @@ function _connectUserWs(session) {
       disableMobile: false,
       minDate: MIN_DATE,
       maxDate: today,
+      appendTo: document.body,  // avoid clip inside fixed overlay
     };
 
     if (!_fpFrom) {

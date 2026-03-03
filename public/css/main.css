@@ -11941,6 +11941,156 @@ button {
 }
 
 /* =====================================================
+   GOV OVERLAY — MOBILE  (≤ 640px)
+   ===================================================== */
+@media (max-width: 640px) {
+
+  /* ── Header ─────────────────────────────────────── */
+  .gov-hdr {
+    height: auto; min-height: 48px;
+    padding: 8px 12px; gap: 8px;
+  }
+  .gov-hdr-left  { gap: 8px; }
+  .gov-hdr-right { gap: 8px; }
+  .gov-hdr-logo-wrap,
+  .gov-hdr-logo,
+  .gov-hdr-aiframe { width: 30px; height: 30px; }
+  .gov-title    { font-size: 13px !important; }
+  .gov-subtitle { font-size: 9px; }
+  /* Hide date/stats block on mobile — reclaimed by exit btn */
+  .gov-hdr-dates { display: none; }
+  .gov-hdr-stats { display: none; }
+  .gov-close-btn {
+    padding: 5px 10px; font-size: 10px; letter-spacing: 0.06em;
+  }
+
+  /* ── Tab bar — horizontal scroll ────────────────── */
+  .gov-tabbar {
+    padding: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .gov-tabbar::-webkit-scrollbar { display: none; }
+  .gov-tab {
+    padding: 10px 14px;
+    font-size: 9px !important;
+    letter-spacing: 0.1em;
+    flex-shrink: 0;
+  }
+
+  /* ── KPI strip — 2 × 2 grid ─────────────────────── */
+  .gov-kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .gov-kpi-card  { padding: 10px 12px; }
+  .gov-kpi-val   { font-size: 28px !important; }
+  .gov-kpi-lbl   { font-size: 10px !important; margin-top: 4px !important; }
+  .gov-kpi-hint  { font-size: 9px !important; }
+
+  /* ── AI health stripe — hide on mobile ──────────── */
+  .gov-ai-stripe { display: none; }
+
+  /* ── LIVE — stack video + sidebar ───────────────── */
+  .gov-live-body {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .gov-live-video {
+    padding: 10px; border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .gov-live-side {
+    overflow-y: visible;
+    max-height: none;
+  }
+
+  /* ── Intro cards — stack ─────────────────────────── */
+  .gov-intro {
+    flex-direction: column; gap: 12px;
+    margin: 12px 12px 4px; padding: 16px;
+  }
+  .gov-intro-dismiss { width: 100%; text-align: center; padding: 13px; }
+
+  /* ── Analytics toolbar ───────────────────────────── */
+  .gov-an-toolbar {
+    padding: 10px 12px; gap: 8px;
+  }
+  .gov-date-range { flex: 1 1 100%; }
+  .gov-date-input {
+    flex: 1; min-width: 0; font-size: 12px;
+    padding: 8px 8px;
+  }
+  .gov-period-pills { flex-wrap: wrap; gap: 4px; }
+  .gov-pill {
+    padding: 6px 10px; font-size: 11px;
+  }
+  .gov-gran-pills { gap: 4px; }
+  .gov-gran-pill {
+    padding: 6px 10px; font-size: 11px;
+  }
+  .gov-export-btn {
+    margin-left: 0; width: 100%; text-align: center;
+    padding: 8px 12px; font-size: 11px;
+  }
+  /* Summary strip — hide low-priority items */
+  .gov-an-sum-sep  { display: none; }
+  .gov-an-sum-item { font-size: 11px; }
+  .gov-an-sum-global {
+    margin-left: 0; width: 100%; border-top: 1px solid var(--border);
+    padding-top: 6px; margin-top: 2px;
+  }
+
+  /* ── Analytics charts — single column ───────────── */
+  .gov-an-charts {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    gap: 10px;
+  }
+  .gov-chart-body { height: 150px; }
+
+  /* ── Analytics feed strip ────────────────────────── */
+  .gov-an-feedstrip { padding: 10px 12px 0; }
+  .gov-an-video-slot { aspect-ratio: 16 / 9; }
+
+  /* ── Zones bar — scrollable ─────────────────────── */
+  .gov-zones-bar {
+    padding: 6px 12px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Export panel ────────────────────────────────── */
+  .gov-export-panel { padding: 16px; max-width: 100%; }
+  .gov-date-pair    { flex-wrap: wrap; }
+  .gov-date-pair .gov-date-input { min-width: 0; flex: 1 1 100%; }
+  .gov-date-pair .gov-date-sep   { display: none; }
+  .gov-export-dl-btn {
+    align-self: stretch; width: 100%;
+    padding: 14px; font-size: 15px;
+  }
+
+  /* ── Modal ───────────────────────────────────────── */
+  .gov-modal-box { width: 96%; max-height: 88vh; border-radius: 10px; }
+  .gov-modal-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .gov-modal-body { padding: 14px; }
+
+  /* ── Tooltip — disable on touch (no hover) ──────── */
+  .gov-overlay [data-tip]::after { display: none; }
+}
+
+/* ── Very narrow phones (≤ 400px) ─────────────────── */
+@media (max-width: 400px) {
+  .gov-hdr { padding: 6px 10px; }
+  .gov-tab  { padding: 9px 11px; font-size: 8px !important; }
+  .gov-kpi-val { font-size: 24px !important; }
+  .gov-pill, .gov-gran-pill { font-size: 10px; padding: 5px 8px; }
+  .gov-an-charts { padding: 10px 10px; gap: 8px; }
+  .gov-chart-body { height: 130px; }
+  .gov-intro { margin: 10px 10px 4px; padding: 14px; }
+  .gov-intro-title { font-size: 15px !important; }
+}
+
+/* =====================================================
    FLATPICKR — WHITE THEME for gov overlay
    ===================================================== */
 .flatpickr-calendar {
