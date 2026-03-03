@@ -10241,10 +10241,6 @@ button {
 .gov-head-muted {
   font-weight: 400; color: var(--dim); letter-spacing: 0.02em; text-transform: none;
 }
-.gov-head-info {
-  color: #0284c7; opacity: 0.75; transition: opacity 0.15s; cursor: pointer;
-}
-#gov-turnings-head:hover .gov-head-info { opacity: 1; }
 .gov-chart-body { position: relative; height: 180px; }
 .gov-chart-body canvas { width: 100% !important; height: 100% !important; }
 .gov-crossings-wrap { overflow-x: auto; max-height: 280px; overflow-y: auto; }
