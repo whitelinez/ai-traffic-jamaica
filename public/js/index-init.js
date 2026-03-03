@@ -1065,7 +1065,12 @@ function _connectUserWs(session) {
   // Chart color map
   const CLS_COLOR = { car:"#29B6F6", truck:"#FF7043", bus:"#AB47BC", motorcycle:"#FFD600" };
   const CLS_CSS   = { car:"gov-td-car", truck:"gov-td-truck", bus:"gov-td-bus", motorcycle:"gov-td-moto" };
-  const CLS_ICON  = { car:"🚗", truck:"🚛", bus:"🚌", motorcycle:"🏍" };
+  const CLS_SVG = {
+    car:        '<svg class="gov-veh-svg" viewBox="0 0 24 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Car"><path d="M1 10V8a1 1 0 0 1 1-1h20a1 1 0 0 1 1 1v2H1z"/><path d="M5 7V6c0-1 1.5-3 3.5-3h7c2 0 3.5 2 3.5 3v1"/><circle cx="5.5" cy="13" r="1.8"/><circle cx="18.5" cy="13" r="1.8"/></svg>',
+    truck:      '<svg class="gov-veh-svg" viewBox="0 0 28 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Truck"><rect x="1" y="3" width="14" height="9" rx="1"/><path d="M15 6h7l2 4v3H15V6z"/><line x1="19" y1="6" x2="19" y2="13"/><circle cx="5" cy="14" r="1.8"/><circle cx="11" cy="14" r="1.8"/><circle cx="21.5" cy="14" r="1.8"/></svg>',
+    bus:        '<svg class="gov-veh-svg" viewBox="0 0 28 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Bus"><rect x="1" y="2" width="26" height="11" rx="2"/><line x1="1" y1="6" x2="27" y2="6"/><line x1="14" y1="2" x2="14" y2="13"/><circle cx="6" cy="14.5" r="1.5"/><circle cx="22" cy="14.5" r="1.5"/><rect x="3" y="3" width="4" height="2.5" rx="0.5"/><rect x="9" y="3" width="4" height="2.5" rx="0.5"/><rect x="15" y="3" width="4" height="2.5" rx="0.5"/><rect x="21" y="3" width="4" height="2.5" rx="0.5"/></svg>',
+    motorcycle: '<svg class="gov-veh-svg" viewBox="0 0 28 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Motorcycle"><circle cx="6" cy="12" r="3.5"/><circle cx="22" cy="12" r="3.5"/><path d="M9.5 12H16l3-6h3"/><path d="M13 6l2 6"/><path d="M19 4h4l1 2"/></svg>',
+  };
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const el  = (id) => document.getElementById(id);
@@ -1399,7 +1404,7 @@ function _connectUserWs(session) {
       tbody.innerHTML = data.map(r => {
         const cls  = String(r.vehicle_class || "car").toLowerCase();
         const css  = CLS_CSS[cls]  || "gov-td-car";
-        const icon = CLS_ICON[cls] || "🚗";
+        const icon = CLS_SVG[cls] || CLS_SVG.car;
         const dirCss = r.direction === "in" ? "gov-td-in" : "gov-td-out";
         const conf = r.confidence != null ? `${(Number(r.confidence)*100).toFixed(0)}%` : "—";
         const scene = [r.scene_lighting, r.scene_weather].filter(Boolean).join(" / ") || "—";
@@ -1463,7 +1468,7 @@ function _connectUserWs(session) {
 
   function _showModal(title, bodyHtml) {
     if (!modal) return;
-    if (modalTitle) modalTitle.textContent = title;
+    if (modalTitle) modalTitle.innerHTML = title;
     if (modalBody)  modalBody.innerHTML = bodyHtml;
     modal.classList.remove("hidden");
     // Render chart if canvas#gov-modal-chart exists in bodyHtml
@@ -1565,7 +1570,7 @@ function _connectUserWs(session) {
     const summary = _analyticsData?.summary || {};
     const ct     = summary.class_totals     || {};
     const color  = CLS_COLOR[cls] || "#29B6F6";
-    const icon   = CLS_ICON[cls]  || "🚗";
+    const icon   = CLS_SVG[cls]  || CLS_SVG.car;
     const labels = rows.map(r => `${String(new Date(r.hour).getHours()).padStart(2,"0")}:00`);
     const data   = rows.map(r => r[cls] || 0);
     const total  = ct[cls] || data.reduce((a,b)=>a+b,0);
@@ -1589,7 +1594,7 @@ function _connectUserWs(session) {
       const d = JSON.parse(row.dataset.crossing.replace(/&apos;/g,"'"));
       const cls = d.cls || "car";
       const color = CLS_COLOR[cls] || "#29B6F6";
-      const icon  = CLS_ICON[cls]  || "🚗";
+      const icon  = CLS_SVG[cls]  || CLS_SVG.car;
       _showModal(`${icon} CROSSING DETAIL`, `
         <div class="gov-modal-data-rows">
           <div class="gov-modal-data-row"><span class="gov-modal-data-key">Time</span><span class="gov-modal-data-val">${d.time}</span></div>

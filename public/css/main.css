@@ -9697,7 +9697,8 @@ button {
   cursor: pointer; transition: background 0.12s;
 }
 .gov-cls-row:hover  { background: var(--bg3); }
-.gov-cls-icon       { font-size: 14px; text-align: center; }
+.gov-cls-icon       { display: flex; align-items: center; justify-content: center; width: 28px; height: 20px; flex-shrink: 0; }
+.gov-veh-svg        { width: 22px; height: 16px; display: block; flex-shrink: 0; }
 .gov-cls-info       { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .gov-cls-name       { font-family: "Inter", sans-serif; font-size: 11px; color: var(--text); }
 .gov-cls-bar-wrap   { height: 3px; background: rgba(26,45,66,0.8); border-radius: 2px; overflow: hidden; }
