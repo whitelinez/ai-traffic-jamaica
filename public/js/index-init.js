@@ -1426,9 +1426,14 @@ function _connectUserWs(session) {
     });
   }
 
+  // Delegated listener (catches dynamically shown cards)
   overlay.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-intro-key]");
     if (btn) _dismissIntro(btn.dataset.introKey);
+  });
+  // Direct listeners on each button (belt-and-suspenders)
+  document.querySelectorAll("[data-intro-key]").forEach(btn => {
+    btn.addEventListener("click", () => _dismissIntro(btn.dataset.introKey));
   });
 
   async function openGov() {
@@ -1562,10 +1567,7 @@ function _connectUserWs(session) {
     const scene = [p.scene_lighting, p.scene_weather].filter(Boolean).join(" / ") || p.scene_lighting || "—";
     txt("gov-scene", scene.toUpperCase());
 
-    // AI health stripe
-    const qs = p.quality?.quality_score != null ? Number(p.quality.quality_score).toFixed(1) + "%" : null;
-    const aiParts = [qs ? `Quality ${qs}` : null, fps ? `${fps} fps` : null, profile ? profile.replace(/_/g, " ") : null].filter(Boolean);
-    txt("gov-ai-stripe", aiParts.length ? aiParts.join("  ·  ") : "—");
+    // (AI health stripe removed from UI)
 
     // Class breakdown with progress bars
     const classes  = ["car","truck","bus","motorcycle"];
@@ -1667,8 +1669,8 @@ function _connectUserWs(session) {
   }
 
   function _setAnalyticsLoading(on) {
-    // Summary strip — add/remove class that CSS uses to render shimmer placeholders
-    const strip = document.querySelector(".gov-an-toolbar-strip");
+    // Summary bar — add/remove class that CSS uses to render shimmer placeholders
+    const strip = document.querySelector(".gov-an-sumbar");
     if (strip) strip.classList.toggle("is-loading", on);
 
     // Chart cards — show/hide loading overlay + skeleton bars placeholder

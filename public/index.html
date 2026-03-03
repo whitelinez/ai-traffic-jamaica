@@ -81,7 +81,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" />
   <meta name="theme-color" content="#080C14" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
-  <link rel="stylesheet" href="/css/main.css?v=16" />
+  <link rel="stylesheet" href="/css/main.css?v=17" />
   <script src="/js/vercel-analytics-init.js"></script>
   <script defer src="/_vercel/insights/script.js"></script>
 </head>
@@ -886,9 +886,6 @@
         </div>
       </div>
 
-      <!-- AI health stripe -->
-      <div class="gov-ai-stripe" id="gov-ai-stripe">—</div>
-
       <!-- Main: video + sidebar -->
       <div class="gov-live-body">
         <!-- Video column -->
@@ -1027,18 +1024,32 @@
         <button id="gov-export-btn" class="gov-export-btn">↓ Export CSV</button>
       </div>
 
-      <!-- Toolbar row 2: Summary strip -->
-      <div class="gov-an-toolbar gov-an-toolbar-strip">
-        <span class="gov-an-sum-item">Period: <span id="gov-sum-total">—</span></span>
-        <span class="gov-an-sum-sep">·</span>
-        <span class="gov-an-sum-item">Peak: <span id="gov-sum-peak">—</span></span>
-        <span class="gov-an-sum-sep">·</span>
-        <span class="gov-an-sum-item">Heavy: <span id="gov-sum-heavy">—</span></span>
-        <span class="gov-an-sum-sep">·</span>
-        <span class="gov-an-sum-item">Avg Queue: <span id="gov-sum-queue">—</span></span>
-        <span class="gov-an-sum-sep">·</span>
-        <span class="gov-an-sum-item">Avg Speed: <span id="gov-sum-speed">—</span></span>
-        <span class="gov-an-sum-global">All-time: <span id="gov-sum-global">—</span></span>
+      <!-- Toolbar row 2: Summary stat cards -->
+      <div class="gov-an-sumbar">
+        <div class="gov-an-sumcard">
+          <div class="gov-an-sumcard-val" id="gov-sum-total">—</div>
+          <div class="gov-an-sumcard-lbl">Period Total</div>
+        </div>
+        <div class="gov-an-sumcard">
+          <div class="gov-an-sumcard-val" id="gov-sum-peak">—</div>
+          <div class="gov-an-sumcard-lbl">Peak Hour</div>
+        </div>
+        <div class="gov-an-sumcard">
+          <div class="gov-an-sumcard-val" id="gov-sum-heavy">—</div>
+          <div class="gov-an-sumcard-lbl">Busiest Day</div>
+        </div>
+        <div class="gov-an-sumcard">
+          <div class="gov-an-sumcard-val" id="gov-sum-queue">—</div>
+          <div class="gov-an-sumcard-lbl">Avg Queue</div>
+        </div>
+        <div class="gov-an-sumcard">
+          <div class="gov-an-sumcard-val" id="gov-sum-speed">—</div>
+          <div class="gov-an-sumcard-lbl">Avg Speed</div>
+        </div>
+        <div class="gov-an-sumcard gov-an-sumcard--accent">
+          <div class="gov-an-sumcard-val" id="gov-sum-global">—</div>
+          <div class="gov-an-sumcard-lbl">All-Time Total</div>
+        </div>
       </div>
 
       <!-- Live feed strip with AI overlays -->
