@@ -1,35 +1,45 @@
 /**
  * camera-switcher.js
  * Camera picker modal triggered by the CAMERAS banner tile.
- * Live previews via stagger-loaded ipcamlive iframes.
- * Click-shield div over each preview captures clicks (iframes eat pointer events).
+ * Cameras are grouped by category: "trafficwatcha" (ipcam) | "see_jamaica" (YouTube).
+ * Live previews: ipcam via ipcamlive iframes, YouTube via embed iframes.
  */
 const CameraSwitcher = (() => {
   let _cameras = [];
-  let _aiAlias = null;
-  let _activeAlias = null;
-  let _modal = null;
+  let _aiCam    = null;   // the is_active camera object
+  let _aiAlias  = null;   // ipcam_alias of AI cam (null for YouTube AI cam)
+  let _activeId = null;   // id of currently displayed camera
+  let _modal    = null;
   let _previewsLoaded = false;
 
   const _AI_SHOW = ['live-video', 'detection-canvas', 'zone-canvas', 'fps-overlay'];
+
+  const _CATEGORY_LABELS = {
+    trafficwatcha: 'TrafficWatcha',
+    see_jamaica:   'See Jamaica',
+  };
+
+  function _ytVideoId(ytUrl) {
+    try { return new URL(ytUrl).searchParams.get('v'); } catch { return null; }
+  }
 
   async function init() {
     try {
       const { data } = await window.sb
         .from('cameras')
-        .select('id, name, area, ipcam_alias, player_host, is_active, quality_snapshot')
-        .order('area', { ascending: true })
-        .order('created_at', { ascending: true });
+        .select('id, name, area, ipcam_alias, player_host, is_active, quality_snapshot, category, youtube_url')
+        .order('category', { ascending: true })
+        .order('name',  { ascending: true });
 
       if (!data?.length) return;
       _cameras = data;
-      _aiAlias = _cameras.find(c => c.is_active)?.ipcam_alias || null;
-      _activeAlias = _aiAlias;
+      _aiCam   = _cameras.find(c => c.is_active) || null;
+      _aiAlias = _aiCam?.ipcam_alias || null;
+      _activeId = _aiCam?.id || null;
 
-      // Set header cam chip to human-readable name on load
-      const activeCam = _cameras.find(c => c.ipcam_alias === _aiAlias);
+      // Set header cam chip to active camera name
       const camNameEl = document.getElementById('header-cam-name');
-      if (camNameEl && activeCam) camNameEl.textContent = activeCam.name || activeCam.ipcam_alias;
+      if (camNameEl && _aiCam) camNameEl.textContent = _aiCam.name || _aiCam.ipcam_alias || '';
 
       _buildIframe();
       _buildModal();
@@ -51,13 +61,11 @@ const CameraSwitcher = (() => {
 
       if (!rows?.length) return;
 
-      // Group by camera_id, compute events/sec
       const groups = {};
       rows.forEach(r => {
         (groups[r.camera_id] = groups[r.camera_id] || []).push(r.captured_at);
       });
 
-      // Also poll health for current AI FPS
       let aiFps = null;
       try {
         const h = await fetch("/api/health").then(r => r.json());
@@ -65,7 +73,7 @@ const CameraSwitcher = (() => {
       } catch {}
 
       _cameras.forEach(cam => {
-        const fpsEl = _modal?.querySelector(`.cp-cam-card[data-alias="${cam.ipcam_alias}"] .cp-fps-badge`);
+        const fpsEl = _modal?.querySelector(`.cp-cam-card[data-cam-id="${cam.id}"] .cp-fps-badge`);
         if (!fpsEl) return;
 
         let fps = null;
@@ -79,7 +87,6 @@ const CameraSwitcher = (() => {
           }
         }
         if (fps == null) return;
-        // Human-friendly label instead of raw "x.x fps"
         const label = fps >= 8 ? 'Smooth' : fps >= 4 ? 'Live' : fps > 0 ? 'Slow' : null;
         if (!label) return;
         fpsEl.textContent = label;
@@ -110,43 +117,67 @@ const CameraSwitcher = (() => {
     return 'Poor';
   }
 
+  function _buildCamCard(c) {
+    const isAI = c.is_active;
+    const q = c.quality_snapshot;
+    const qScore = q?.quality_score != null ? Math.round(q.quality_score) : null;
+    const qCls = qScore == null ? '' : qScore >= 60 ? 'cp-quality-good' : qScore >= 40 ? 'cp-quality-mid' : 'cp-quality-bad';
+    const lightIcon = q?.lighting === 'night' ? '🌙' : q?.lighting === 'day' ? '☀' : '';
+    const qualBadge = qScore != null
+      ? `<span class="cp-quality-badge ${qCls}">${lightIcon ? `<span class="cp-light-icon">${lightIcon}</span>` : ''}${_qualityLabel(qScore)}</span>`
+      : '';
+
+    const isYT = !!c.youtube_url;
+    const previewAttr = isYT
+      ? `data-yt-url="${c.youtube_url}"`
+      : `data-alias="${c.ipcam_alias}" data-host="${c.player_host || 'g3'}"`;
+
+    const ytBadge = isYT ? '<span class="cp-yt-badge">▶ YouTube</span>' : '';
+
+    return `
+      <div class="cp-cam-card${isAI ? ' cp-cam-ai' : ''}" data-cam-id="${c.id}" tabindex="0" role="button" aria-label="${c.name}">
+        <div class="cp-preview-wrap">
+          <iframe class="cp-preview-iframe" ${previewAttr} allow="autoplay" scrolling="no" frameborder="0"></iframe>
+          <div class="cp-click-shield"></div>
+          <div class="cp-preview-loader"><span></span></div>
+        </div>
+        <div class="cp-cam-info">
+          ${isAI ? '<span class="cp-ai-badge"><span class="cp-ai-dot"></span>AI Live</span>' : ''}
+          ${ytBadge}
+          <span class="cp-cam-name">${c.name}</span>
+          <div class="cp-cam-meta">
+            <span class="cp-fps-badge hidden"></span>
+            ${qualBadge}
+          </div>
+        </div>
+      </div>`;
+  }
+
   function _buildModal() {
     if (document.getElementById('cam-picker-modal')) return;
 
-    // Flat grid — no area categories
-    let gridHtml = '';
+    // Group cameras by category
+    const groups = {};
     _cameras.forEach(c => {
-      const isAI = c.is_active;
-      const q = c.quality_snapshot;
-      const qScore = q?.quality_score != null ? Math.round(q.quality_score) : null;
-      const qCls = qScore == null ? '' : qScore >= 60 ? 'cp-quality-good' : qScore >= 40 ? 'cp-quality-mid' : 'cp-quality-bad';
-      const lightIcon = q?.lighting === 'night' ? '🌙' : q?.lighting === 'day' ? '☀' : '';
-      const qualBadge = qScore != null
-        ? `<span class="cp-quality-badge ${qCls}">${lightIcon ? `<span class="cp-light-icon">${lightIcon}</span>` : ''}${_qualityLabel(qScore)}</span>`
-        : '';
-      gridHtml += `
-        <div class="cp-cam-card${isAI ? ' cp-cam-ai' : ''}" data-alias="${c.ipcam_alias}" tabindex="0" role="button" aria-label="${c.name}">
-          <div class="cp-preview-wrap">
-            <iframe class="cp-preview-iframe"
-              data-alias="${c.ipcam_alias}"
-              data-host="${c.player_host || 'g3'}"
-              allow="autoplay"
-              scrolling="no"
-              frameborder="0"></iframe>
-            <div class="cp-click-shield"></div>
-            <div class="cp-preview-loader"><span></span></div>
-          </div>
-          <div class="cp-cam-info">
-            ${isAI ? '<span class="cp-ai-badge"><span class="cp-ai-dot"></span>AI Live</span>' : ''}
-            <span class="cp-cam-name">${c.name}</span>
-            <div class="cp-cam-meta">
-              <span class="cp-fps-badge hidden"></span>
-              ${qualBadge}
-            </div>
-          </div>
-        </div>`;
+      const cat = c.category || 'trafficwatcha';
+      (groups[cat] = groups[cat] || []).push(c);
     });
 
+    // Render category order: trafficwatcha first, then see_jamaica
+    const catOrder = ['trafficwatcha', 'see_jamaica', ...Object.keys(groups).filter(k => k !== 'trafficwatcha' && k !== 'see_jamaica')];
+
+    let bodyHtml = '';
+    catOrder.forEach(cat => {
+      const cams = groups[cat];
+      if (!cams?.length) return;
+      const label = _CATEGORY_LABELS[cat] || cat;
+      bodyHtml += `<div class="cp-category-section">
+        <div class="cp-category-header">${label}</div>
+        <div class="cp-category-grid">${cams.map(_buildCamCard).join('')}</div>
+      </div>`;
+    });
+
+    const total = _cameras.length;
     const modal = document.createElement('div');
     modal.id = 'cam-picker-modal';
     modal.className = 'cam-picker-modal hidden';
@@ -155,11 +186,11 @@ const CameraSwitcher = (() => {
         <div class="cam-picker-head">
           <div class="cam-picker-head-left">
             <span class="cam-picker-title">Live Cameras</span>
-            <span class="cam-picker-count">${_cameras.length} feeds</span>
+            <span class="cam-picker-count">${total} feed${total !== 1 ? 's' : ''}</span>
           </div>
           <button class="cam-picker-close" aria-label="Close">✕</button>
         </div>
-        <div class="cam-picker-grid">${gridHtml}</div>
+        <div class="cam-picker-body">${bodyHtml}</div>
       </div>`;
 
     document.body.appendChild(modal);
@@ -169,12 +200,12 @@ const CameraSwitcher = (() => {
     modal.addEventListener('click', e => {
       if (e.target === modal) { _closeModal(); return; }
       const card = e.target.closest('.cp-cam-card');
-      if (card) { _switchTo(card.dataset.alias); _closeModal(); }
+      if (card) { _switchTo(card.dataset.camId); _closeModal(); }
     });
     modal.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') {
         const card = e.target.closest('.cp-cam-card');
-        if (card) { _switchTo(card.dataset.alias); _closeModal(); }
+        if (card) { _switchTo(card.dataset.camId); _closeModal(); }
       }
       if (e.key === 'Escape') _closeModal();
     });
@@ -184,12 +215,10 @@ const CameraSwitcher = (() => {
   function _wireNonAiOverlay() {
     const btn = document.getElementById("btn-go-ai-cam");
     if (!btn) return;
-    // Populate AI camera name
-    const aiCam = _cameras.find(c => c.is_active);
     const nameEl = document.getElementById("non-ai-cam-name");
-    if (nameEl && aiCam?.name) nameEl.textContent = aiCam.name;
+    if (nameEl && _aiCam?.name) nameEl.textContent = _aiCam.name;
     btn.addEventListener("click", () => {
-      if (_aiAlias) _switchTo(_aiAlias);
+      if (_aiCam?.id) _switchTo(_aiCam.id);
     });
   }
 
@@ -211,7 +240,7 @@ const CameraSwitcher = (() => {
 
     // Highlight current selection
     _modal.querySelectorAll('.cp-cam-card').forEach(card => {
-      card.classList.toggle('cp-cam-active', card.dataset.alias === _activeAlias);
+      card.classList.toggle('cp-cam-active', card.dataset.camId === _activeId);
     });
 
     // Stagger-load previews (only once)
@@ -219,9 +248,14 @@ const CameraSwitcher = (() => {
       _previewsLoaded = true;
       _modal.querySelectorAll('.cp-preview-iframe').forEach((iframe, i) => {
         setTimeout(() => {
-          const host = iframe.dataset.host || 'g3';
-          const alias = iframe.dataset.alias;
-          iframe.src = `https://${host}.ipcamlive.com/player/player.php?alias=${alias}&autoplay=1`;
+          if (iframe.dataset.ytUrl) {
+            const vid = _ytVideoId(iframe.dataset.ytUrl);
+            if (vid) iframe.src = `https://www.youtube.com/embed/${vid}?autoplay=1&mute=1`;
+          } else {
+            const host = iframe.dataset.host || 'g3';
+            const alias = iframe.dataset.alias;
+            if (alias) iframe.src = `https://${host}.ipcamlive.com/player/player.php?alias=${alias}&autoplay=1`;
+          }
           iframe.addEventListener('load', () => {
             iframe.closest('.cp-preview-wrap')?.classList.add('cp-preview-loaded');
           }, { once: true });
@@ -236,14 +270,15 @@ const CameraSwitcher = (() => {
   }
 
   // ── Switch main stream ────────────────────────────────────────
-  function _switchTo(alias) {
-    if (alias === _activeAlias) return;
-    _activeAlias = alias;
-    const cam = _cameras.find(c => c.ipcam_alias === alias);
+  function _switchTo(camId) {
+    if (camId === _activeId) return;
+    _activeId = camId;
+    const cam = _cameras.find(c => c.id === camId);
     if (!cam) return;
 
     const iframe = document.getElementById('camera-iframe');
     const isAI = cam.is_active;
+    const isYT = !!cam.youtube_url;
 
     _AI_SHOW.forEach(id => {
       const el = document.getElementById(id);
@@ -251,17 +286,23 @@ const CameraSwitcher = (() => {
     });
 
     if (isAI) {
-      window.dispatchEvent(new CustomEvent('stream:switching', { detail: { alias } }));
-      window.Stream?.setAlias(alias);
+      window.dispatchEvent(new CustomEvent('stream:switching', { detail: { alias: cam.ipcam_alias || '' } }));
+      // For YouTube AI cam: alias is '' → Stream fetches /api/stream with no alias,
+      // backend serves the yt-dlp HLS URL.
+      window.Stream?.setAlias(cam.ipcam_alias || '');
     }
 
     if (iframe) {
       if (isAI) {
         iframe.src = '';
         iframe.style.display = 'none';
+      } else if (isYT) {
+        const vid = _ytVideoId(cam.youtube_url);
+        iframe.src = vid ? `https://www.youtube.com/embed/${vid}?autoplay=1` : '';
+        iframe.style.display = vid ? 'block' : 'none';
       } else {
         const host = cam.player_host || 'g3';
-        iframe.src = `https://${host}.ipcamlive.com/player/player.php?alias=${alias}&autoplay=1`;
+        iframe.src = `https://${host}.ipcamlive.com/player/player.php?alias=${cam.ipcam_alias}&autoplay=1`;
         iframe.style.display = 'block';
       }
     }
@@ -269,7 +310,6 @@ const CameraSwitcher = (() => {
     if (!isAI) document.getElementById('stream-offline-overlay')?.classList.add('hidden');
     _setNonAiOverlay(!isAI);
 
-    // Hide AI-only widgets when viewing a non-AI camera
     document.getElementById('ml-hud')?.classList.toggle('hidden', !isAI);
     document.getElementById('count-widget')?.classList.toggle('hidden', !isAI);
 
@@ -277,16 +317,16 @@ const CameraSwitcher = (() => {
     if (label) label.textContent = cam.name;
 
     const camNameEl = document.getElementById('header-cam-name');
-    if (camNameEl) camNameEl.textContent = cam.name || alias;
+    if (camNameEl) camNameEl.textContent = cam.name || '';
 
     window.dispatchEvent(new CustomEvent('camera:switched', {
-      detail: { alias, cameraId: cam.id, name: cam.name, isAI }
+      detail: { alias: cam.ipcam_alias || '', cameraId: cam.id, name: cam.name, isAI }
     }));
   }
 
-  function isOnAiCam() { return _activeAlias === _aiAlias; }
+  function isOnAiCam() { return _activeId === (_aiCam?.id || null); }
 
-  function switchTo(alias) { _switchTo(alias); }
+  function switchTo(camId) { _switchTo(camId); }
 
   return { init, isOnAiCam, switchTo };
 })();
