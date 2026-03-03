@@ -75,7 +75,26 @@ const AdminZones = (() => {
 
   // ── Start with a known camera ID (called from admin-init after resolving active cam) ──
   async function start(camId) {
-    if (!camId) return;
+    const lbl = document.getElementById("az-cam-label");
+
+    // If no camId passed (e.g. panel opened before admin-init resolved), self-resolve
+    if (!camId && window.sb) {
+      if (lbl) lbl.textContent = "Resolving…";
+      try {
+        const { data } = await window.sb
+          .from("cameras")
+          .select("id,name,alias,is_active,created_at")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        camId = data?.[0]?.id || null;
+      } catch (_) {}
+    }
+
+    if (!camId) {
+      if (lbl) lbl.textContent = "No active camera";
+      return;
+    }
     cameraId = camId;
 
     // Update hidden input (kept for any legacy reads) + label
