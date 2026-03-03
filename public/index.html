@@ -1093,9 +1093,9 @@
         <div class="gov-agencies-pitch">Know what's moving on Jamaica's roads — before anyone else does.</div>
         <div class="gov-agencies-sub">Real-time AI traffic counts, verified by camera, updated every second. Used by agencies for planning, compliance, and investment decisions.</div>
         <div class="gov-trust-badges">
-          <span class="gov-trust-badge"><span class="gov-trust-dot"></span>Live AI · Updated every frame</span>
-          <span class="gov-trust-badge"><span class="gov-trust-dot"></span><span id="gov-ag-total">—</span> vehicles counted today</span>
-          <span class="gov-trust-badge"><span class="gov-trust-dot"></span>24/7 monitoring, no manual counting</span>
+          <span class="gov-trust-badge"><span class="gov-trust-badge-icon">◈</span>Live AI · Updated every frame</span>
+          <span class="gov-trust-badge"><span class="gov-trust-badge-icon">◈</span><span id="gov-ag-total">—</span> vehicles counted today</span>
+          <span class="gov-trust-badge"><span class="gov-trust-badge-icon">◈</span>24/7 monitoring, no manual counting</span>
         </div>
       </div>
 
@@ -1123,26 +1123,26 @@
         </div>
       </div>
 
-      <!-- Live pulse bar -->
+      <!-- Live count bar -->
       <div class="gov-ag-live-bar">
-        <span class="gov-ag-live-dot"></span>
-        LIVE &nbsp;·&nbsp; <span id="gov-ag-live-total">—</span> vehicles counted today &nbsp;·&nbsp; Last detection: <span id="gov-ag-last-det">—</span> &nbsp;·&nbsp; 1 camera active
+        ◈ LIVE &nbsp;·&nbsp; <span id="gov-ag-live-total">—</span> vehicles counted today &nbsp;·&nbsp; Last detection: <span id="gov-ag-last-det">—</span> &nbsp;·&nbsp; 1 camera active
       </div>
 
       <!-- OOH featured card (full width, highest conversion) -->
-      <div class="gov-agency-featured" data-agency="ooh" style="--ag-color:#00D4FF">
+      <div class="gov-agency-featured" data-agency="ooh" style="--ag-color:#22C55E">
+        <div class="gov-card-frame"><span></span><span></span><span></span><span></span></div>
         <div class="gov-agency-featured-left">
           <div class="gov-agency-featured-badge">FEATURED · OUT-OF-HOME ADVERTISING</div>
           <div class="gov-agency-featured-q">"How many vehicles actually passed your billboard today?"</div>
           <div class="gov-agency-featured-bullets">
-            <div class="gov-agency-bullet">Bill advertisers based on AI-counted vehicle passes — not panel estimates</div>
+            <div class="gov-agency-bullet">Bill advertisers on AI-counted vehicle passes — not panel estimates</div>
             <div class="gov-agency-bullet">Daypart breakdown — morning peak, afternoon, evening — for rate-card pricing</div>
             <div class="gov-agency-bullet">Auditable impression count, updated every second, exportable as CSV</div>
           </div>
-          <button class="gov-agency-btn gov-agency-btn--accent" data-modal="agency-ooh">Request Data Package →</button>
+          <button class="gov-agency-btn gov-agency-btn--accent" data-modal="agency-ooh">↓ Download Data Package</button>
         </div>
         <div class="gov-agency-featured-right">
-          <div class="gov-agency-abbr" style="color:#00D4FF">OOH</div>
+          <div class="gov-agency-abbr" style="color:#22C55E">OOH</div>
           <div class="gov-agency-val" id="gov-ooh-metric">—</div>
           <div class="gov-agency-unit">AI-verified impressions today</div>
           <div class="gov-agency-sub-metric" id="gov-ooh-sub">= guaranteed reach, auditable</div>
@@ -1154,9 +1154,10 @@
 
         <!-- NWA -->
         <div class="gov-agency-card" data-agency="nwa" style="--ag-color:#29B6F6">
+          <div class="gov-card-frame"><span></span><span></span><span></span><span></span></div>
           <div class="gov-agency-top">
             <div class="gov-agency-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 17h18M3 7h18M7 7v10M17 7v10"/></svg>
+              <img src="/img/agencies/nwa.png" alt="NWA" class="gov-agency-logo">
             </div>
             <div>
               <div class="gov-agency-abbr" style="color:#29B6F6">NWA</div>
@@ -1174,14 +1175,15 @@
             <div class="gov-agency-bullet">Peak congestion hours — schedule maintenance windows around real data</div>
             <div class="gov-agency-bullet">Truck vs. bus vs. car split for infrastructure and pavement planning</div>
           </div>
-          <button class="gov-agency-btn" data-modal="agency-nwa">Request Data Package →</button>
+          <button class="gov-agency-btn" data-modal="agency-nwa">↓ Download Data Package</button>
         </div>
 
         <!-- TAJ -->
         <div class="gov-agency-card" data-agency="taj" style="--ag-color:#FF7043">
+          <div class="gov-card-frame"><span></span><span></span><span></span><span></span></div>
           <div class="gov-agency-top">
             <div class="gov-agency-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>
+              <img src="/img/agencies/taj.png" alt="TAJ" class="gov-agency-logo">
             </div>
             <div>
               <div class="gov-agency-abbr" style="color:#FF7043">TAJ</div>
@@ -1199,14 +1201,15 @@
             <div class="gov-agency-bullet">Truck movement patterns by time of day — flag anomalies automatically</div>
             <div class="gov-agency-bullet">Corridor-level counts for toll and licensing compliance cross-check</div>
           </div>
-          <button class="gov-agency-btn" data-modal="agency-taj">Request Data Package →</button>
+          <button class="gov-agency-btn" data-modal="agency-taj">↓ Download Data Package</button>
         </div>
 
         <!-- JUTC -->
         <div class="gov-agency-card" data-agency="jutc" style="--ag-color:#AB47BC">
+          <div class="gov-card-frame"><span></span><span></span><span></span><span></span></div>
           <div class="gov-agency-top">
             <div class="gov-agency-icon">
-              <svg viewBox="0 0 28 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="2" width="26" height="11" rx="2"/><line x1="1" y1="6" x2="27" y2="6"/><circle cx="6" cy="14.5" r="1.5"/><circle cx="22" cy="14.5" r="1.5"/></svg>
+              <img src="/img/agencies/jutc.png" alt="JUTC" class="gov-agency-logo">
             </div>
             <div>
               <div class="gov-agency-abbr" style="color:#AB47BC">JUTC</div>
@@ -1224,14 +1227,15 @@
             <div class="gov-agency-bullet">AM/PM peak commuter demand windows — backed by vehicle counts</div>
             <div class="gov-agency-bullet">Identify under-served routes from real headway gaps</div>
           </div>
-          <button class="gov-agency-btn" data-modal="agency-jutc">Request Data Package →</button>
+          <button class="gov-agency-btn" data-modal="agency-jutc">↓ Download Data Package</button>
         </div>
 
         <!-- JTB -->
         <div class="gov-agency-card" data-agency="tourism" style="--ag-color:#FFD600">
+          <div class="gov-card-frame"><span></span><span></span><span></span><span></span></div>
           <div class="gov-agency-top">
             <div class="gov-agency-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2L8 7H4l2.5 3L5 15l7-3 7 3-1.5-5L20 7h-4L12 2z"/></svg>
+              <img src="/img/agencies/jtb.png" alt="JTB" class="gov-agency-logo">
             </div>
             <div>
               <div class="gov-agency-abbr" style="color:#FFD600">JTB</div>
@@ -1249,18 +1253,19 @@
             <div class="gov-agency-bullet">Identify congestion windows that affect tourist arrival times</div>
             <div class="gov-agency-bullet">Tour bus frequency data for route and partnership planning</div>
           </div>
-          <button class="gov-agency-btn" data-modal="agency-tourism">Request Data Package →</button>
+          <button class="gov-agency-btn" data-modal="agency-tourism">↓ Download Data Package</button>
         </div>
 
         <!-- INS -->
         <div class="gov-agency-card" data-agency="insurance" style="--ag-color:#66BB6A">
+          <div class="gov-card-frame"><span></span><span></span><span></span><span></span></div>
           <div class="gov-agency-top">
             <div class="gov-agency-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2L4 6v6c0 5 4 9 8 10 4-1 8-5 8-10V6L12 2z"/></svg>
+              <img src="/img/agencies/ins.png" alt="FSC" class="gov-agency-logo">
             </div>
             <div>
-              <div class="gov-agency-abbr" style="color:#66BB6A">INS</div>
-              <div class="gov-agency-name">Insurance Industry</div>
+              <div class="gov-agency-abbr" style="color:#66BB6A">FSC</div>
+              <div class="gov-agency-name">Financial Services Commission</div>
             </div>
           </div>
           <div class="gov-agency-question">"Where and when do high-risk traffic conditions occur?"</div>
@@ -1274,7 +1279,7 @@
             <div class="gov-agency-bullet">Vehicle mix — heavy vs. passenger — for actuarial premium models</div>
             <div class="gov-agency-bullet">Historical density patterns, exportable for underwriting teams</div>
           </div>
-          <button class="gov-agency-btn" data-modal="agency-insurance">Request Data Package →</button>
+          <button class="gov-agency-btn" data-modal="agency-insurance">↓ Download Data Package</button>
         </div>
 
       </div>

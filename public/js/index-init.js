@@ -2265,87 +2265,51 @@ function _connectUserWs(session) {
   const AGENCY_DATA = {
     nwa: {
       abbr:"NWA", name:"National Works Agency", color:"#29B6F6", avail:"Available Now",
+      logo:"/img/agencies/nwa.png",
       problem:"Which roads are taking the heaviest commercial load?",
-      sampleHeaders:["Time","Vehicle Class","Corridor","Direction","Confidence"],
-      sampleRows:[
-        ["08:14:22","Truck","New Kingston–Half Way Tree","Inbound","96%"],
-        ["08:15:07","Bus","New Kingston–Half Way Tree","Inbound","91%"],
-        ["08:16:41","Truck","New Kingston–Half Way Tree","Outbound","88%"],
-        ["08:17:03","Car","New Kingston–Half Way Tree","Inbound","94%"],
-        ["08:18:55","Truck","New Kingston–Half Way Tree","Inbound","97%"],
-      ],
-      fields:["timestamp","vehicle_class","direction","confidence","scene_lighting","scene_weather","dwell_frames"],
-      formats:"CSV · REST API · Hourly feed",
+      desc:"Per-crossing log of every truck, bus, car, and motorcycle detected at this junction — with timestamp, direction (inbound/outbound), YOLO confidence score, and AI-assessed scene conditions (day/night/rain). Aggregated hourly totals included for trend analysis.",
+      fields:["captured_at","vehicle_class","direction","confidence","scene_lighting","scene_weather","dwell_frames"],
+      formats:"CSV export · REST API · Hourly aggregates",
     },
     taj: {
       abbr:"TAJ", name:"Tax Administration Jamaica", color:"#FF7043", avail:"Available Now",
+      logo:"/img/agencies/taj.png",
       problem:"Are the trucks on the road matching what's declared at customs?",
-      sampleHeaders:["Date","Hour","Trucks","Buses","Cars","Total","Commercial %"],
-      sampleRows:[
-        ["2026-03-03","07:00","42","18","312","372","16.1%"],
-        ["2026-03-03","08:00","68","24","487","579","15.9%"],
-        ["2026-03-03","09:00","57","19","438","514","14.8%"],
-        ["2026-03-03","10:00","81","31","324","436","25.7%"],
-        ["2026-03-03","11:00","49","22","405","476","14.9%"],
-      ],
-      fields:["date","hour","truck_count","bus_count","car_count","total","commercial_pct"],
-      formats:"CSV · Hourly aggregates · API",
+      desc:"Timestamped commercial vehicle log — every truck and bus that crossed the detection line, with direction and confidence. Hourly summaries show commercial vs. passenger vehicle ratios, enabling cross-reference against declared freight and licensing data.",
+      fields:["captured_at","vehicle_class","direction","confidence","track_id","scene_lighting"],
+      formats:"CSV export · Hourly aggregates · REST API",
     },
     jutc: {
       abbr:"JUTC", name:"Jamaica Urban Transit Co.", color:"#AB47BC", avail:"Available Now",
+      logo:"/img/agencies/jutc.png",
       problem:"Is bus frequency actually matching commuter demand?",
-      sampleHeaders:["Time","Bus Count","Cars","Ratio","Period"],
-      sampleRows:[
-        ["06:00–07:00","8","124","1:15","AM Peak"],
-        ["07:00–08:00","14","387","1:28","AM Peak"],
-        ["08:00–09:00","11","312","1:28","AM Peak"],
-        ["12:00–13:00","5","198","1:40","Midday"],
-        ["17:00–18:00","13","356","1:27","PM Peak"],
-      ],
-      fields:["period","bus_count","car_count","bus_to_car_ratio","peak_label"],
-      formats:"CSV · REST API · WebSocket feed",
+      desc:"Bus detection log with timestamp and direction. Combined with total vehicle counts at the same junction, this shows the actual bus-to-car ratio at any hour — enabling real headway analysis against published schedules and commuter demand windows.",
+      fields:["captured_at","vehicle_class","direction","confidence","dwell_frames","scene_lighting"],
+      formats:"CSV export · REST API · Hourly feed",
     },
     tourism: {
       abbr:"JTB", name:"Jamaica Tourism Board", color:"#FFD600", avail:"Available Now",
+      logo:"/img/agencies/jtb.png",
       problem:"Which tourist corridors are congested, and when?",
-      sampleHeaders:["Time","Total","Buses","Peak?","Lighting"],
-      sampleRows:[
-        ["09:00","312","14","Yes","Day"],
-        ["10:00","436","19","Yes","Day"],
-        ["11:00","381","12","No","Day"],
-        ["14:00","278","9","No","Day"],
-        ["16:00","449","22","Yes","Day"],
-      ],
-      fields:["timestamp","total_vehicles","bus_count","is_peak","scene_lighting","scene_weather"],
-      formats:"Dashboard API · CSV · Periodic briefing",
+      desc:"Full vehicle count log at monitored corridor junctions. Includes bus frequency data, total volume by hour, and scene conditions. Identifies peak congestion windows and tour bus movement patterns — ready for corridor planning and visitor mobility reports.",
+      fields:["captured_at","vehicle_class","direction","confidence","scene_lighting","scene_weather"],
+      formats:"CSV export · Dashboard API · Periodic briefing",
     },
     insurance: {
-      abbr:"INS", name:"Insurance Industry", color:"#66BB6A", avail:"In Development",
+      abbr:"FSC", name:"Financial Services Commission", color:"#66BB6A", avail:"Available Now",
+      logo:"/img/agencies/ins.png",
       problem:"Where and when do high-risk traffic conditions occur?",
-      sampleHeaders:["Hour","Total","Heavy","Heavy %","Risk Level"],
-      sampleRows:[
-        ["07:00","372","60","16.1%","Moderate"],
-        ["08:00","579","92","15.9%","High"],
-        ["10:00","436","112","25.7%","Very High"],
-        ["13:00","298","44","14.8%","Moderate"],
-        ["17:00","521","88","16.9%","High"],
-      ],
-      fields:["hour","total_vehicles","heavy_count","heavy_pct","risk_level","peak_intensity"],
-      formats:"Risk score API · CSV · Corridor reports",
+      desc:"Heavy vehicle proportion log — trucks and buses by hour, with total volume context. Enables corridor risk scoring based on actual vehicle mix and density. Scene conditions (weather, lighting) included for environmental risk factors. Exportable for actuarial model input.",
+      fields:["captured_at","vehicle_class","direction","confidence","scene_lighting","scene_weather","dwell_frames"],
+      formats:"CSV export · Risk score API · Corridor reports",
     },
     ooh: {
-      abbr:"OOH", name:"Out-of-Home Advertising", color:"#00D4FF", avail:"Available Now",
+      abbr:"OOH", name:"Out-of-Home Advertising", color:"#22C55E", avail:"Available Now",
+      logo:null,
       problem:"How many vehicles actually passed your billboard today?",
-      sampleHeaders:["Date","Hour","Impressions","Cars","Trucks","Buses","CPM Est."],
-      sampleRows:[
-        ["2026-03-03","07:00","372","266","42","18","$3.72"],
-        ["2026-03-03","08:00","579","414","68","24","$5.79"],
-        ["2026-03-03","09:00","514","372","57","19","$5.14"],
-        ["2026-03-03","10:00","436","312","81","31","$4.36"],
-        ["2026-03-03","11:00","476","342","49","22","$4.76"],
-      ],
-      fields:["timestamp","impressions","car_count","truck_count","bus_count","dwell_time_avg","cpm_estimate"],
-      formats:"Daily impression report · API · Monthly audit CSV",
+      desc:"AI-verified vehicle pass count at this camera location — every crossing logged with timestamp, vehicle class, and direction. Total daily impressions are the actual number of vehicles that passed the line, broken down by car, truck, bus, and motorcycle. Auditable and exportable.",
+      fields:["captured_at","vehicle_class","direction","confidence","scene_lighting","track_id"],
+      formats:"Daily impression report · CSV export · API",
     },
   };
 
@@ -2359,59 +2323,89 @@ function _connectUserWs(session) {
     const d = AGENCY_DATA[agency];
     if (!d || !agBackdrop || !agContent) return;
 
-    const isLive = d.avail === "Available Now";
-    const badgeCls  = isLive ? "gov-modal-badge--live" : "gov-modal-badge--dev";
-    const badgeText = isLive ? "● Available Now" : "⊙ In Development";
-
-    const tableRows = d.sampleRows.map(r =>
-      `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`
-    ).join("");
-
-    const fields = d.fields.map(f => `<span class="gov-modal-field">${f}</span>`).join("");
+    const isLive   = d.avail === "Available Now";
+    const badgeCls = isLive ? "gov-modal-badge--live" : "gov-modal-badge--dev";
+    const badgeTxt = isLive ? "◈ Available Now" : "⊙ In Development";
+    const fields   = d.fields.map(f => `<span class="gov-modal-field">${f}</span>`).join("");
+    const logoHtml = d.logo
+      ? `<img src="${d.logo}" alt="${d.abbr}" style="height:28px;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7;margin-bottom:4px">`
+      : "";
 
     agContent.innerHTML = `
-      <div class="gov-modal-badge ${badgeCls}">${badgeText}</div>
+      <div class="gov-modal-badge ${badgeCls}">${badgeTxt}</div>
+      ${logoHtml}
       <div class="gov-modal-title">${d.abbr} — Data Package</div>
-      <div class="gov-modal-sub" style="color:${d.color};font-style:italic;margin-bottom:14px">"${d.problem}"</div>
+      <div class="gov-modal-sub" style="font-style:italic;color:${d.color}">"${d.problem}"</div>
 
-      <div class="gov-modal-section-head">SAMPLE DATA</div>
-      <table class="gov-modal-table">
-        <thead><tr>${d.sampleHeaders.map(h => `<th>${h}</th>`).join("")}</tr></thead>
-        <tbody>${tableRows}</tbody>
-      </table>
+      <div class="gov-modal-section-head">WHAT THIS DATA CONTAINS</div>
+      <div class="gov-modal-desc">${d.desc}</div>
 
-      <div class="gov-modal-section-head">DATA FIELDS INCLUDED</div>
+      <div class="gov-modal-section-head">DATA FIELDS</div>
       <div class="gov-modal-fields">${fields}</div>
-      <div style="font-family:'Inter',sans-serif;font-size:10px;color:var(--muted);margin-top:6px">Formats: ${d.formats}</div>
+      <div style="font-family:'Inter',sans-serif;font-size:10px;color:var(--dim);margin-top:6px">Formats: ${d.formats}</div>
 
-      <div class="gov-modal-section-head">REQUEST THIS DATA PACKAGE</div>
-      <form class="gov-modal-form" onsubmit="return false">
-        <input class="gov-modal-input" placeholder="Your name" id="ag-form-name">
-        <input class="gov-modal-input" placeholder="Agency / Organisation" id="ag-form-org">
-        <input class="gov-modal-input" type="email" placeholder="Work email" id="ag-form-email">
-        <textarea class="gov-modal-input gov-modal-textarea" placeholder="What are you trying to solve?" id="ag-form-use"></textarea>
-        <div style="display:flex;align-items:center;gap:12px">
-          <button class="gov-modal-send" onclick="window._agSendRequest('${agency}','${d.color}')">Send Request →</button>
-          <span class="gov-modal-success" id="ag-form-success">✓ Request sent — we'll be in touch shortly.</span>
-        </div>
-      </form>
+      <button class="gov-modal-dl-btn" id="ag-dl-btn" data-agency="${agency}">↓ Download CSV Data Package</button>
+      <div class="gov-modal-dl-success" id="ag-dl-success">✓ Download started — logged to your account</div>
+      <div class="gov-modal-note">Account required. Download is logged for audit. Data covers all available historical records.</div>
     `;
     agBackdrop.classList.remove("hidden");
+
+    // Wire download button
+    const dlBtn = el("ag-dl-btn");
+    if (dlBtn) dlBtn.addEventListener("click", () => _downloadAgencyPackage(agency, dlBtn));
   }
 
-  window._agSendRequest = function(agency, color) {
-    const name  = el("ag-form-name")?.value.trim();
-    const org   = el("ag-form-org")?.value.trim();
-    const email = el("ag-form-email")?.value.trim();
-    const use   = el("ag-form-use")?.value.trim();
-    if (!name || !email) { el("ag-form-name")?.focus(); return; }
-    // Open mailto as the action (no server endpoint needed)
-    const subject = encodeURIComponent(`Data Package Request — ${agency.toUpperCase()}`);
-    const body    = encodeURIComponent(`Name: ${name}\nOrganisation: ${org}\nEmail: ${email}\n\nUse case:\n${use}`);
-    window.open(`mailto:data@whitelinez.com?subject=${subject}&body=${body}`, "_blank");
-    const s = el("ag-form-success");
-    if (s) { s.style.display = "block"; }
-  };
+  async function _downloadAgencyPackage(agency, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Checking auth…"; }
+    try {
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) {
+        // Not logged in — show login prompt
+        if (agContent) {
+          const loginDiv = document.createElement("div");
+          loginDiv.style.cssText = "margin-top:14px;text-align:center";
+          loginDiv.innerHTML = `
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:12px">
+              Sign in to download this data package.
+            </div>
+            <button class="gov-modal-login-btn" onclick="window.Auth?.openLoginModal?.();document.getElementById('gov-agency-modal-backdrop').classList.add('hidden')">
+              Login to Download →
+            </button>`;
+          if (btn) btn.replaceWith(loginDiv);
+        }
+        return;
+      }
+
+      // Log the download to Supabase
+      window.sb.from("agency_downloads").insert({
+        user_id:      session.user.id,
+        user_email:   session.user.email,
+        agency,
+      }).then(() => {});
+
+      // Trigger CSV download via fetch + blob
+      const today = new Date().toISOString().split("T")[0];
+      const url   = `/api/analytics/export?camera_id=${_camId || ""}&from=2024-01-01&to=${today}`;
+      const resp  = await fetch(url, { headers: { Authorization: `Bearer ${session.access_token}` } });
+      if (!resp.ok) throw new Error(`Export API returned ${resp.status}`);
+
+      const blob = await resp.blob();
+      const a    = document.createElement("a");
+      a.href     = URL.createObjectURL(blob);
+      a.download = `whitelinez-traffic-${agency}-${today}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+
+      const s = el("ag-dl-success");
+      if (s) s.classList.add("visible");
+      if (btn) { btn.textContent = "↓ Downloaded"; btn.disabled = false; }
+    } catch (err) {
+      console.error("[agency-dl]", err);
+      if (btn) { btn.textContent = "↓ Download CSV Data Package"; btn.disabled = false; }
+    }
+  }
 
   if (agClose) agClose.addEventListener("click", () => agBackdrop.classList.add("hidden"));
   if (agBackdrop) agBackdrop.addEventListener("click", (e) => {
