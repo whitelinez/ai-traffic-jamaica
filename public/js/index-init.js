@@ -1054,6 +1054,7 @@ function _connectUserWs(session) {
   let _lastPayload  = null;   // most recent count:update payload
   let _analyticsData      = null;  // most recent analytics API response
   let _govAnalyticsZones  = [];    // camera_zones for current camera (entry/exit/speed/etc)
+  let _govExitTotal       = null;  // total exit completions from turnings matrix (Traffic Intelligence)
   let _govHours     = 24;
   let _govFrom      = null;   // ISO date string or null
   let _govTo        = null;   // ISO date string or null
@@ -1487,6 +1488,7 @@ function _connectUserWs(session) {
     _stopZoneCanvas();
     _moveOverlaysBack();
     _govAnalyticsZones = [];
+    _govExitTotal      = null;
 
     // Return video to stream-wrapper
     const wrapper = document.querySelector(".stream-wrapper");
@@ -1516,13 +1518,15 @@ function _connectUserWs(session) {
       txt("gov-kpi-total", total.toLocaleString());
       txt("gov-kpi-in",  p.count_in  != null ? Number(p.count_in).toLocaleString()  : "—");
     }
-    // Outbound: always prefer live WS value — DB table may be empty
-    txt("gov-kpi-out", p.count_out != null ? Number(p.count_out).toLocaleString() : "—");
+    // Outbound: use Traffic Intelligence turnings total once loaded; fall back to WS count_line value
+    if (_govExitTotal === null) {
+      txt("gov-kpi-out", p.count_out != null ? Number(p.count_out).toLocaleString() : "—");
+      txt("gov-outbound", p.count_out != null ? Number(p.count_out).toLocaleString() : "—");
+    }
     // gov-kpi-peak is filled from analytics data
 
     // Flow sidebar
     txt("gov-inbound",  p.count_in  != null ? Number(p.count_in).toLocaleString()  : "—");
-    txt("gov-outbound", p.count_out != null ? Number(p.count_out).toLocaleString() : "—");
 
     // Scene
     const scene = [p.scene_lighting, p.scene_weather].filter(Boolean).join(" / ") || p.scene_lighting || "—";
@@ -1877,6 +1881,15 @@ function _connectUserWs(session) {
       _buildQueueChart(data.queue_series || []);
       _buildSpeedChart(data);
       _renderTurningMovements(data);
+      // Wire Traffic Intelligence turnings total → Outbound KPI
+      // Every row in the matrix is an Entry→Exit completion — sum = real outbound count
+      const exitTotal = data.period?.total_movements ||
+        (data.top_movements || []).reduce((s, m) => s + (m.total || 0), 0);
+      if (exitTotal > 0) {
+        _govExitTotal = exitTotal;
+        txt("gov-kpi-out", exitTotal.toLocaleString());
+        txt("gov-outbound", exitTotal.toLocaleString());
+      }
     } catch (err) {
       console.warn("[GovAnalytics] Zone analytics failed:", err);
       if (tBody) tBody.innerHTML = `<p class="gov-turnings-empty">Failed to load zone analytics.</p>`;
