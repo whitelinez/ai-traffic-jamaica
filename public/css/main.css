@@ -7915,27 +7915,6 @@ button {
 
 /* ── Gov Analytics Overlay ──────────────────────────────────────────────────── */
 
-/* Open button (floating on stream) */
-.gov-open-btn {
-  position: absolute;
-  bottom: 60px;
-  left: 10px;
-  z-index: 30;
-  background: rgba(8,12,20,0.82);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  padding: 5px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  transition: background 0.15s;
-}
-.gov-open-btn:hover { background: rgba(255,184,0,0.12); }
-
 /* Overlay container */
 .gov-overlay {
   position: fixed;

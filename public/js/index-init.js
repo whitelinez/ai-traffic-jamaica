@@ -674,7 +674,7 @@ function _connectUserWs(session) {
 // ── Gov Analytics Overlay ──────────────────────────────────────────────────────
 (function initGovOverlay() {
   const overlay    = document.getElementById("gov-overlay");
-  const openBtn    = document.getElementById("gov-open-btn");
+  const openBtn    = document.getElementById("btn-gov-mode");
   const closeBtn   = document.getElementById("btn-close-gov");
   const exportBtn  = document.getElementById("gov-export-btn");
   if (!overlay) return;
@@ -709,12 +709,11 @@ function _connectUserWs(session) {
     const lighting = payload.scene_lighting || "—";
     const weather  = payload.scene_weather  || "—";
     _setText(el("gov-scene"), `${lighting} / ${weather}`);
-    _setText(el("gov-veh-car"),   (breakdown.car   ?? "—").toLocaleString());
-    _setText(el("gov-veh-truck"), (breakdown.truck ?? "—").toLocaleString());
-    _setText(el("gov-veh-bus"),   (breakdown.bus   ?? "—").toLocaleString());
-    _setText(el("gov-veh-moto"),  (breakdown.motorcycle ?? "—").toLocaleString());
-    _setText(el("gov-sys-fps"),   payload.fps ? `${Number(payload.fps).toFixed(1)} fps` : "—");
-    _setText(el("gov-sys-burst"), payload.burst_mode_active ? "ACTIVE" : "off");
+    _setText(el("gov-cars"),   (breakdown.car   ?? "—").toLocaleString());
+    _setText(el("gov-trucks"), (breakdown.truck ?? "—").toLocaleString());
+    _setText(el("gov-buses"),  (breakdown.bus   ?? "—").toLocaleString());
+    _setText(el("gov-motos"),  (breakdown.motorcycle ?? "—").toLocaleString());
+    _setText(el("gov-model"),  payload.fps ? `YOLOv8 · ${Number(payload.fps).toFixed(1)} fps` : "YOLOv8");
     // Update donut live
     if (_donutChart && breakdown) {
       const vals = [
@@ -745,6 +744,8 @@ function _connectUserWs(session) {
         _govCamName = data?.ipcam_alias || "Camera 1";
         const subEl = document.getElementById("gov-cam-subtitle");
         if (subEl) subEl.textContent = `Live Feed · ${_govCamName}`;
+        const nameEl = document.getElementById("gov-cam-name");
+        if (nameEl) nameEl.textContent = _govCamName;
       } catch {}
     }
 
