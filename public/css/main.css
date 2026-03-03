@@ -10034,6 +10034,46 @@ button {
 .gov-turning-count    { min-width: 40px; text-align: right; font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; }
 
 /* =====================================================
+   ANALYTICS PANEL — WHITE THEME
+   Remap all dark CSS vars + patch hardcoded dark values
+   ===================================================== */
+
+#gov-panel-analytics {
+  background: #f1f5f9;
+  /* Remap dark design tokens to light equivalents */
+  --bg2:    #ffffff;
+  --bg3:    #f8fafc;
+  --border: #e2e8f0;
+  --text:   #0f1c2e;
+  --muted:  #64748b;
+  --dim:    #94a3b8;
+  --cyan:   #0284c7;
+  --accent: #d97706;
+  --green:  #16a34a;
+}
+/* Loading progress overlay */
+#gov-panel-analytics .gov-an-progress {
+  background: linear-gradient(135deg,rgba(248,250,252,0.97),rgba(241,245,249,0.97));
+  border-bottom-color: #e2e8f0;
+}
+#gov-panel-analytics .gov-an-progress-bar-wrap { background: rgba(0,0,0,0.08); }
+/* Zones bar */
+#gov-panel-analytics .gov-zones-bar { background: #ffffff; }
+/* Date picker icon — remove invert on white bg */
+#gov-panel-analytics .gov-date-input::-webkit-calendar-picker-indicator { filter: none; opacity: 0.5; }
+/* Period-pill active state */
+#gov-panel-analytics .gov-pill.active { background: rgba(2,132,199,0.08); }
+/* Feed strip tags */
+#gov-panel-analytics .gov-an-ftag--detect { background: rgba(2,132,199,0.08); color: #0284c7; border-color: rgba(2,132,199,0.25); }
+#gov-panel-analytics .gov-an-ftag--zone   { background: rgba(22,163,74,0.08);  color: #16a34a; border-color: rgba(22,163,74,0.25); }
+/* Crossings table row borders (hardcoded dark navy → light) */
+#gov-panel-analytics .gov-crossings-table td { border-bottom-color: #e2e8f0; }
+/* Moto yellow → readable amber on white */
+#gov-panel-analytics .gov-td-moto { color: #b45309; }
+/* Video slot: keep black letterbox behind video */
+#gov-panel-analytics .gov-an-video-slot { background: #000; }
+
+/* =====================================================
    AGENCIES PAGE — MICROANALYTICS-STYLE REDESIGN
    Light cards on dark panel background
    ===================================================== */
