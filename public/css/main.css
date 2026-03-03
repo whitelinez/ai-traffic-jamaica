@@ -10074,6 +10074,46 @@ button {
 #gov-panel-analytics .gov-an-video-slot { background: #000; }
 
 /* =====================================================
+   LIVE PANEL — WHITE THEME
+   ===================================================== */
+
+#gov-panel-live {
+  background: #f1f5f9;
+  --bg2:    #ffffff;
+  --bg3:    #f8fafc;
+  --border: #e2e8f0;
+  --text:   #0f1c2e;
+  --muted:  #64748b;
+  --dim:    #94a3b8;
+  --cyan:   #0284c7;
+  --accent: #d97706;
+  --green:  #16a34a;
+}
+/* Hardcoded dark values inside live panel */
+#gov-panel-live .gov-cls-bar-wrap   { background: #e2e8f0; }
+#gov-panel-live .gov-sys-row        { border-bottom-color: #e2e8f0; }
+#gov-panel-live .gov-scene-badge    { background: rgba(2,132,199,0.08); border-color: rgba(2,132,199,0.2); color: #0284c7; }
+#gov-panel-live .gov-video-slot     { background: #000; }
+
+/* =====================================================
+   EXPORT PANEL — WHITE THEME
+   ===================================================== */
+
+#gov-panel-export {
+  background: #f1f5f9;
+  --bg2:    #ffffff;
+  --bg3:    #f8fafc;
+  --border: #e2e8f0;
+  --text:   #0f1c2e;
+  --muted:  #64748b;
+  --dim:    #94a3b8;
+  --cyan:   #0284c7;
+  --accent: #d97706;
+}
+/* Fix hardcoded dark color-scheme on date inputs */
+#gov-panel-export .gov-date-input { color-scheme: light; }
+
+/* =====================================================
    AGENCIES PAGE — MICROANALYTICS-STYLE REDESIGN
    Light cards on dark panel background
    ===================================================== */
