@@ -1333,19 +1333,22 @@ function _connectUserWs(session) {
 
     _pl.show();
     _pl.set(0, "Initialising…");
+    await new Promise(r => setTimeout(r, 300));
 
     // Step 1 — fire-and-forget zone reload (best-effort, must not block)
-    _pl.set(10, "Loading zone data…");
+    _pl.set(15, "Loading zone data…");
     try { window.DetectionOverlay?.forceReloadZones?.(); } catch {}
+    await new Promise(r => setTimeout(r, 350));
     _pl.set(35, "Zone data ready");
 
     // Step 2 — load Chart.js (5s timeout so a slow CDN never blocks the overlay)
-    _pl.set(40, "Loading chart engine…");
+    _pl.set(45, "Loading chart engine…");
     await new Promise(resolve => {
       _loadChartJs(resolve);
       setTimeout(resolve, 5000); // fallback — charts will init lazily if needed
     });
     _pl.set(65, "Chart engine ready");
+    await new Promise(r => setTimeout(r, 300));
 
     // Default to today's data if no date range has been chosen yet
     if (!_govFrom) {
@@ -1355,7 +1358,7 @@ function _connectUserWs(session) {
     }
 
     // Step 3 — pre-fetch analytics data + camera id
-    _pl.set(70, "Fetching analytics data…");
+    _pl.set(72, "Fetching analytics data…");
     if (!_camId && window.sb) {
       try {
         const { data } = await window.sb.from("cameras")
@@ -1367,9 +1370,9 @@ function _connectUserWs(session) {
     try { await _prefetchAnalytics(); } catch {}
     _pl.set(95, "Almost ready…");
 
-    await new Promise(r => setTimeout(r, 250)); // let final bar animation play
+    await new Promise(r => setTimeout(r, 500));
     _pl.set(100, "Opening analytics…");
-    await new Promise(r => setTimeout(r, 180));
+    await new Promise(r => setTimeout(r, 350));
 
     _pl.hide();
     _activeTab = "analytics"; // open directly on analytics tab
@@ -1477,29 +1480,10 @@ function _connectUserWs(session) {
     if (_activeTab === "analytics") {
       _moveVideoGroup("gov-an-video-slot");
       _startZoneCanvas();
-      // Charts already loaded by preloader — just start crossings + zone analytics
-      if (window.Chart && _analyticsData) {
-        _initDonut();
-        _buildTrendChart(_analyticsData.rows || []);
-        _buildClsChart(_analyticsData.summary || {});
-        _buildPeakChart(_analyticsData.rows || []);
-        _populateAgencyMetrics(_analyticsData.summary || {});
-        _dbKpisLoaded = true;
-        const rows = _analyticsData.rows || [];
-        const summary = _analyticsData.summary || {};
-        const totalPeriod = summary.period_total ?? rows.reduce((a, r) => a + (r.total || 0), 0);
-        const totalIn  = rows.reduce((a, r) => a + (r.in  || 0), 0);
-        const totalOut = rows.reduce((a, r) => a + (r.out || 0), 0);
-        txt("gov-kpi-total", Number(totalPeriod).toLocaleString());
-        if (totalIn  > 0) txt("gov-kpi-in",    totalIn.toLocaleString());
-        if (totalIn  > 0) txt("gov-inbound",   totalIn.toLocaleString());
-        if (totalOut > 0) { txt("gov-kpi-out", totalOut.toLocaleString()); txt("gov-outbound", totalOut.toLocaleString()); }
-        _updatePeakKpiFromChart();
-        _loadZoneAnalytics();
-      } else {
-        // Fallback: run full chart init
-        _loadChartJs(() => { _initDonut(); _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()); });
-      }
+      // Charts already loaded by preloader — build from prefetched data then populate everything
+      _initDonut();
+      _loadChartJs(() => _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()));
+      _loadZoneAnalytics();
     } else {
       _moveVideoGroup("gov-video-slot");
       _startZoneCanvas(); // draw admin zones over live feed
