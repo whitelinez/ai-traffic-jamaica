@@ -1186,7 +1186,11 @@ function _connectUserWs(session) {
     ctx.clearRect(0, 0, video.clientWidth, video.clientHeight);
 
     const zones = window.DetectionOverlay?.getZones?.() || [];
-    if (!zones.length) return;
+    // If zones haven't loaded yet, trigger a fetch and wait for next frame
+    if (!zones.length) {
+      window.DetectionOverlay?.reloadZones?.();
+      return;
+    }
 
     ctx.save();
     const now = Date.now();
