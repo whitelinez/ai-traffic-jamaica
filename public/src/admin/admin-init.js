@@ -2619,6 +2619,24 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("aud-refresh-btn")?.addEventListener("click", () => loadAudiencePanel(true));
   document.getElementById("aud-source-filter")?.addEventListener("change", () => loadAudiencePanel(false));
   let _mappingActive = false;
+  let _zonesActive = false;
+
+  // Wire Map & Zones in-panel tab switching
+  document.querySelectorAll(".mz-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.mzTab;
+      document.querySelectorAll(".mz-tab").forEach((b) => b.classList.toggle("active", b === btn));
+      document.querySelectorAll(".mz-pane").forEach((p) => p.classList.toggle("active", p.id === `mz-pane-${target}`));
+      if (target === "mapping") {
+        if (_zonesActive) { AdminZones?.stop?.(); _zonesActive = false; }
+        if (!_mappingActive) { _mappingActive = true; AdminMapping?.start(activeCameraId); }
+      } else if (target === "analytics-zones") {
+        if (_mappingActive) { AdminMapping?.stop?.(); _mappingActive = false; }
+        if (!_zonesActive) { _zonesActive = true; AdminZones?.init(); AdminZones?.start(activeCameraId); }
+      }
+    });
+  });
+
   window.addEventListener("admin:panel-change", (e) => {
     const panel = String(e?.detail?.panel || "");
     if (panel === "audience") loadAudiencePanel(true);
@@ -2628,18 +2646,16 @@ document.addEventListener("DOMContentLoaded", () => {
       // Ensure zone editor renders when Detection panel first opens
       setTimeout(() => AdminLine?.refresh?.(), 80);
     }
-    if (panel === "analytics-zones") {
-      AdminZones?.init();
-      AdminZones?.start(activeCameraId);
-    }
-    if (panel === "mapping") {
+    if (panel === "map-zones") {
+      // Default to Scene Map tab on first open; start its module
       if (!_mappingActive) {
         _mappingActive = true;
         AdminMapping?.start(activeCameraId);
       }
-    } else if (_mappingActive) {
-      _mappingActive = false;
-      AdminMapping?.stop();
+    } else {
+      // Leaving map-zones — stop whichever sub-module was running
+      if (_mappingActive) { AdminMapping?.stop(); _mappingActive = false; }
+      if (_zonesActive)   { AdminZones?.stop?.(); _zonesActive = false; }
     }
   });
 
@@ -2705,7 +2721,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (_initPanel === "banners") { AdminBanners?.init(); AdminBanners?.load(); }
     if (_initPanel === "cameras") { AdminStreams?.init(); }
     if (_initPanel === "model")   { AdminModel?.init(); AdminModel?.start(); }
-    if (_initPanel === "mapping") { _mappingActive = true; AdminMapping?.start(activeCameraId); }
+    if (_initPanel === "map-zones") { _mappingActive = true; AdminMapping?.start(activeCameraId); }
   }
   AdminModel?.init();
 

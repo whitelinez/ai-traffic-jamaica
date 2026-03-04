@@ -2630,3 +2630,27 @@
 }
 .abn-msg-ok  { color: #22c55e; }
 .abn-msg-err { color: #ef4444; }
+
+/* ── Map & Zones — in-panel tab bar ──────────────────────────── */
+.mz-tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,0.08));
+}
+.mz-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 16px;
+  margin-bottom: -1px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted, rgba(160,190,215,0.6));
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.mz-tab:hover  { color: var(--text, #e0e8f0); }
+.mz-tab.active { color: var(--accent, #FFB800); border-bottom-color: var(--accent, #FFB800); }
+.mz-pane       { display: none; }
+.mz-pane.active{ display: block; }
