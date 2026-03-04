@@ -1,4 +1,5 @@
 import { sb } from '../core/supabase.js';
+import { getContentBounds, contentToPixel, pixelToContent } from '../utils/coord-utils.js';
 
 /**
  * admin-line.js — Dual zone canvas editor for admin.
