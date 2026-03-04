@@ -954,20 +954,6 @@ function _connectUserWs(session) {
     }
   }, { passive: true });
 
-  // ── Swipe down on sidebar → collapse ───────────────────────────────────
-  let _sidebarTouchStartY = 0;
-  sidebar.addEventListener("touchstart", e => {
-    _sidebarTouchStartY = e.touches[0].clientY;
-  }, { passive: true });
-
-  sidebar.addEventListener("touchend", e => {
-    if (!isMobile()) return;
-    const delta = e.changedTouches[0].clientY - _sidebarTouchStartY;
-    if (delta > 55 && sidebar.classList.contains("expanded")) {
-      collapse();
-      tabBtns.forEach(b => b.classList.remove("active"));
-    }
-  }, { passive: true });
 
   // ── Visual viewport — keyboard detection for chat ────────────────────────
   if ("visualViewport" in window) {
