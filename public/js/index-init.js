@@ -469,6 +469,8 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
     Activity.loadLeaderboard(_lbWindow);
   });
   el("lb-refresh")?.addEventListener("click", () => {
+    // Manual refresh — bypass cache so user always gets fresh data
+    window.AppCache?.invalidate("lb:");
     Activity.loadLeaderboard(_lbWindow);
   });
 
@@ -486,9 +488,12 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
   if (window.sb) {
     window.sb.channel("site-heartbeat")
       .on("postgres_changes", { event: "*", schema: "public", table: "bet_rounds" }, () => {
+        // Real DB change — bust round cache so loadMarkets() fetches fresh data
+        window.AppCache?.invalidate("round:");
         Markets.loadMarkets();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "round_sessions" }, () => {
+        window.AppCache?.invalidate("round:");
         Markets.loadMarkets();
         // Re-poll session state in banners (triggers play/default tile swap)
         if (window.Banners) window.Banners.show();
@@ -530,6 +535,8 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
   window.addEventListener("bet:resolved", (e) => {
     LiveBet.onBetResolved(e.detail);
     refreshNavBalance();
+    // Scores changed — bust leaderboard cache so next open shows fresh data
+    window.AppCache?.invalidate("lb:");
   });
 
   // ── Header cam chip — initial set from loaded camera list ──────────────────

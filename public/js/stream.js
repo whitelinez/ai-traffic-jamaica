@@ -34,9 +34,15 @@ const Stream = (() => {
       currentAlias = String(opts.alias || "").trim();
     }
     clearRetry();
-    const res = await fetch("/api/token");
-    if (!res.ok) throw new Error("Failed to get stream token");
-    const { wss_url, token } = await res.json();
+    // Re-use token if counter.js already fetched it in the same session.
+    let tokenData = window.AppCache?.get("ws:token");
+    if (!tokenData) {
+      const res = await fetch("/api/token");
+      if (!res.ok) throw new Error("Failed to get stream token");
+      tokenData = await res.json();
+      window.AppCache?.set("ws:token", tokenData, 4 * 60 * 1000);
+    }
+    const { wss_url, token } = tokenData;
 
     // Share token with other modules (counter.js etc.) via window.
     // wss_url is kept in module scope only — not exposed on window.

@@ -76,6 +76,12 @@ const Markets = (() => {
   }
 
   async function _fetchPreferredRound() {
+    // 30-second cache — eliminates redundant queries on heartbeat bursts.
+    // Wrapped in { v } so a null result (no round) is also cached.
+    // Invalidated by AppCache.invalidate("round:") before each heartbeat loadMarkets().
+    const cached = window.AppCache?.get("round:preferred");
+    if (cached !== null) return cached.v;
+
     const nowIso = new Date().toISOString();
     const recentLockedIso = new Date(Date.now() - 2 * 60 * 1000).toISOString();
 
@@ -88,7 +94,10 @@ const Markets = (() => {
       .order("opens_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (!openErr && openRound) return openRound;
+    if (!openErr && openRound) {
+      window.AppCache?.set("round:preferred", { v: openRound }, 30_000);
+      return openRound;
+    }
 
     // 2) Then a recently locked round (shows "resolving" while settlement runs).
     const { data: lockedRound, error: lockedErr } = await window.sb
@@ -99,7 +108,10 @@ const Markets = (() => {
       .order("ends_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (!lockedErr && lockedRound) return lockedRound;
+    if (!lockedErr && lockedRound) {
+      window.AppCache?.set("round:preferred", { v: lockedRound }, 30_000);
+      return lockedRound;
+    }
 
     // 3) Finally, next upcoming round.
     const { data: upcomingRound, error: upcomingErr } = await window.sb
@@ -109,8 +121,13 @@ const Markets = (() => {
       .order("opens_at", { ascending: true })
       .limit(1)
       .maybeSingle();
-    if (!upcomingErr && upcomingRound) return upcomingRound;
+    if (!upcomingErr && upcomingRound) {
+      window.AppCache?.set("round:preferred", { v: upcomingRound }, 30_000);
+      return upcomingRound;
+    }
 
+    // No round found — cache null too so rapid retries don't hammer Supabase
+    window.AppCache?.set("round:preferred", { v: null }, 15_000);
     return null;
   }
 

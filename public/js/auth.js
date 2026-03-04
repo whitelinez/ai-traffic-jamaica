@@ -19,6 +19,7 @@ const Auth = (() => {
   async function logout() {
     const { error } = await window.sb.auth.signOut();
     if (error) throw error;
+    window.AppCache?.clear(); // wipe all cached data before redirect
     window.location.href = "/";
   }
 

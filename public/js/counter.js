@@ -104,9 +104,16 @@ const Counter = (() => {
 
     let token, wssUrl;
     try {
-      const res = await fetch("/api/token");
-      if (!res.ok) throw new Error(`token fetch ${res.status}`);
-      ({ token, wss_url: wssUrl } = await res.json());
+      // Re-use token if it was fetched recently (stream.js may have fetched it first).
+      // 4-min TTL aligns with backend token expiry; clears on WS auth failure below.
+      let tokenData = window.AppCache?.get("ws:token");
+      if (!tokenData) {
+        const res = await fetch("/api/token");
+        if (!res.ok) throw new Error(`token fetch ${res.status}`);
+        tokenData = await res.json();
+        window.AppCache?.set("ws:token", tokenData, 4 * 60 * 1000);
+      }
+      ({ token, wss_url: wssUrl } = tokenData);
       window._wsToken = token;
       // wssUrl is module-scoped — not written to window to avoid casual exposure.
     } catch (err) {
@@ -144,8 +151,10 @@ const Counter = (() => {
 
     ws.onerror = () => setStatus(false);
 
-    ws.onclose = () => {
+    ws.onclose = (e) => {
       setStatus(false);
+      // 4001/4003 = auth failure — clear cached token so next connect fetches a fresh one
+      if (e.code === 4001 || e.code === 4003) window.AppCache?.invalidate("ws:token");
       reconnectTimer = setTimeout(() => {
         backoff = Math.min(backoff * 2, MAX_BACKOFF);
         connect();

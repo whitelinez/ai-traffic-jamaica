@@ -53,6 +53,16 @@ const Activity = (() => {
   async function loadLeaderboard(windowSec = 60) {
     const container = document.getElementById("leaderboard-list");
     if (!container) return;
+
+    // 30-second cache per window duration — leaderboard data changes infrequently.
+    // Invalidated by AppCache.invalidate("lb:") on bet:resolved or manual refresh.
+    const cacheKey = `lb:${windowSec}`;
+    const cachedHtml = window.AppCache?.get(cacheKey);
+    if (cachedHtml !== null) {
+      container.innerHTML = cachedHtml;
+      return;
+    }
+
     container.innerHTML = `<div class="lb-loading"><span class="skeleton" style="height:44px;border-radius:8px;display:block;margin-bottom:6px;"></span><span class="skeleton" style="height:44px;border-radius:8px;display:block;margin-bottom:6px;"></span><span class="skeleton" style="height:44px;border-radius:8px;display:block;"></span></div>`;
 
     try {
@@ -68,6 +78,7 @@ const Activity = (() => {
 
       if (!bets?.length) {
         container.innerHTML = `<div class="empty-state">No ${_winLabel(windowSec)} scores yet.<br><span>Be the first to guess in this window.</span></div>`;
+        window.AppCache?.set(cacheKey, container.innerHTML, 30_000);
         return;
       }
 
@@ -120,6 +131,9 @@ const Activity = (() => {
             <span class="lb-balance">${stats.totalPts.toLocaleString()} pts</span>
           </div>`;
       }).join("");
+
+      // Cache the rendered HTML — cheaper than re-fetching + re-aggregating
+      window.AppCache?.set(cacheKey, container.innerHTML, 30_000);
 
     } catch (e) {
       console.error("[Activity] Leaderboard load failed:", e);
