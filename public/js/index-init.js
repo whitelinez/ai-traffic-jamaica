@@ -1915,15 +1915,12 @@ function _connectUserWs(session) {
       _buildSpeedChart(data);
       _renderTurningMovements(data);
 
-      // ── Overwrite KPIs with zone-based (Traffic Intelligence) values ──────
+      // ── Zone intelligence — queue, speed, class, traffic flow ──────────────
+      // NOTE: gov-sum-total / gov-kpi-total / gov-hdr-total are NOT overwritten
+      // here. turning_movements logs one row per detection frame (not per vehicle),
+      // so total_movements is inflated and unreliable as a vehicle count.
+      // Those KPIs stay sourced from vehicle_crossings via _initAllCharts().
       const tm = data;
-
-      // Period total = zone-tracked movements (more accurate than count_line)
-      if (tm.period?.total_movements > 0) {
-        txt("gov-sum-total",  Number(tm.period.total_movements).toLocaleString());
-        txt("gov-kpi-total",  Number(tm.period.total_movements).toLocaleString());
-        txt("gov-hdr-total",  Number(tm.period.total_movements).toLocaleString());
-      }
 
       // Queue depth
       if (tm.queue_summary?.avg != null) {
