@@ -9981,22 +9981,33 @@ button {
 .gov-an-sumcard--accent .gov-an-sumcard-val { color: var(--accent); }
 
 /* Recording since notice */
+/* Recording since notice */
 .gov-recording-notice {
-  display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap;
-  margin: 0 16px 4px; padding: 10px 14px;
-  background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px;
-  font-size: 12px; color: #92400e;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px;
+  margin: 0 16px 8px; padding: 8px 14px;
+  background: #ffffff; border: 1px solid #e2e8f0;
+  border-left: 3px solid #0284c7; border-radius: 0 6px 6px 0;
 }
 .gov-recording-notice.hidden { display: none; }
-.gov-rec-icon { font-size: 16px; line-height: 1; flex-shrink: 0; margin-top: 1px; }
-.gov-rec-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px; }
-.gov-rec-text strong { font-weight: 700; color: #78350f; }
-.gov-rec-muted { color: #b45309; }
-.gov-rec-milestones { display: flex; gap: 10px; flex-wrap: wrap; width: 100%; margin-top: 4px; }
-.gov-rec-milestone { font-size: 11px; font-family: "JetBrains Mono", monospace; }
-.gov-rec-milestone.reached { color: #16a34a; font-weight: 600; }
-.gov-rec-milestone.pending { color: #b45309; }
-.gov-rec-eta { font-size: 10px; opacity: 0.8; }
+.gov-rec-label {
+  font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 0.14em; color: #64748b; text-transform: uppercase; flex-shrink: 0;
+}
+.gov-rec-date {
+  font-family: "Rajdhani", "Archivo", sans-serif; font-size: 14px; font-weight: 700;
+  color: #0f1c2e; flex-shrink: 0;
+}
+.gov-rec-days {
+  font-family: "JetBrains Mono", monospace; font-size: 10px; color: #0284c7; font-weight: 600;
+}
+.gov-rec-milestones { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.gov-rec-milestone {
+  font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 600;
+  letter-spacing: 0.06em; padding: 2px 7px; border-radius: 3px; white-space: nowrap;
+}
+.gov-rec-milestone.reached { background: rgba(22,163,74,0.08); color: #16a34a; border: 1px solid rgba(22,163,74,0.25); }
+.gov-rec-milestone.pending { background: #f8fafc; color: #94a3b8; border: 1px solid #e2e8f0; }
+.gov-rec-eta { font-weight: 400; opacity: 0.8; }
 
 /* Analytics loading progress overlay */
 .gov-an-progress {

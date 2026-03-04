@@ -2150,27 +2150,23 @@ function _connectUserWs(session) {
     const daysSince = Math.floor((now - start) / (1000 * 60 * 60 * 24));
     const fmtDate = start.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
-    // Milestones
     const milestones = [
-      { days: 1,  label: "Day 1 — baseline established" },
-      { days: 7,  label: "7-day trend unlocked" },
-      { days: 30, label: "30-day historical view" },
+      { days: 1,  label: "DAY 1" },
+      { days: 7,  label: "7-DAY" },
+      { days: 30, label: "30-DAY" },
     ];
     const milestonesHtml = milestones.map(m => {
       const reached = daysSince >= m.days;
       const dateStr = new Date(start.getTime() + m.days * 864e5)
         .toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
-      return `<span class="gov-rec-milestone ${reached ? "reached" : "pending"}">
-        ${reached ? "✓" : "○"} ${m.label}${!reached ? ` <span class="gov-rec-eta">(${dateStr})</span>` : ""}
-      </span>`;
+      return `<span class="gov-rec-milestone ${reached ? "reached" : "pending"}">${m.label}${!reached ? ` <span class="gov-rec-eta">· ${dateStr}</span>` : ""}</span>`;
     }).join("");
 
+    const daysLabel = daysSince === 0 ? "DAY 1" : `${daysSince} DAY${daysSince !== 1 ? "S" : ""}`;
     el_.innerHTML = `
-      <span class="gov-rec-icon">📡</span>
-      <span class="gov-rec-text">
-        <strong>Data collection started ${fmtDate}</strong>
-        <span class="gov-rec-muted"> · ${daysSince === 0 ? "Day 1 — just getting started" : `${daysSince} day${daysSince !== 1 ? "s" : ""} of data`}</span>
-      </span>
+      <span class="gov-rec-label">RECORDING SINCE</span>
+      <span class="gov-rec-date">${fmtDate}</span>
+      <span class="gov-rec-days">${daysLabel}</span>
       <span class="gov-rec-milestones">${milestonesHtml}</span>`;
     el_.classList.remove("hidden");
   }
