@@ -1908,14 +1908,49 @@ function _connectUserWs(session) {
       _buildQueueChart(data.queue_series || []);
       _buildSpeedChart(data);
       _renderTurningMovements(data);
-      // Wire Traffic Intelligence turnings total → Outbound KPI
-      // Every row in the matrix is an Entry→Exit completion — sum = real outbound count
-      const exitTotal = data.period?.total_movements ||
-        (data.top_movements || []).reduce((s, m) => s + (m.total || 0), 0);
+
+      // ── Overwrite KPIs with zone-based (Traffic Intelligence) values ──────
+      const tm = data;
+
+      // Period total = zone-tracked movements (more accurate than count_line)
+      if (tm.period?.total_movements > 0) {
+        txt("gov-sum-total", Number(tm.period.total_movements).toLocaleString());
+        txt("gov-kpi-total", Number(tm.period.total_movements).toLocaleString());
+      }
+
+      // Queue depth
+      if (tm.queue_summary?.avg != null) {
+        txt("gov-sum-queue", Number(tm.queue_summary.avg).toFixed(1));
+      }
+
+      // Speed
+      if (tm.speed?.avg_kmh != null) {
+        txt("gov-sum-speed", `${Number(tm.speed.avg_kmh).toFixed(1)} km/h`);
+      }
+
+      // Heavy % from zone class_totals
+      if (tm.class_totals) {
+        const clsTotal = Object.values(tm.class_totals).reduce((s, v) => s + (v || 0), 0);
+        const heavy    = (tm.class_totals.truck || 0) + (tm.class_totals.bus || 0);
+        if (clsTotal > 0) txt("gov-sum-heavy", Math.round((heavy / clsTotal) * 100) + "%");
+      }
+
+      // Outbound KPI = total zone exit completions
+      const exitTotal = tm.period?.total_movements ||
+        (tm.top_movements || []).reduce((s, m) => s + (m.total || 0), 0);
       if (exitTotal > 0) {
         _govExitTotal = exitTotal;
-        txt("gov-kpi-out", exitTotal.toLocaleString());
+        txt("gov-kpi-out",  exitTotal.toLocaleString());
         txt("gov-outbound", exitTotal.toLocaleString());
+      }
+
+      // Class distribution chart — rebuild with zone class_totals
+      if (tm.class_totals && window.Chart) {
+        const clsTotal = Object.values(tm.class_totals).reduce((s, v) => s + (v || 0), 0);
+        const clsPct   = clsTotal > 0 ? Object.fromEntries(
+          Object.entries(tm.class_totals).map(([k, v]) => [k, Math.round((v || 0) / clsTotal * 100)])
+        ) : {};
+        _buildClsChart({ class_totals: tm.class_totals, class_pct: clsPct });
       }
     } catch (err) {
       console.warn("[GovAnalytics] Zone analytics failed:", err);
