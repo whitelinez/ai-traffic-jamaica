@@ -2175,3 +2175,458 @@
 
 .az-empty-msg { font-size: 11px; color: var(--am); padding: 6px 0; margin: 0; }
 .az-status-msg { font-size: 11px; min-height: 16px; }
+
+/* ============================================================
+   ADMIN — BANNERS PANEL REDESIGN (migrated from main.css)
+   ============================================================ */
+.abn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.abn-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 16px;
+  color: rgba(130,155,185,0.45);
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+.abn-card {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid rgba(0,212,255,0.1);
+  border-radius: 8px;
+  background: var(--bg2, #12161e);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.abn-card:hover {
+  border-color: rgba(0,212,255,0.22);
+  box-shadow: 0 0 14px rgba(0,212,255,0.05);
+}
+.abn-card-archived {
+  opacity: 0.55;
+}
+
+.abn-card-thumb {
+  width: 80px;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.3);
+  position: relative;
+  overflow: hidden;
+}
+.abn-thumb-img {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+}
+.abn-thumb-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(100,130,160,0.3);
+}
+
+.abn-card-body {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  justify-content: center;
+}
+
+.abn-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.abn-card-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: rgba(220,235,248,0.95);
+  flex: 1;
+  min-width: 0;
+}
+
+.abn-card-badges {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.abn-badge {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.abn-badge-active   { background: rgba(34,197,94,0.12);  color: #22c55e; }
+.abn-badge-archived { background: rgba(100,116,139,0.12); color: rgba(100,116,139,0.7); }
+.abn-badge-pin      { background: rgba(255,214,0,0.1); color: rgba(255,214,0,0.8); }
+
+.abn-card-preview {
+  font-size: 0.75rem;
+  color: rgba(150,180,210,0.55);
+  line-height: 1.45;
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.abn-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.abn-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: rgba(120,150,180,0.5);
+}
+
+.abn-card-actions {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(255,255,255,0.05);
+  flex-shrink: 0;
+}
+
+.abn-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(150,180,210,0.6);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.abn-action-btn:last-child { border-bottom: none; }
+.abn-action-btn:hover { background: rgba(0,212,255,0.06); color: #00d4ff; }
+.abn-action-btn-on  { color: rgba(255,214,0,0.7) !important; }
+.abn-action-btn-warn:hover { background: rgba(239,68,68,0.06) !important; color: #ef4444 !important; }
+
+/* ── Form card ── */
+.abn-form-card {
+  margin-top: 20px;
+  border: 1px solid rgba(0,212,255,0.12);
+  border-radius: 10px;
+  background: var(--bg2, #12161e);
+  overflow: hidden;
+}
+
+.abn-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 13px;
+  border-bottom: 1px solid rgba(0,212,255,0.08);
+  background: linear-gradient(135deg, rgba(0,212,255,0.03) 0%, transparent 60%);
+}
+.abn-form-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: rgba(200,225,245,0.9);
+  font-family: "JetBrains Mono", monospace;
+  letter-spacing: 0.03em;
+  color: rgba(0,212,255,0.75);
+}
+.abn-form-cancel-x {
+  background: transparent;
+  border: none;
+  color: rgba(130,155,185,0.5);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.12s, background 0.12s;
+}
+.abn-form-cancel-x:hover { color: rgba(220,235,248,0.8); background: rgba(255,255,255,0.06); }
+
+.abn-form-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Field group ── */
+.abn-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.abn-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: rgba(160,190,215,0.7);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.abn-label-hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: rgba(120,150,180,0.45);
+  font-size: 0.68rem;
+}
+.abn-char-count {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.65rem;
+  color: rgba(120,150,180,0.45);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.abn-input {
+  background: rgba(5,8,16,0.6);
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 0.85rem;
+  color: rgba(220,235,248,0.9);
+  width: 100%;
+  transition: border-color 0.14s, box-shadow 0.14s;
+}
+.abn-input:focus {
+  outline: none;
+  border-color: rgba(0,212,255,0.4);
+  box-shadow: 0 0 0 3px rgba(0,212,255,0.07);
+}
+
+/* ── Rich text editor ── */
+.rte-wrap {
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(5,8,16,0.6);
+  transition: border-color 0.14s, box-shadow 0.14s;
+}
+.rte-wrap:focus-within {
+  border-color: rgba(0,212,255,0.38);
+  box-shadow: 0 0 0 3px rgba(0,212,255,0.07);
+}
+
+.rte-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(0,212,255,0.08);
+  background: rgba(0,212,255,0.03);
+  flex-wrap: wrap;
+}
+
+.rte-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: rgba(160,190,215,0.6);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.rte-btn:hover { background: rgba(0,212,255,0.1); color: #00d4ff; }
+.rte-btn-active { background: rgba(0,212,255,0.12); color: #00d4ff; }
+.rte-italic { font-style: italic; }
+.rte-underline { text-decoration: underline; }
+
+.rte-sep {
+  width: 1px;
+  height: 18px;
+  background: rgba(255,255,255,0.07);
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+.rte-editor {
+  min-height: 120px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  color: rgba(210,230,248,0.88);
+  line-height: 1.6;
+  outline: none;
+}
+.rte-editor:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(120,150,180,0.4);
+  pointer-events: none;
+}
+.rte-editor b, .rte-editor strong { color: rgba(220,240,255,1); }
+.rte-editor i, .rte-editor em { color: rgba(160,210,240,0.9); }
+.rte-editor u { text-decoration-color: rgba(0,212,255,0.4); }
+.rte-editor ul, .rte-editor ol { padding-left: 20px; margin: 4px 0; }
+.rte-editor li { margin: 2px 0; }
+.rte-editor ul li::marker { color: rgba(0,212,255,0.55); }
+.rte-editor ol li::marker { color: rgba(0,212,255,0.55); }
+
+/* ── Image drop zone ── */
+.abn-dropzone {
+  display: block;
+  position: relative;
+  border: 1px dashed rgba(0,212,255,0.2);
+  border-radius: 6px;
+  background: rgba(5,8,16,0.4);
+  cursor: pointer;
+  transition: border-color 0.14s, background 0.14s;
+}
+.abn-dropzone:hover {
+  border-color: rgba(0,212,255,0.4);
+  background: rgba(0,212,255,0.04);
+}
+.abn-dropzone-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: rgba(120,155,185,0.5);
+  font-size: 0.78rem;
+  text-align: center;
+}
+.abn-dropzone-inner svg { opacity: 0.5; }
+.abn-dropzone-preview {
+  display: block;
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+.abn-file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+.abn-clear-img {
+  font-size: 0.72rem;
+  color: rgba(239,68,68,0.7);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 0;
+  margin-top: 2px;
+  align-self: flex-start;
+}
+.abn-clear-img:hover { color: #ef4444; }
+
+/* ── Toggles ── */
+.abn-toggles-row {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+
+.abn-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.abn-toggle-input { display: none; }
+
+.abn-toggle-track {
+  width: 36px;
+  height: 20px;
+  background: rgba(50,65,85,0.8);
+  border-radius: 10px;
+  position: relative;
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: background 0.18s, border-color 0.18s;
+  flex-shrink: 0;
+}
+.abn-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: rgba(150,175,200,0.6);
+  border-radius: 50%;
+  transition: transform 0.18s, background 0.18s;
+}
+.abn-toggle-input:checked + .abn-toggle-track {
+  background: rgba(0,212,255,0.22);
+  border-color: rgba(0,212,255,0.35);
+}
+.abn-toggle-input:checked + .abn-toggle-track .abn-toggle-thumb {
+  transform: translateX(16px);
+  background: #00d4ff;
+}
+
+.abn-toggle-text {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: rgba(160,190,215,0.7);
+}
+
+/* ── Form footer ── */
+.abn-form-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.abn-form-msg {
+  font-size: 0.78rem;
+  min-height: 18px;
+  margin: 0;
+}
+.abn-msg-ok  { color: #22c55e; }
+.abn-msg-err { color: #ef4444; }
