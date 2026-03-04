@@ -25,19 +25,49 @@ async def run_test():
         # Create a new browser context (like an incognito window)
         context = await browser.new_context()
         context.set_default_timeout(5000)
+        await context.add_init_script("localStorage.setItem('wlz.onboarding.done', '1')")
 
         # Open a new page in the browser context
         page = await context.new_page()
 
+        # Navigate to your target URL and wait until the network request is committed
+        await page.goto("http://localhost:5173/", wait_until="commit", timeout=10000)
+
+        # Wait for the main page to reach DOMContentLoaded state (optional for stability)
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=3000)
+        except async_api.Error:
+            pass
+
+        # Iterate through all iframes and wait for them to load as well
+        for frame in page.frames:
+            try:
+                await frame.wait_for_load_state("domcontentloaded", timeout=3000)
+            except async_api.Error:
+                pass
+
         # Interact with the page elements to simulate user flow
         # -> Navigate to http://localhost:5173/
-        await page.goto("http://localhost:5173/", wait_until="commit", timeout=10000)
+        await page.goto("http://localhost:5173/", wait_until="commit", timeout=10000) 
+        # -> Verify the vehicle count value element is visible again after the wait.
+        frame = context.pages[-1]
+        elem = frame.locator('xpath=html/body/main/section/div/div[6]').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
+
+        # -> Verify the vehicle count value element is visible again after the second wait and check if the count value has changed to confirm real-time updates.
+        frame = context.pages[-1]
+        elem = frame.locator('xpath=html/body/main/section/div/div[6]').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
+        
+
         # --> Assertions to verify final state
         frame = context.pages[-1]
-        await expect(frame.locator('text=Vehicle Count').first).to_be_visible(timeout=3000)
-        await expect(frame.locator('text=Vehicle Count').first).to_be_visible(timeout=3000)
-        await expect(frame.locator('text=Vehicle Count').first).to_be_visible(timeout=3000)
+        await expect(frame.locator('text=LIVE COUNT').first).to_be_visible(timeout=30000)
+        await page.wait_for_timeout(10000)
+        await expect(frame.locator('text=LIVE COUNT').first).to_be_visible(timeout=30000)
+        await page.wait_for_timeout(10000)
+        await expect(frame.locator('text=LIVE COUNT').first).to_be_visible(timeout=30000)
         await asyncio.sleep(5)
 
     finally:

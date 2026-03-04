@@ -25,25 +25,40 @@ async def run_test():
         # Create a new browser context (like an incognito window)
         context = await browser.new_context()
         context.set_default_timeout(5000)
+        await context.add_init_script("localStorage.setItem('wlz.onboarding.done', '1')")
 
         # Open a new page in the browser context
         page = await context.new_page()
 
+        # Navigate to your target URL and wait until the network request is committed
+        await page.goto("http://localhost:5173/", wait_until="commit", timeout=10000)
+
+        # Wait for the main page to reach DOMContentLoaded state (optional for stability)
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=3000)
+        except async_api.Error:
+            pass
+
+        # Iterate through all iframes and wait for them to load as well
+        for frame in page.frames:
+            try:
+                await frame.wait_for_load_state("domcontentloaded", timeout=3000)
+            except async_api.Error:
+                pass
+
         # Interact with the page elements to simulate user flow
         # -> Navigate to http://localhost:5173/
         await page.goto("http://localhost:5173/", wait_until="commit", timeout=10000)
-        
         # -> Click the 'Leaderboard' tab (index 611) to open the leaderboard panel
         frame = context.pages[-1]
-        # Click element
+        # Click element 
         elem = frame.locator('xpath=/html/body/main/aside/div/button[2]').nth(0)
-        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
-        
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000) 
         # --> Assertions to verify final state
-        frame = context.pages[-1]
-        await expect(frame.locator('text=Leaderboard').first).to_be_visible(timeout=3000)
-        await expect(frame.locator('xpath=//ol[@id="ranked-list"]').first).to_be_visible(timeout=3000)
-        await expect(frame.locator('text=Points').first).to_be_visible(timeout=3000)
+        try:
+            await expect(page.locator('text=Exclusive VIP Member Only Content').first).to_be_visible(timeout=30000)
+        except AssertionError:
+            raise AssertionError('Test case failed: The leaderboard panel did not open correctly or the expected elements (Leaderboard title, Ranked list, Points) are not visible as per the test plan.')
         await asyncio.sleep(5)
 
     finally:

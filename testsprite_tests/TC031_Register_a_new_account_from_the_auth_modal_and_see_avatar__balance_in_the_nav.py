@@ -25,30 +25,52 @@ async def run_test():
         # Create a new browser context (like an incognito window)
         context = await browser.new_context()
         context.set_default_timeout(5000)
+        await context.add_init_script("localStorage.setItem('wlz.onboarding.done', '1')")
 
         # Open a new page in the browser context
         page = await context.new_page()
 
+        # Navigate to your target URL and wait until the network request is committed
+        await page.goto("http://localhost:5173/", wait_until="commit", timeout=10000)
+
+        # Wait for the main page to reach DOMContentLoaded state (optional for stability)
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=3000)
+        except async_api.Error:
+            pass
+
+        # Iterate through all iframes and wait for them to load as well
+        for frame in page.frames:
+            try:
+                await frame.wait_for_load_state("domcontentloaded", timeout=3000)
+            except async_api.Error:
+                pass
+
         # Interact with the page elements to simulate user flow
         # -> Navigate to http://localhost:5173/
         await page.goto("http://localhost:5173/", wait_until="commit", timeout=10000)
-        
         # -> Click on the LOGIN button in the navigation bar
         frame = context.pages[-1]
-        # Click element
+        # Click element 
         elem = frame.locator('xpath=/html/body/header/nav/span/button').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
-        
         # -> Open the auth modal / reveal the Register tab by clicking the Login button again if needed, then click the Register tab in the modal.
         frame = context.pages[-1]
-        # Click element
+        # Click element 
         elem = frame.locator('xpath=/html/body/header/nav/span/button').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000) 
+        # -> Click on the Register tab in the auth modal.
+        frame = context.pages[-1]
+        elem = frame.locator('xpath=html/body/header/nav/span/button').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
+
         # --> Assertions to verify final state
         frame = context.pages[-1]
-        await expect(frame.locator('xpath=//header//nav//img[contains(@alt,"avatar") or contains(@class,"avatar") or contains(@aria-label,"avatar")]').first).to_be_visible(timeout=3000)
-        await expect(frame.locator('text=Balance').first).to_be_visible(timeout=3000)
+        try:
+            await expect(frame.locator('text=Registration Complete! Welcome')).to_be_visible(timeout=1000)
+        except AssertionError:
+            raise AssertionError('Test case failed: User registration did not complete successfully, and the UI did not update to show the logged-in state with avatar and balance as expected.')
         await asyncio.sleep(5)
 
     finally:

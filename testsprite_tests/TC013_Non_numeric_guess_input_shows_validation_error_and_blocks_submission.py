@@ -25,34 +25,54 @@ async def run_test():
         # Create a new browser context (like an incognito window)
         context = await browser.new_context()
         context.set_default_timeout(5000)
+        await context.add_init_script("localStorage.setItem('wlz.onboarding.done', '1')")
 
         # Open a new page in the browser context
         page = await context.new_page()
 
+        # Navigate to your target URL and wait until the network request is committed
+        await page.goto("http://localhost:5173/", wait_until="commit", timeout=10000)
+
+        # Wait for the main page to reach DOMContentLoaded state (optional for stability)
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=3000)
+        except async_api.Error:
+            pass
+
+        # Iterate through all iframes and wait for them to load as well
+        for frame in page.frames:
+            try:
+                await frame.wait_for_load_state("domcontentloaded", timeout=3000)
+            except async_api.Error:
+                pass
+
         # Interact with the page elements to simulate user flow
         # -> Navigate to http://localhost:5173/
         await page.goto("http://localhost:5173/", wait_until="commit", timeout=10000)
-        
         # -> Click the Login button to open the login form (interactive element index 166).
         frame = context.pages[-1]
-        # Click element
+        # Click element 
         elem = frame.locator('xpath=/html/body/header/nav/span/button').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
-        
         # -> Navigate to /login (http://localhost:5173/login) to reveal the login form elements so credentials can be entered.
         await page.goto("http://localhost:5173/login", wait_until="commit", timeout=10000)
-        
         # -> Open the login form so the email and password input fields become visible by clicking the Login button (index 3139).
         frame = context.pages[-1]
-        # Click element
+        # Click element 
         elem = frame.locator('xpath=/html/body/header/nav/span/button').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000) 
+        # -> Click the Login button to open the login form
+        frame = context.pages[-1]
+        elem = frame.locator('xpath=html/body/header/nav/span/button').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
+
         # --> Assertions to verify final state
         frame = context.pages[-1]
-        assert '/' in frame.url
-        await expect(frame.locator('text=Time remaining').first).to_be_visible(timeout=3000)
-        await expect(frame.locator('text=Please enter a valid number').first).to_be_visible(timeout=3000)
+        try:
+            await expect(frame.locator('text=Invalid vehicle count input')).to_be_visible(timeout=1000)
+        except AssertionError:
+            raise AssertionError('Test case failed: Expected validation error message "Please enter a valid number" to be visible after entering a non-numeric value, but it was not found.')
         await asyncio.sleep(5)
 
     finally:

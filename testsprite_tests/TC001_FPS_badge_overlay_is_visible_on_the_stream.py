@@ -25,6 +25,7 @@ async def run_test():
         # Create a new browser context (like an incognito window)
         context = await browser.new_context()
         context.set_default_timeout(5000)
+        await context.add_init_script("localStorage.setItem('wlz.onboarding.done', '1')")
 
         # Open a new page in the browser context
         page = await context.new_page()
