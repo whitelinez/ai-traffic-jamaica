@@ -1836,29 +1836,38 @@ function _connectUserWs(session) {
     if (_trendChart) { _trendChart.destroy(); _trendChart = null; }
     const labels = rows.map(r => _formatPeriodLabel(r.period || r.hour, _govGranularity));
     const mk = (f) => rows.map(r => r[f] || 0);
-    const ctx = canvas.getContext("2d");
+    // Stacked area — each class fills its own colored band, bottom→top
+    const band = (label, field, border, fill) => ({
+      label, data: mk(field),
+      borderColor: border, backgroundColor: fill,
+      borderWidth: 1.5, tension: 0.42, pointRadius: 0, fill: true,
+    });
     _trendChart = new window.Chart(canvas, {
       type: "line",
       data: {
         labels,
         datasets: [
-          {
-            label: "Total",
-            data: mk("total"),
-            borderColor: "#0284c7",
-            backgroundColor: _govGrad(ctx, [[0,"rgba(2,132,199,0.28)"],[0.7,"rgba(2,132,199,0.06)"],[1,"rgba(2,132,199,0)"]]),
-            tension: 0.42, pointRadius: 0, borderWidth: 2.5, fill: true,
-          },
-          { label:"Cars",   data:mk("car"),   borderColor:"rgba(41,182,246,0.55)",  backgroundColor:"transparent", tension:0.4, pointRadius:0, borderWidth:1.2, fill:false },
-          { label:"Trucks", data:mk("truck"), borderColor:"rgba(255,112,67,0.55)",  backgroundColor:"transparent", tension:0.4, pointRadius:0, borderWidth:1.2, fill:false },
-          { label:"Motorcycles", data:mk("motorcycle"), borderColor:"rgba(255,214,0,0.55)", backgroundColor:"transparent", tension:0.4, pointRadius:0, borderWidth:1.2, fill:false },
+          band("Motorcycles", "motorcycle", "#d97706",         "rgba(217,119,6,0.55)"),
+          band("Buses",       "bus",        "#7c3aed",         "rgba(124,58,237,0.50)"),
+          band("Trucks",      "truck",      "#dc2626",         "rgba(220,38,38,0.50)"),
+          band("Cars",        "car",        "rgba(2,132,199,0.9)", "rgba(2,132,199,0.45)"),
         ],
       },
       options: {
         ...CHART_GOV,
+        scales: {
+          ...CHART_GOV.scales,
+          y: { ...CHART_GOV.scales.y, stacked: true },
+        },
         plugins: {
           ...CHART_GOV.plugins,
-          legend: { display: true, labels: { color:"#94a3b8", font:{ size:9, family:"JetBrains Mono" }, boxWidth:14, padding:14, usePointStyle:true, pointStyle:"line" } },
+          legend: {
+            display: true,
+            labels: {
+              color: "#64748b", font: { size: 9, family: "JetBrains Mono" },
+              boxWidth: 12, padding: 14, usePointStyle: true, pointStyle: "rect",
+            },
+          },
         },
       },
     });
