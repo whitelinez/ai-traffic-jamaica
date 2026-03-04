@@ -1542,17 +1542,12 @@ function _connectUserWs(session) {
     txt("gov-hdr-load",  profile ? profile.replace(/_/g, " ").toUpperCase() : "—");
     if (!_dbKpisLoaded) txt("gov-hdr-total", total.toLocaleString());
 
-    // KPI cards + flow sidebar — WS only before DB analytics loads
+    // KPI total — WS placeholder until DB analytics loads
     if (!_dbKpisLoaded) {
       txt("gov-kpi-total", total.toLocaleString());
-      txt("gov-kpi-in",    p.count_in  != null ? Number(p.count_in).toLocaleString()  : "—");
-      txt("gov-inbound",   p.count_in  != null ? Number(p.count_in).toLocaleString()  : "—");
+      txt("gov-kpi-in",    p.count_in != null ? Number(p.count_in).toLocaleString() : "—");
     }
-    // Outbound: use Traffic Intelligence turnings total once loaded; fall back to WS count_line value
-    if (_govExitTotal === null) {
-      txt("gov-kpi-out",  p.count_out != null ? Number(p.count_out).toLocaleString() : "—");
-      txt("gov-outbound", p.count_out != null ? Number(p.count_out).toLocaleString() : "—");
-    }
+    // Traffic Flow in/out — sourced exclusively from zone analytics; WS never writes these
     // gov-kpi-peak is filled from analytics data
 
     // Scene
@@ -1580,7 +1575,9 @@ function _connectUserWs(session) {
 
     // System info
     txt("gov-model", fps ? `YOLOv8 · ${fps} fps` : "YOLOv8");
-    txt("gov-last",  p.snapshot_at ? new Date(p.snapshot_at).toLocaleTimeString() : "—");
+    txt("gov-last",  p.snapshot_at
+      ? new Date(p.snapshot_at).toLocaleTimeString()
+      : new Date().toLocaleTimeString());  // WS message received = detection happened now
 
     // Live donut update
     if (_donutChart) {
@@ -1740,9 +1737,9 @@ function _connectUserWs(session) {
       const totalOut = rows.reduce((a, r) => a + (r.out || 0), 0);
       txt("gov-kpi-total",  Number(totalPeriod).toLocaleString());
       txt("gov-hdr-total",  Number(totalPeriod).toLocaleString());
-      if (totalIn  > 0) { txt("gov-kpi-in",  totalIn.toLocaleString()); txt("gov-inbound",  totalIn.toLocaleString()); }
-      if (totalOut > 0) { txt("gov-kpi-out", totalOut.toLocaleString()); txt("gov-outbound", totalOut.toLocaleString()); }
-      _dbKpisLoaded = true;  // stop WS from overwriting total/in/hdr with session counter
+      // gov-inbound / gov-outbound are sourced exclusively from zone analytics (_loadZoneAnalytics)
+      // vehicle_crossings direction field is unreliable — do not set them here
+      _dbKpisLoaded = true;  // stop WS from overwriting total/hdr with session counter
 
       // ── Update class breakdown bars from DB class totals ──────────────────
       const ct = summary.class_totals || {};
@@ -1887,6 +1884,8 @@ function _connectUserWs(session) {
   // ── Zone analytics (queue depth + turning movements + speed) ──────────────
   async function _loadZoneAnalytics() {
     if (!_camId) return;
+    _govExitTotal = null; // reset so stale period values don't persist
+
     // Show turnings skeleton while loading
     const tBody = el("gov-turnings-body");
     if (tBody) tBody.innerHTML = _turningsSkeleton();
@@ -1901,8 +1900,9 @@ function _connectUserWs(session) {
     ]);
 
     // Render active zones bar + store for canvas draw loop
+    let zones = [];
     if (zonesRes.status === "fulfilled" && zonesRes.value.ok) {
-      const zones = await zonesRes.value.json();
+      zones = await zonesRes.value.json();
       _govAnalyticsZones = zones;   // used by _drawGovZones() RAF loop
       _renderZonesBar(zones);
     }
@@ -1942,13 +1942,28 @@ function _connectUserWs(session) {
         if (clsTotal > 0) txt("gov-sum-heavy", Math.round((heavy / clsTotal) * 100) + "%");
       }
 
-      // Outbound KPI = total zone exit completions
-      const exitTotal = tm.period?.total_movements ||
-        (tm.top_movements || []).reduce((s, m) => s + (m.total || 0), 0);
-      if (exitTotal > 0) {
-        _govExitTotal = exitTotal;
-        txt("gov-kpi-out",  exitTotal.toLocaleString());
-        txt("gov-outbound", exitTotal.toLocaleString());
+      // Traffic Flow (Inbound / Outbound) — derived from zone types
+      // Build name→type map from loaded zones
+      const zoneTypeMap = {};
+      for (const z of zones) {
+        if (z.name) zoneTypeMap[z.name] = z.zone_type;
+        if (z.id)   zoneTypeMap[String(z.id)] = z.zone_type;
+      }
+      let zoneIn = 0, zoneOut = 0;
+      for (const m of (tm.top_movements || [])) {
+        if (zoneTypeMap[m.from] === "entry") zoneIn  += (m.total || 0);
+        if (zoneTypeMap[m.to]   === "exit")  zoneOut += (m.total || 0);
+      }
+      // Fall back to total_movements when zone types not configured
+      const zoneTotal = tm.period?.total_movements || 0;
+      if (zoneIn === 0 && zoneOut === 0 && zoneTotal > 0) {
+        zoneIn = zoneOut = zoneTotal;
+      }
+      if (zoneIn  > 0) txt("gov-inbound",  zoneIn.toLocaleString());
+      if (zoneOut > 0) {
+        _govExitTotal = zoneOut;
+        txt("gov-kpi-out",  zoneOut.toLocaleString());
+        txt("gov-outbound", zoneOut.toLocaleString());
       }
 
       // Class distribution chart — rebuild with zone class_totals
