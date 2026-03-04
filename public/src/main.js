@@ -218,6 +218,12 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
     history.replaceState(null, "", window.location.pathname);
   }
 
+  // Auto-open auth modal when redirected from /login
+  if (window.location.search.includes("login=1")) {
+    history.replaceState(null, "", window.location.pathname);
+    document.getElementById("btn-login")?.click();
+  }
+
   const session = await Auth.getSession();
   const currentUserId = session?.user?.id || "";
 
