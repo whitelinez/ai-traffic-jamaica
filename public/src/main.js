@@ -2390,7 +2390,7 @@ function _connectUserWs(session) {
       return `<span class="gov-rec-milestone ${reached ? "reached" : "pending"}">${m.label}${!reached ? ` <span class="gov-rec-eta">· ${dateStr}</span>` : ""}</span>`;
     }).join("");
 
-    const daysLabel = daysSince === 0 ? "DAY 1" : `${daysSince} DAY${daysSince !== 1 ? "S" : ""}`;
+    const daysLabel = `DAY ${daysSince + 1}`;
     el_.innerHTML = `
       <span class="gov-rec-label">RECORDING SINCE</span>
       <span class="gov-rec-date">${fmtDate}</span>
