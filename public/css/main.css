@@ -10799,12 +10799,11 @@ button {
   }
 
   /* ── Main grid → flex column, full viewport height ── */
-  /* Subtract header height: .site-header is outside .main-grid in DOM */
   .main-grid {
     display: flex !important;
     flex-direction: column;
-    height: calc(100dvh - var(--header-h));
-    height: calc(100vh - var(--header-h)); /* fallback */
+    height: 100dvh;
+    height: 100vh; /* fallback */
     overflow: hidden;
     overflow-x: hidden;
     grid-template-columns: none;
