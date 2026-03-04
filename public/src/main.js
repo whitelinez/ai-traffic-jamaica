@@ -492,6 +492,10 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
   LiveBet.init();
   Markets.init();
 
+  // Banners — show/hide driven by markets event contract
+  window.addEventListener("banners:show", () => Banners.show());
+  window.addEventListener("banners:hide", () => Banners.hide());
+
   // Chat
   Chat.init(session);
   StreamChatOverlay.init();
