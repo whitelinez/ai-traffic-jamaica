@@ -7,7 +7,7 @@
  *   DELETE ?zone_id=X              → soft-delete (active=false)
  *
  * type=turnings:
- *   GET    ?camera_id=X&from=ISO&to=ISO → turning matrix + queue series + speed stats
+ *   GET    ?camera_id=X&from=ISO&to=ISO&granularity=hour|day|week → turning matrix + queue series + speed stats
  */
 export default async function handler(req, res) {
   const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -85,11 +85,24 @@ async function handleTurnings(req, res, SUPABASE_URL, SERVICE_KEY) {
   if (req.method !== "GET")
     return res.status(405).json({ error: "Method not allowed" });
 
-  const { camera_id, from, to } = req.query;
+  const { camera_id, from, to, granularity = "hour" } = req.query;
   const toDate   = to   ? new Date(to)   : new Date();
   const fromDate = from ? new Date(from) : new Date(toDate - 24 * 3600 * 1000);
   const fromISO  = fromDate.toISOString();
   const toISO    = toDate.toISOString();
+
+  function _bucketKey(isoStr) {
+    const d = new Date(isoStr);
+    if (granularity === "day")  return d.toISOString().slice(0, 10);
+    if (granularity === "week") {
+      const day = d.getUTCDay();
+      const diff = (day === 0 ? -6 : 1 - day);
+      const mon = new Date(d);
+      mon.setUTCDate(d.getUTCDate() + diff);
+      return mon.toISOString().slice(0, 10);
+    }
+    return d.toISOString().slice(0, 13) + ":00:00Z"; // hour
+  }
 
   const h = {
     apikey: SERVICE_KEY,
@@ -110,7 +123,7 @@ async function handleTurnings(req, res, SUPABASE_URL, SERVICE_KEY) {
 
     const matrix = {};
     const clsTotals = { car: 0, truck: 0, bus: 0, motorcycle: 0 };
-    const hourly = {};
+    const timeBuckets = {};
     for (const r of tmRows) {
       const key = `${r.entry_zone}→${r.exit_zone}`;
       if (!matrix[key]) matrix[key] = { from: r.entry_zone, to: r.exit_zone, total: 0, car: 0, truck: 0, bus: 0, motorcycle: 0, avg_dwell_ms: 0, _dwell_sum: 0 };
@@ -119,12 +132,12 @@ async function handleTurnings(req, res, SUPABASE_URL, SERVICE_KEY) {
       if (cls in matrix[key]) matrix[key][cls] += 1;
       if (cls in clsTotals)   clsTotals[cls] += 1;
       if (r.dwell_ms) matrix[key]._dwell_sum += r.dwell_ms;
-      // Hourly bucket
+      // Time bucket (granularity-aware)
       if (r.captured_at) {
-        const hour = new Date(r.captured_at).toISOString().slice(0, 13) + ":00:00Z";
-        if (!hourly[hour]) hourly[hour] = { period: hour, total: 0, car: 0, truck: 0, bus: 0, motorcycle: 0 };
-        hourly[hour].total += 1;
-        if (cls in hourly[hour]) hourly[hour][cls] += 1;
+        const bucket = _bucketKey(r.captured_at);
+        if (!timeBuckets[bucket]) timeBuckets[bucket] = { period: bucket, total: 0, car: 0, truck: 0, bus: 0, motorcycle: 0 };
+        timeBuckets[bucket].total += 1;
+        if (cls in timeBuckets[bucket]) timeBuckets[bucket][cls] += 1;
       }
     }
     for (const k of Object.keys(matrix)) {
@@ -133,7 +146,7 @@ async function handleTurnings(req, res, SUPABASE_URL, SERVICE_KEY) {
       delete m._dwell_sum;
     }
     const topMovements = Object.values(matrix).sort((a, b) => b.total - a.total).slice(0, 10);
-    const hourlySeries = Object.values(hourly).sort((a, b) => a.period.localeCompare(b.period));
+    const timeSeries = Object.values(timeBuckets).sort((a, b) => a.period.localeCompare(b.period));
 
     // ── Queue series ───────────────────────────────────────────────────────
     let qUrl = `${SUPABASE_URL}/rest/v1/traffic_snapshots`
@@ -167,7 +180,7 @@ async function handleTurnings(req, res, SUPABASE_URL, SERVICE_KEY) {
     return res.status(200).json({
       matrix, top_movements: topMovements, queue_series: queueSeries,
       queue_summary: queueSummary, speed: speedStats, class_totals: clsTotals,
-      hourly_series: hourlySeries,
+      time_series: timeSeries,
       period: { from: fromISO, to: toISO, total_movements: tmRows.length },
     });
   } catch (err) {

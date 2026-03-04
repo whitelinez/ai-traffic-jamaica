@@ -1891,7 +1891,7 @@ function _connectUserWs(session) {
 
     const [zonesRes, turningsRes] = await Promise.allSettled([
       fetch(`/api/analytics/data?type=zones&camera_id=${_camId}`),
-      fetch(`/api/analytics/data?type=turnings&camera_id=${_camId}&from=${fromParam}&to=${toParam}`),
+      fetch(`/api/analytics/data?type=turnings&camera_id=${_camId}&from=${fromParam}&to=${toParam}&granularity=${_govGranularity}`),
     ]);
 
     // Render active zones bar + store for canvas draw loop
@@ -1953,13 +1953,14 @@ function _connectUserWs(session) {
         _buildClsChart({ class_totals: tm.class_totals, class_pct: clsPct });
       }
 
-      // Trend + Peak charts — use zone hourly series if available
-      if (tm.hourly_series?.length && window.Chart) {
-        _buildTrendChart(tm.hourly_series);
-        _buildPeakChart(tm.hourly_series);
+      // Trend + Peak charts — use zone time series if available
+      if (tm.time_series?.length && window.Chart) {
+        _buildTrendChart(tm.time_series);
+        _buildPeakChart(tm.time_series);
         _updatePeakKpiFromChart();
         const granLabel = _govGranularity === "week" ? "weekly" : _govGranularity === "day" ? "daily" : "hourly";
-        txt("gov-trend-label", `— zone entries by hour · ${granLabel} view`);
+        const unitLabel = _govGranularity === "week" ? "by week" : _govGranularity === "day" ? "by day" : "by hour";
+        txt("gov-trend-label", `— zone entries ${unitLabel} · ${granLabel} view`);
       }
     } catch (err) {
       console.warn("[GovAnalytics] Zone analytics failed:", err);
