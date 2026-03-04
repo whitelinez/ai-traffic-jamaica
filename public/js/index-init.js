@@ -1,8 +1,71 @@
+/**
+ * index-init.js — Main page controller for WHITELINEZ index.html
+ *
+ * Responsibilities:
+ *   - Public stream appearance (video filter, day/night profile)
+ *   - Auth state → nav bar (avatar, balance, admin links)
+ *   - WebSocket /ws/account → balance + bet resolution events
+ *   - Login / Register / Guest modals
+ *   - Mobile bottom-sheet nav
+ *   - Vision HUD collapse + Bot HUD training counter
+ *   - Logo pulse animation
+ *   - Onboarding overlay
+ *   - Gov Analytics overlay (analytics, live, export, agencies tabs)
+ *   - Custom date-range calendar picker
+ *   - Chart.js integration (lazy-loaded on first gov open)
+ *   - Agency data package modals + CSV export
+ *
+ * Expected window globals (set by prior scripts in HTML load order):
+ *   window.sb               — Supabase client          (supabase-init.js)
+ *   window.Auth             — Auth module               (auth.js)
+ *   window.Stream           — HLS stream module         (stream.js)
+ *   window.Markets          — Round/market state        (markets.js)
+ *   window.LiveBet          — Guess panel               (live-bet.js)
+ *   window.Activity         — Leaderboard               (activity.js)
+ *   window.CameraSwitcher   — Camera switching          (camera-switcher.js)
+ *   window.ZoneOverlay      — Zone canvas overlay       (zone-overlay.js)
+ *   window.DetectionOverlay — Detection boxes canvas    (detection-overlay.js)
+ *   window.FloatingCount    — Count widget              (floating-count.js)
+ *   window.FpsOverlay       — FPS counter               (fps-overlay.js)
+ *   window.MlOverlay        — ML HUD display            (ml-overlay.js)
+ *   window.getContentBounds — Coord util                (coord-utils.js)
+ *   window.contentToPixel   — Coord util                (coord-utils.js)
+ *
+ * Window event contract:
+ *   Dispatched:
+ *     (none — events are consumed here, not originated)
+ *   Consumed:
+ *     "balance:update"  detail: number    — new balance from /ws/account
+ *     "bet:placed"                        — guess submitted
+ *     "bet:resolved"    detail: {...}     — resolved guess from /ws/account
+ *     "count:update"    detail: {...}     — vehicle count payload from /ws/live
+ *     "session:guest"                     — anonymous session created mid-session
+ *     "stream:status"   detail: {status} — stream state changes
+ *     "stream:switching"                  — camera switch in progress
+ *     "camera:switched" detail: {isAI, alias}
+ *
+ * TODO (future infrastructure work):
+ *   - RunPod GPU backend: detect via /api/health.gpu_active, show badge in HUD
+ *   - WebRTC stream: replace HLS with lower-latency WebRTC when backend supports it
+ *   - Detection confidence: expose threshold slider in gov overlay settings
+ *   - Per-camera analytics: wire _camId into all chart queries when multi-camera is active
+ */
+
+// ── Module-scoped DOM helpers ─────────────────────────────────────────────────
+// Available to ALL IIFEs in this file. Use these instead of raw getElementById.
+const el  = (id) => document.getElementById(id);
+const txt = (id, val) => { const e = el(id); if (e) e.textContent = String(val ?? "—"); };
+
+// ── Scroll lock ───────────────────────────────────────────────────────────────
+// Single control point for body scroll — prevents double/missed overflow sets.
+// Called by openGov() with true (lock) and closeGov() + _pl.hide() with false.
+function _lockScroll(lock) { document.body.style.overflow = lock ? "hidden" : ""; }
+
 const GUEST_TS_KEY = "wlz.guest.session_ts";
 
 // ── Vision HUD collapse toggle ────────────────────────────────────────────
 (function () {
-  const hud = document.getElementById("ml-hud");
+  const hud = el("ml-hud");
   if (!hud) return;
 
   // Restore persisted state
@@ -33,6 +96,12 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
     blur: 0.2,
   };
   const PUBLIC_DETECTION_SETTINGS_KEY = "whitelinez.detection.overlay_settings.v4";
+  /**
+   * Returns the highest-priority active camera from Supabase.
+   * Priority: real alias > placeholder alias > no alias.
+   * Used to seed the stream and gov overlay with the correct camera_id.
+   * @returns {Promise<object|null>} camera row or null if none active
+   */
   async function resolveActiveCamera() {
     const { data, error } = await window.sb
       .from("cameras")
@@ -41,6 +110,8 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
     if (error) throw error;
     const cams = Array.isArray(data) ? data : [];
     if (!cams.length) return null;
+    // Cameras with a real alias (not blank/"your-alias") rank highest.
+    // Among equal-rank cameras, newest created_at wins.
     const rank = (cam) => {
       const alias = String(cam?.ipcam_alias || "").trim();
       if (!alias) return 0;
@@ -135,8 +206,8 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
         .select("balance")
         .eq("user_id", currentUserId)
         .maybeSingle();
-      const balEl = document.getElementById("nav-balance");
-      const balValEl = document.getElementById("nav-balance-val");
+      const balEl = el("nav-balance");
+      const balValEl = el("nav-balance-val");
       if (balEl && data?.balance != null) {
         if (balValEl) balValEl.textContent = Number(data.balance).toLocaleString();
         balEl.classList.remove("hidden");
@@ -177,23 +248,23 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
 
   function _applyNavSession(s) {
     if (!s) return;
-    document.getElementById("nav-auth")?.classList.add("hidden");
-    document.getElementById("nav-user")?.classList.remove("hidden");
+    el("nav-auth")?.classList.add("hidden");
+    el("nav-user")?.classList.remove("hidden");
     const user = s.user || {};
     const isAnon = Auth.isAnonymous(s);
     const avatarRaw = user.user_metadata?.avatar_url || "";
     const avatar = isAllowedAvatarUrl(avatarRaw)
       ? avatarRaw
       : defaultAvatar(user.id || user.email || "user");
-    const navAvatar = document.getElementById("nav-avatar");
+    const navAvatar = el("nav-avatar");
     if (navAvatar) {
       navAvatar.onerror = () => { navAvatar.src = defaultAvatar(user.id || "user"); };
       navAvatar.src = avatar;
     }
     if (isAnon) {
       // Show a guest badge next to balance
-      const balEl = document.getElementById("nav-balance");
-      if (balEl && !document.getElementById("nav-guest-badge")) {
+      const balEl = el("nav-balance");
+      if (balEl && !el("nav-guest-badge")) {
         const badge = document.createElement("span");
         badge.id = "nav-guest-badge";
         badge.className = "nav-guest-badge";
@@ -202,8 +273,8 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
       }
     }
     if (user.app_metadata?.role === "admin") {
-      document.getElementById("nav-admin-link")?.classList.remove("hidden");
-      document.getElementById("btn-layout-editor")?.classList.remove("hidden");
+      el("nav-admin-link")?.classList.remove("hidden");
+      el("btn-layout-editor")?.classList.remove("hidden");
     }
   }
 
@@ -218,16 +289,16 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
   });
 
   // Play overlay
-  document.getElementById("btn-play")?.addEventListener("click", () => {
-    document.getElementById("live-video")?.play();
-    document.getElementById("play-overlay")?.classList.add("hidden");
+  el("btn-play")?.addEventListener("click", () => {
+    el("live-video")?.play();
+    el("play-overlay")?.classList.add("hidden");
   });
 
   // Logout
-  document.getElementById("btn-logout")?.addEventListener("click", () => Auth.logout());
+  el("btn-logout")?.addEventListener("click", () => Auth.logout());
 
   // ── Widget Layout Editor (admin only) ────────────────────────
-  document.getElementById("btn-layout-editor")?.addEventListener("click", () => {
+  el("btn-layout-editor")?.addEventListener("click", () => {
     if (window.WidgetLayout) window.WidgetLayout.enter();
   });
   // Load saved layout for all visitors
@@ -255,27 +326,29 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
   // Stream switching overlay — shown when user picks a new AI camera
   let _switchTimer1 = null, _switchTimer2 = null;
   function _showSwitchOverlay() {
-    const ov = document.getElementById("stream-switching-overlay");
+    const ov = el("stream-switching-overlay");
     if (!ov) return;
     ["sso-step-1","sso-step-2","sso-step-3"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) { el.classList.remove("active","done"); }
+      const stepEl = el(id);
+      if (stepEl) { stepEl.classList.remove("active","done"); }
     });
-    document.getElementById("sso-step-1")?.classList.add("active");
+    el("sso-step-1")?.classList.add("active");
     ov.classList.remove("hidden");
     clearTimeout(_switchTimer1); clearTimeout(_switchTimer2);
+    // Animate through 3 steps (800ms, 1800ms) to give a visual sense of progress
+    // while the HLS stream reconnects to the new camera alias in the background.
     _switchTimer1 = setTimeout(() => {
-      document.getElementById("sso-step-1")?.classList.replace("active","done");
-      document.getElementById("sso-step-2")?.classList.add("active");
+      el("sso-step-1")?.classList.replace("active","done");
+      el("sso-step-2")?.classList.add("active");
     }, 800);
     _switchTimer2 = setTimeout(() => {
-      document.getElementById("sso-step-2")?.classList.replace("active","done");
-      document.getElementById("sso-step-3")?.classList.add("active");
+      el("sso-step-2")?.classList.replace("active","done");
+      el("sso-step-3")?.classList.add("active");
     }, 1800);
   }
   function _hideSwitchOverlay() {
     clearTimeout(_switchTimer1); clearTimeout(_switchTimer2);
-    const ov = document.getElementById("stream-switching-overlay");
+    const ov = el("stream-switching-overlay");
     ov?.classList.add("hidden");
   }
 
@@ -293,10 +366,10 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
     // Immediately reload detection zones + landmarks for the switched-to camera
     ZoneOverlay.reloadZones(alias || null);
     // Update header cam chip label
-    const chipNameEl = document.getElementById("header-cam-name");
+    const chipNameEl = el("header-cam-name");
     if (chipNameEl && alias) chipNameEl.textContent = alias;
     // Update scene chip location
-    const chipLocEl = document.getElementById("chip-location");
+    const chipLocEl = el("chip-location");
     if (chipLocEl && alias) {
       chipLocEl.textContent = "📍 " + alias;
       chipLocEl.classList.remove("hidden");
@@ -309,7 +382,7 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
 
   // Stream offline overlay + camera failover
   window.addEventListener("stream:status", (e) => {
-    const overlay = document.getElementById("stream-offline-overlay");
+    const overlay = el("stream-offline-overlay");
     const infoEl = overlay?.querySelector(".stream-offline-info");
 
     if (e.detail?.status === "down") {
@@ -337,17 +410,17 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
 
   // Stream — initialise with the AI-active camera alias so the correct feed
   // loads immediately without waiting for CameraSwitcher.init() to resolve.
-  const video = document.getElementById("live-video");
+  const video = el("live-video");
   await Stream.init(video, { alias: _streamCameras[0]?.ipcam_alias || "" });
   await applyPublicFeedAppearance(video);
   setInterval(() => applyPublicFeedAppearance(video), 15000);
-  FpsOverlay.init(video, document.getElementById("fps-overlay"));
+  FpsOverlay.init(video, el("fps-overlay"));
 
   // Canvas overlays
-  const zoneCanvas = document.getElementById("zone-canvas");
+  const zoneCanvas = el("zone-canvas");
   ZoneOverlay.init(video, zoneCanvas);
 
-  const detectionCanvas = document.getElementById("detection-canvas");
+  const detectionCanvas = el("detection-canvas");
   DetectionOverlay.init(video, detectionCanvas);
 
   // Floating count widget
@@ -355,7 +428,7 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
   FloatingCount.init(streamWrapper);
 
   // Count widget — mobile tap toggle (desktop uses CSS :hover)
-  const countWidget = document.getElementById("count-widget");
+  const countWidget = el("count-widget");
   if (countWidget) {
     let _cwTouchMoved = false;
     countWidget.addEventListener("touchstart", () => { _cwTouchMoved = false; }, { passive: true });
@@ -392,12 +465,12 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
   document.querySelector('.tab-btn[data-tab="leaderboard"]')?.addEventListener("click", () => {
     Activity.loadLeaderboard(_lbWindow);
   });
-  document.getElementById("lb-refresh")?.addEventListener("click", () => {
+  el("lb-refresh")?.addEventListener("click", () => {
     Activity.loadLeaderboard(_lbWindow);
   });
 
   // Window tab switching on leaderboard
-  document.getElementById("tab-leaderboard")?.addEventListener("click", (e) => {
+  el("tab-leaderboard")?.addEventListener("click", (e) => {
     const btn = e.target.closest(".lb-wtab");
     if (!btn) return;
     _lbWindow = parseInt(btn.dataset.win, 10);
@@ -435,17 +508,19 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
 
   // Nav balance display from ws_account
   window.addEventListener("balance:update", (e) => {
-    const balEl    = document.getElementById("nav-balance");
-    const balValEl = document.getElementById("nav-balance-val");
+    const balEl    = el("nav-balance");
+    const balValEl = el("nav-balance-val");
     if (balEl) {
       if (balValEl) balValEl.textContent = (e.detail ?? 0).toLocaleString();
       balEl.classList.remove("hidden");
     }
   });
 
-  // Reload markets on bet placed
-  window.addEventListener("bet:placed", () => Markets.loadMarkets());
-  window.addEventListener("bet:placed", refreshNavBalance);
+  // Single handler for bet:placed — prevents double-firing on future refactors
+  window.addEventListener("bet:placed", () => {
+    window.Markets?.loadMarkets?.();
+    refreshNavBalance();
+  });
 
   // Handle bet resolution from ws_account
   window.addEventListener("bet:resolved", (e) => {
@@ -457,9 +532,9 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
   {
     const firstCam = _streamCameras[0];
     if (firstCam) {
-      const chipNameEl = document.getElementById("header-cam-name");
+      const chipNameEl = el("header-cam-name");
       if (chipNameEl) chipNameEl.textContent = firstCam.name || firstCam.ipcam_alias || "Live Camera";
-      const chipLocEl = document.getElementById("chip-location");
+      const chipLocEl = el("chip-location");
       if (chipLocEl) {
         chipLocEl.textContent = "📍 " + (firstCam.name || firstCam.ipcam_alias || "Jamaica");
         chipLocEl.classList.remove("hidden");
@@ -469,7 +544,7 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
 
   // ── Camera pill strip render ────────────────────────────────────────────────
   {
-    const pillStrip = document.getElementById("cam-pill-strip");
+    const pillStrip = el("cam-pill-strip");
     if (pillStrip && _streamCameras.length > 0) {
       const firstAlias = _streamCameras[0]?.ipcam_alias || "";
       pillStrip.innerHTML = _streamCameras.map(c => {
@@ -495,8 +570,8 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
     if (hRes.ok) {
       const hData = await hRes.json();
       const watchers = Number(hData.total_ws_connections || 0);
-      const watchEl = document.getElementById("header-watching");
-      const watchValEl = document.getElementById("header-watching-val");
+      const watchEl = el("header-watching");
+      const watchValEl = el("header-watching-val");
       if (watchEl && watchers > 0) {
         if (watchValEl) watchValEl.textContent = watchers;
         watchEl.classList.remove("hidden");
@@ -516,8 +591,8 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
   function update() {
     const days = Math.floor((Date.now() - TRAIN_START) / 86400000);
     const know = Math.min(KNOW_MAX, BASE_KNOW + days * KNOW_PER_DAY).toFixed(1);
-    const el = document.getElementById('ml-hud-bot');
-    if (el) el.innerHTML = `<span>TRAIN · DAY ${days}</span><span>KNOW · ${know}%</span>`;
+    const botEl = el('ml-hud-bot');
+    if (botEl) botEl.innerHTML = `<span>TRAIN · DAY ${days}</span><span>KNOW · ${know}%</span>`;
   }
 
   update();
@@ -554,6 +629,13 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
 
 
 // ── User WebSocket (/ws/account) ──────────────────────────────────────────────
+/**
+ * Opens /ws/account WebSocket for the authenticated user.
+ * Receives: balance updates, bet resolution events.
+ * Reconnects with exponential backoff (2s → 30s max).
+ * Gives up after 8 failed connection attempts (falls back to HTTP polling).
+ * @param {object} session - Supabase session object
+ */
 function _connectUserWs(session) {
   let ws = null;
   let backoff = 2000;
@@ -616,7 +698,9 @@ function _connectUserWs(session) {
     };
   }
 
-  // Wait for WS URL to be ready (populated by stream.js after /api/token fetch)
+  // Poll until stream.js has fetched the WSS URL from /api/token.
+  // This avoids a race condition where index-init.js initialises before
+  // the stream module has resolved the backend WebSocket endpoint.
   waitForToken = setInterval(() => {
     const ready = typeof Stream !== "undefined" && Stream.getWssUrl && Stream.getWssUrl();
     if (ready) {
@@ -634,19 +718,19 @@ function _connectUserWs(session) {
 
 // ── Login Modal ────────────────────────────────────────────────────────────────
 (function _loginModal() {
-  const modal    = document.getElementById("login-modal");
-  const backdrop = document.getElementById("login-modal-backdrop");
-  const closeBtn = document.getElementById("login-modal-close");
-  const openBtn  = document.getElementById("btn-open-login");
-  const form     = document.getElementById("modal-login-form");
-  const errorEl  = document.getElementById("modal-auth-error");
-  const submitBtn = document.getElementById("modal-submit-btn");
+  const modal    = el("login-modal");
+  const backdrop = el("login-modal-backdrop");
+  const closeBtn = el("login-modal-close");
+  const openBtn  = el("btn-open-login");
+  const form     = el("modal-login-form");
+  const errorEl  = el("modal-auth-error");
+  const submitBtn = el("modal-submit-btn");
 
   if (!modal) return;
 
   function open() {
     modal.classList.remove("hidden");
-    document.getElementById("modal-email")?.focus();
+    el("modal-email")?.focus();
   }
 
   function close() {
@@ -671,8 +755,8 @@ function _connectUserWs(session) {
 
     try {
       await Auth.login(
-        document.getElementById("modal-email").value,
-        document.getElementById("modal-password").value
+        el("modal-email").value,
+        el("modal-password").value
       );
       // Reload the page with the active session
       window.location.reload();
@@ -684,17 +768,17 @@ function _connectUserWs(session) {
   });
 
   // Switch to register modal
-  document.getElementById("switch-to-register")?.addEventListener("click", (e) => {
+  el("switch-to-register")?.addEventListener("click", (e) => {
     e.preventDefault();
     close();
-    document.getElementById("register-modal")?.classList.remove("hidden");
-    document.getElementById("modal-reg-email")?.focus();
+    el("register-modal")?.classList.remove("hidden");
+    el("modal-reg-email")?.focus();
   });
 
   // Google login
-  document.getElementById("modal-google-btn")?.addEventListener("click", async () => {
-    const btn = document.getElementById("modal-google-btn");
-    const errEl = document.getElementById("modal-auth-error");
+  el("modal-google-btn")?.addEventListener("click", async () => {
+    const btn = el("modal-google-btn");
+    const errEl = el("modal-auth-error");
     if (errEl) errEl.textContent = "";
     btn.disabled = true;
     btn.textContent = "Redirecting to Google...";
@@ -708,9 +792,9 @@ function _connectUserWs(session) {
   });
 
   // Guest login
-  document.getElementById("modal-guest-btn")?.addEventListener("click", async () => {
-    const btn = document.getElementById("modal-guest-btn");
-    const errEl = document.getElementById("modal-auth-error");
+  el("modal-guest-btn")?.addEventListener("click", async () => {
+    const btn = el("modal-guest-btn");
+    const errEl = el("modal-auth-error");
     if (errEl) errEl.textContent = "";
     btn.disabled = true;
     btn.textContent = "Connecting...";
@@ -734,19 +818,19 @@ function _connectUserWs(session) {
 
 // ── Register Modal ─────────────────────────────────────────────────────────────
 (function _registerModal() {
-  const modal    = document.getElementById("register-modal");
-  const backdrop = document.getElementById("register-modal-backdrop");
-  const closeBtn = document.getElementById("register-modal-close");
-  const openBtn  = document.getElementById("btn-open-register");
-  const form     = document.getElementById("modal-register-form");
-  const errorEl  = document.getElementById("modal-register-error");
-  const submitBtn = document.getElementById("register-submit-btn");
+  const modal    = el("register-modal");
+  const backdrop = el("register-modal-backdrop");
+  const closeBtn = el("register-modal-close");
+  const openBtn  = el("btn-open-register");
+  const form     = el("modal-register-form");
+  const errorEl  = el("modal-register-error");
+  const submitBtn = el("register-submit-btn");
 
   if (!modal) return;
 
   function open() {
     modal.classList.remove("hidden");
-    document.getElementById("modal-reg-email")?.focus();
+    el("modal-reg-email")?.focus();
   }
 
   function close() {
@@ -760,8 +844,8 @@ function _connectUserWs(session) {
   backdrop?.addEventListener("click", close);
 
   // Google login (register modal)
-  document.getElementById("reg-google-btn")?.addEventListener("click", async () => {
-    const btn = document.getElementById("reg-google-btn");
+  el("reg-google-btn")?.addEventListener("click", async () => {
+    const btn = el("reg-google-btn");
     if (errorEl) errorEl.textContent = "";
     btn.disabled = true;
     btn.textContent = "Redirecting to Google...";
@@ -775,11 +859,11 @@ function _connectUserWs(session) {
   });
 
   // Switch back to login
-  document.getElementById("switch-to-login")?.addEventListener("click", (e) => {
+  el("switch-to-login")?.addEventListener("click", (e) => {
     e.preventDefault();
     close();
-    document.getElementById("login-modal")?.classList.remove("hidden");
-    document.getElementById("modal-email")?.focus();
+    el("login-modal")?.classList.remove("hidden");
+    el("modal-email")?.focus();
   });
 
   document.addEventListener("keydown", (e) => {
@@ -789,8 +873,8 @@ function _connectUserWs(session) {
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (errorEl) errorEl.textContent = "";
-    const pass    = document.getElementById("modal-reg-password").value;
-    const confirm = document.getElementById("modal-reg-confirm").value;
+    const pass    = el("modal-reg-password").value;
+    const confirm = el("modal-reg-confirm").value;
     if (pass !== confirm) {
       if (errorEl) errorEl.textContent = "Passwords do not match.";
       return;
@@ -799,18 +883,18 @@ function _connectUserWs(session) {
     submitBtn.textContent = "Creating account...";
     try {
       await Auth.register(
-        document.getElementById("modal-reg-email").value,
+        el("modal-reg-email").value,
         pass
       );
       close();
       // Open login modal with success hint
-      document.getElementById("login-modal")?.classList.remove("hidden");
-      const authErr = document.getElementById("modal-auth-error");
+      el("login-modal")?.classList.remove("hidden");
+      const authErr = el("modal-auth-error");
       if (authErr) {
         authErr.style.color = "#00d4ff";
         authErr.textContent = "Account created. Please sign in.";
       }
-      document.getElementById("modal-email")?.focus();
+      el("modal-email")?.focus();
     } catch (err) {
       if (errorEl) errorEl.textContent = err.message || "Registration failed.";
       submitBtn.disabled = false;
@@ -826,7 +910,7 @@ function _connectUserWs(session) {
 
 // ── ML HUD expand / collapse toggle (new AI Pulse design) ───────────────────
 (function _initAiPulseToggle() {
-  const hud = document.getElementById("ml-hud");
+  const hud = el("ml-hud");
   if (!hud) return;
 
   // Replace old is-collapsed toggle with new is-expanded toggle
@@ -840,9 +924,9 @@ function _connectUserWs(session) {
 // ── Onboarding Overlay ───────────────────────────────────────────────────────
 (function _initOnboarding() {
   const OB_KEY    = "wlz.onboarding.done";
-  const overlay   = document.getElementById("onboarding-overlay");
-  const skipBtn   = document.getElementById("ob-skip");
-  const nextBtn   = document.getElementById("ob-next");
+  const overlay   = el("onboarding-overlay");
+  const skipBtn   = el("ob-skip");
+  const nextBtn   = el("ob-next");
   const steps     = Array.from(document.querySelectorAll(".ob-step"));
   const dots      = Array.from(document.querySelectorAll(".ob-dot"));
 
@@ -962,7 +1046,7 @@ function _connectUserWs(session) {
       document.querySelector("#tab-chat")?.classList.toggle("keyboard-open", keyboardOpen);
       // Scroll chat to bottom when keyboard opens
       if (keyboardOpen) {
-        const msgs = document.getElementById("chat-messages");
+        const msgs = el("chat-messages");
         if (msgs) msgs.scrollTop = msgs.scrollHeight;
       }
     });
@@ -985,8 +1069,8 @@ function _connectUserWs(session) {
 
   // ── Nav user dropdown ───────────────────────────────────────────────────
   (function _initNavDropdown() {
-    const trigger  = document.getElementById("nav-avatar-trigger");
-    const dropdown = document.getElementById("nav-dropdown");
+    const trigger  = el("nav-avatar-trigger");
+    const dropdown = el("nav-dropdown");
     if (!trigger || !dropdown) return;
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1005,9 +1089,9 @@ function _connectUserWs(session) {
 }());
 // ── Gov Analytics Overlay ──────────────────────────────────────────────────
 (function initGovOverlay() {
-  const overlay  = document.getElementById("gov-overlay");
-  const openBtn  = document.getElementById("btn-gov-mode");
-  const closeBtn = document.getElementById("btn-close-gov");
+  const overlay  = el("gov-overlay");
+  const openBtn  = el("btn-gov-mode");
+  const closeBtn = el("btn-close-gov");
   if (!overlay) return;
 
   // ── State ────────────────────────────────────────────────────────────────
@@ -1062,17 +1146,15 @@ function _connectUserWs(session) {
     motorcycle: '<svg class="gov-veh-svg" viewBox="0 0 28 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Motorcycle"><circle cx="6" cy="12" r="3.5"/><circle cx="22" cy="12" r="3.5"/><path d="M9.5 12H16l3-6h3"/><path d="M13 6l2 6"/><path d="M19 4h4l1 2"/></svg>',
   };
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
-  const el  = (id) => document.getElementById(id);
-  const txt = (id, val) => { const e = el(id); if (e) e.textContent = String(val ?? "—"); };
-
   // ── Listen for live count updates ────────────────────────────────────────
-  let _lastDetTime = null;
-  window.addEventListener("count:update", (e) => {
+  // Named so it can be removed when the overlay closes (see closeGov).
+  function _onGovCountUpdate(e) {
     _lastPayload = e.detail || {};
     _lastDetTime = Date.now();
     if (_open) _populateLive(_lastPayload);
-  });
+  }
+  let _lastDetTime = null;
+  window.addEventListener("count:update", _onGovCountUpdate);
 
   // Tick the "Last detection: Xs ago" in the agencies live bar
   setInterval(() => {
@@ -1083,7 +1165,7 @@ function _connectUserWs(session) {
   }, 2000);
 
   // ── Tab switching ────────────────────────────────────────────────────────
-  document.getElementById("gov-tabbar")?.addEventListener("click", (e) => {
+  el("gov-tabbar")?.addEventListener("click", (e) => {
     const tab = e.target.closest(".gov-tab");
     if (!tab) return;
     const name = tab.dataset.tab;
@@ -1091,12 +1173,16 @@ function _connectUserWs(session) {
   });
 
   // ── Move the real WebGL/Canvas2D canvases into gov-video-slot ────────────
-  // The original #zone-canvas and #detection-canvas keep their live renderers.
-  // Moving them into the slot is the only way to render above the GPU-composited video.
+  /**
+   * Physically moves #detection-canvas and #zone-canvas into #gov-video-slot.
+   * This is required (not just CSS) because the video element creates a GPU
+   * compositor layer — canvases must be siblings in the same stacking context
+   * to render above it. The renderer contexts survive the DOM move intact.
+   */
   function _moveOverlaysToGov() {
     const govSlot  = el("gov-video-slot");
-    const zoneC    = document.getElementById("zone-canvas");
-    const detC     = document.getElementById("detection-canvas");
+    const zoneC    = el("zone-canvas");
+    const detC     = el("detection-canvas");
     if (!govSlot || !zoneC || !detC) return;
     govSlot.appendChild(detC);
     govSlot.appendChild(zoneC);
@@ -1116,8 +1202,8 @@ function _connectUserWs(session) {
 
   function _moveOverlaysBack() {
     const wrapper = document.querySelector(".stream-wrapper");
-    const zoneC   = document.getElementById("zone-canvas");
-    const detC    = document.getElementById("detection-canvas");
+    const zoneC   = el("zone-canvas");
+    const detC    = el("detection-canvas");
     if (!wrapper || !zoneC || !detC) return;
     wrapper.appendChild(detC);
     wrapper.appendChild(zoneC);
@@ -1185,8 +1271,13 @@ function _connectUserWs(session) {
     roi:"#AB47BC", speed_a:"#00BCD4", speed_b:"#009688",
   };
 
-  // Returns a correctly-sized 2d context for canvas — always tied to the
-  // passed canvas element, never a stale reference from another canvas.
+  /**
+   * Resizes canvas to match the video element dimensions at device pixel ratio.
+   * Must be called on every RAF tick to handle window resizes cleanly.
+   * @param {HTMLCanvasElement} canvas
+   * @param {HTMLVideoElement} video
+   * @returns {CanvasRenderingContext2D|null}
+   */
   function _syncZoneCanvas(canvas, video) {
     const dpr = window.devicePixelRatio || 1;
     // Use canvas parent dimensions as fallback if video hasn't reflowed yet
@@ -1203,6 +1294,12 @@ function _connectUserWs(session) {
     return ctx;
   }
 
+  /**
+   * Draws admin-configured zone polygons on the gov zone canvas.
+   * Runs in a RAF loop (_zoneRafLoop). Uses _govAnalyticsZones populated by
+   * _loadZoneAnalytics(). Scales points from [0,1] normalised coords to
+   * canvas pixels using window.contentToPixel (coord-utils.js).
+   */
   function _drawGovZones() {
     const isAnalytics = _activeTab === "analytics";
     const isLive      = _activeTab === "live";
@@ -1211,7 +1308,8 @@ function _connectUserWs(session) {
     const canvasId = isAnalytics ? "gov-an-zone-canvas" : "gov-live-zone-canvas";
     const canvas = el(canvasId);
     const video  = el("live-video");
-    if (!canvas || !video || !window.getContentBounds) return;
+    // Guard: coord-utils.js must be loaded for pixel mapping to work
+    if (!canvas || !video || !window.getContentBounds || !window.contentToPixel) return;
     const ctx = _syncZoneCanvas(canvas, video);
     if (!ctx) return;
     const bounds = window.getContentBounds(video);
@@ -1270,6 +1368,9 @@ function _connectUserWs(session) {
     ctx.restore();
   }
 
+  // RAF (requestAnimationFrame) is used instead of setInterval so the draw
+  // loop automatically pauses when the tab is backgrounded, saving CPU.
+  // The animated dash offset creates a "scanning" effect on zone outlines.
   function _zoneRafLoop() {
     _drawGovZones();
     _govAnZoneRaf = requestAnimationFrame(_zoneRafLoop);
@@ -1289,16 +1390,16 @@ function _connectUserWs(session) {
   }
 
 
-  // ── Preloader helpers ─────────────────────────────────────────────────────
+  // ── Preloader (gov-preloader overlay) ─────────────────────────────────────
   const _pl = {
-    el:    () => document.getElementById("gov-preloader"),
-    pct:   () => document.getElementById("gov-pl-pct"),
-    bar:   () => document.getElementById("gov-pl-bar"),
-    label: () => document.getElementById("gov-pl-label"),
+    el:    () => el("gov-preloader"),
+    pct:   () => el("gov-pl-pct"),
+    bar:   () => el("gov-pl-bar"),
+    label: () => el("gov-pl-label"),
     show() {
       const e = this.el(); if (!e) return;
       e.classList.remove("hidden", "fading");
-      document.body.style.overflow = "hidden";
+      _lockScroll(true);
     },
     set(pct, label) {
       const p = pct + "%";
@@ -1313,7 +1414,7 @@ function _connectUserWs(session) {
     },
   };
 
-  // ── Analytics preload + open ──────────────────────────────────────────────
+  // ── Analytics preload entry point ─────────────────────────────────────────
   async function openGovAnalytics() {
     if (_open) { _setTab("analytics"); return; }
 
@@ -1331,7 +1432,9 @@ function _connectUserWs(session) {
     _pl.set(45, "Loading chart engine…");
     await new Promise(resolve => {
       _loadChartJs(resolve);
-      setTimeout(resolve, 5000); // fallback — charts will init lazily if needed
+      // 5-second fallback so a slow CDN never permanently blocks the overlay.
+      // Charts will lazy-init from cached data if Chart.js loads late.
+      setTimeout(resolve, 5000);
     });
     _pl.set(65, "Chart engine ready");
     await new Promise(r => setTimeout(r, 300));
@@ -1383,7 +1486,7 @@ function _connectUserWs(session) {
 
   // ── Open / Close ─────────────────────────────────────────────────────────
   openBtn?.addEventListener("click", openGovAnalytics);
-  document.getElementById("header-analytics-cta")?.addEventListener("click", openGovAnalytics);
+  el("header-analytics-cta")?.addEventListener("click", openGovAnalytics);
   closeBtn?.addEventListener("click", closeGov);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && _open) closeGov(); });
 
@@ -1409,7 +1512,7 @@ function _connectUserWs(session) {
 
   function _dismissIntro(key) {
     try { localStorage.setItem(_INTRO_LS_PREFIX + key, "1"); } catch {}
-    const card = document.getElementById("gov-intro-" + key);
+    const card = el("gov-intro-" + key);
     if (card) card.style.display = "none";
   }
 
@@ -1417,7 +1520,7 @@ function _connectUserWs(session) {
     ["live", "analytics", "agencies", "export"].forEach(key => {
       try {
         if (localStorage.getItem(_INTRO_LS_PREFIX + key)) {
-          const card = document.getElementById("gov-intro-" + key);
+          const card = el("gov-intro-" + key);
           if (card) card.style.display = "none";
         }
       } catch {}
@@ -1434,12 +1537,20 @@ function _connectUserWs(session) {
     btn.addEventListener("click", () => _dismissIntro(btn.dataset.introKey));
   });
 
+  // ── Open / Close gov overlay ──────────────────────────────────────────────
+  /**
+   * Opens the gov analytics overlay.
+   * Moves live canvases into the gov video slot (preserving WebGL contexts).
+   * Resolves camera_id from Supabase if not already cached.
+   * @returns {Promise<void>}
+   */
   async function openGov() {
     if (_open) return;
     _open = true;
+    window.addEventListener("count:update", _onGovCountUpdate);
     try { localStorage.setItem("wl_gov_open", _activeTab || "live"); } catch {}
     overlay.classList.remove("hidden");
-    document.body.style.overflow = "hidden";
+    _lockScroll(true);
     _restoreIntros();
     _moveOverlaysToGov();
 
@@ -1493,12 +1604,17 @@ function _connectUserWs(session) {
     if (toEl   && !toEl.value)   toEl.value   = today;
   }
 
+  /**
+   * Closes the gov analytics overlay and restores canvas positions.
+   * Removes the count:update listener to prevent stale event processing.
+   */
   function closeGov() {
     if (!_open) return;
     _open = false;
+    window.removeEventListener("count:update", _onGovCountUpdate);
     try { localStorage.removeItem("wl_gov_open"); } catch {}
     overlay.classList.add("hidden");
-    document.body.style.overflow = "";
+    _lockScroll(false);
     clearInterval(_crossingsInterval);
     _crossingsInterval = null;
     _stopZoneCanvas();
@@ -1515,7 +1631,15 @@ function _connectUserWs(session) {
     }
   }
 
-  // ── Live stats population ─────────────────────────────────────────────────
+  // ── Live tab — data population ────────────────────────────────────────────
+  /**
+   * Populates the gov overlay live tab with the latest count:update payload.
+   * @param {object} p - payload from /ws/live count:update event
+   * @param {number} p.total - cumulative vehicle count
+   * @param {object} p.vehicle_breakdown - {car, truck, bus, motorcycle} counts
+   * @param {number} [p.queue_depth] - current queue depth
+   * @param {number} [p.avg_speed_kmh] - average speed
+   */
   function _populateLive(p) {
     _setKpiLoading(false);
     const bd    = p.per_class_total || p.vehicle_breakdown || {};
@@ -1600,7 +1724,7 @@ function _connectUserWs(session) {
     txt("gov-ag-live-total",  total.toLocaleString());
   }
 
-  // ── Chart.js lazy load ────────────────────────────────────────────────────
+  // ── Chart.js lazy loading ─────────────────────────────────────────────────
   function _loadChartJs(cb) {
     if (window.Chart) { cb(); return; }
     if (_chartJsReady) { cb(); return; }
@@ -1736,7 +1860,7 @@ function _connectUserWs(session) {
     }).join("");
   }
 
-  // ── Analytics charts (ANALYTICS panel) ───────────────────────────────────
+  // ── Analytics charts ──────────────────────────────────────────────────────
   async function _initAllCharts(hours) {
     if (!window.Chart) return;
     _setAnalyticsLoading(true);
@@ -1950,7 +2074,7 @@ function _connectUserWs(session) {
     }
   }
 
-  // ── Zone analytics (queue depth + turning movements + speed) ──────────────
+  // ── Zone analytics (Turnings / Queue / Speed) ─────────────────────────────
   async function _loadZoneAnalytics() {
     if (!_camId) return;
     _govExitTotal = null; // reset so stale period values don't persist
@@ -2252,7 +2376,7 @@ function _connectUserWs(session) {
     txt("gov-ag-live-total",  Number(total).toLocaleString());
   }
 
-  // ── Crossings table ───────────────────────────────────────────────────────
+  // ── Crossings data (recent vehicle events) ────────────────────────────────
   async function _loadGovCrossings() {
     if (!window.sb) return;
     const tbody = el("gov-crossings-body");
@@ -2290,8 +2414,7 @@ function _connectUserWs(session) {
     }
   }
 
-  // ── Date range controls ───────────────────────────────────────────────────
-  // ── Custom date calendar ─────────────────────────────────────────────────
+  // ── Date-range calendar picker ────────────────────────────────────────────
 
   async function _fetchAvailDates() {
     if (_calFetched || !window.sb) return;
@@ -2315,6 +2438,7 @@ function _connectUserWs(session) {
     const trigger = el("gov-date-" + field);
     if (!popup || !trigger) return;
     const rect = trigger.getBoundingClientRect();
+    // Clamp to viewport so the calendar never renders off-screen on small viewports.
     popup.style.top  = (rect.bottom + 6) + "px";
     popup.style.left = Math.min(rect.left, window.innerWidth - 320) + "px";
     popup.classList.remove("hidden");
@@ -2495,10 +2619,8 @@ function _connectUserWs(session) {
   el("gov-date-from")?.addEventListener("click", (e) => { e.stopPropagation(); _openCal("from"); });
   el("gov-date-to")?.addEventListener("click",   (e) => { e.stopPropagation(); _openCal("to"); });
 
-  // ── Export (analytics toolbar quick-export) ───────────────────────────────
+  // ── CSV Export ────────────────────────────────────────────────────────────
   el("gov-export-btn")?.addEventListener("click", _triggerExport);
-
-  // ── Export panel download ─────────────────────────────────────────────────
   el("gov-export-dl-btn")?.addEventListener("click", _triggerExport);
 
   async function _triggerExport() {
@@ -2553,7 +2675,7 @@ function _connectUserWs(session) {
   el("gov-modal-close")?.addEventListener("click", _closeModal);
   el("gov-modal-backdrop")?.addEventListener("click", _closeModal);
 
-  // ── KPI card clicks ───────────────────────────────────────────────────────
+  // ── KPI detail modals ─────────────────────────────────────────────────────
   el("gov-panel-live")?.addEventListener("click", (e) => {
     const card = e.target.closest(".gov-kpi-card");
     if (!card) return;
@@ -2670,7 +2792,7 @@ function _connectUserWs(session) {
     } catch {}
   });
 
-  // ── Agency modal ──────────────────────────────────────────────────────────
+  // ── Agency data package modals ────────────────────────────────────────────
   overlay.addEventListener("click", (e) => {
     const btn = e.target.closest(".gov-agency-btn[data-modal]");
     if (!btn) return;
@@ -2778,12 +2900,12 @@ function _connectUserWs(session) {
         // Not logged in — show login prompt
         if (agContent) {
           const loginDiv = document.createElement("div");
-          loginDiv.style.cssText = "margin-top:14px;text-align:center";
+          loginDiv.className = "gov-agency-login-prompt";
           loginDiv.innerHTML = `
             <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:12px">
               Sign in to download this data package.
             </div>
-            <button class="gov-modal-login-btn" onclick="window.Auth?.openLoginModal?.();document.getElementById('gov-agency-modal-backdrop').classList.add('hidden')">
+            <button class="gov-modal-login-btn" onclick="window.Auth?.openLoginModal?.();el('gov-agency-modal-backdrop').classList.add('hidden')">
               Login to Download →
             </button>`;
           if (btn) btn.replaceWith(loginDiv);
