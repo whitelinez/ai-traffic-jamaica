@@ -1,5 +1,6 @@
 import { sb } from '../core/supabase.js';
 import Hls from 'hls.js';
+import { pixelToContent, contentToPixel } from '../utils/coord-utils.js';
 
 /**
  * admin-mapping.js — Scene geometry annotation editor for admin panel.
@@ -484,7 +485,6 @@ export const AdminMapping = (() => {
   }
 
   function _render() {
-    _rafId = null;
     if (!_ctx || !_canvas) return;
     _syncSize();
     const W = _canvas.width, H = _canvas.height;
