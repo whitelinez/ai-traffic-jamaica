@@ -49,11 +49,18 @@ async def run_test():
         # Interact with the page elements to simulate user flow
         # -> Navigate to http://localhost:5173/
         await page.goto("http://localhost:5173/", wait_until="commit", timeout=10000) 
+        # -> Click the 'Skip' button to bypass the intro and reach the dashboard.
+        frame = context.pages[-1]
+        elem = frame.locator('xpath=html/body/div[7]/div/button').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
+        
+
         # --> Assertions to verify final state
+        frame = context.pages[-1]
         try:
-            await expect(page.locator('text=Stream Disconnected').first).to_be_visible(timeout=30000)
+            await expect(frame.locator('text=Detection Zone Overlay Active')).to_be_visible(timeout=1000)
         except AssertionError:
-            raise AssertionError('Test case failed: Detection zone overlay is not visible on the stream when the dashboard loads, or the live stream video and FPS badge elements are missing, or the SIGNAL LOST text is unexpectedly visible.')
+            raise AssertionError('Test case failed: Detection zone overlay is not visible on the stream when the dashboard loads as required by the test plan.')
         await asyncio.sleep(5)
 
     finally:
