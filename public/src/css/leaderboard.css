@@ -48,9 +48,9 @@
 .lb-row-top-1 { border-color: rgba(192,192,192,0.3); background: rgba(192,192,192,0.05); }
 .lb-row-top-2 { border-color: rgba(205,127,50,0.3); background: rgba(205,127,50,0.05); }
 .lb-medal { font-size: 1rem; line-height: 1; flex-shrink: 0; }
-.lb-rank-num { font-size: 0.75rem; font-weight: 700; color: var(--muted); width: 20px; text-align: center; flex-shrink: 0; }
-.lb-name { flex: 1; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lb-balance { font-size: 0.8rem; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.lb-rank-num { font-size: 0.75rem; font-weight: 700; color: var(--muted); width: 20px; text-align: center; flex-shrink: 0; font-family: "Archivo", sans-serif; }
+.lb-name { flex: 1; color: var(--text); font-weight: 700; font-family: "Archivo", sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-balance { font-size: 0.8rem; font-weight: 700; color: var(--accent); white-space: nowrap; font-family: "Archivo", sans-serif; }
 .lb-loading { display: flex; flex-direction: column; gap: 6px; }
 
 /* ── Activity items in chat ──────────────────────────────────── */

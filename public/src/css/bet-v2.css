@@ -203,6 +203,7 @@
 .lb-detail {
   font-size: 0.65rem;
   color: var(--muted);
+  font-family: "Archivo", sans-serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
