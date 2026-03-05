@@ -1172,6 +1172,73 @@ function _connectUserWs(session) {
   let _activeTab    = "live";
   let _dbKpisLoaded = false;  // true once analytics data has updated KPI cards from DB
 
+  // ── Admin: detection confidence slider ───────────────────────────────────
+  // Shown only to admin users. Reads/writes cameras.count_settings.min_confidence
+  // via /api/admin/ml-runtime-profile (GET/PATCH proxied to Railway).
+  let _confDebounceTimer = null;
+
+  function _confSetStatus(msg, ok) {
+    const s = el("gov-conf-status");
+    if (!s) return;
+    s.textContent = msg;
+    s.className = "gov-conf-status" + (ok === true ? " ok" : ok === false ? " err" : "");
+  }
+
+  async function _confLoad() {
+    if (!_camId) return;
+    try {
+      const jwt = await Auth.getJwt();
+      const res = await fetch(`/api/admin/ml-runtime-profile?camera_id=${encodeURIComponent(_camId)}`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const conf = data?.count_settings?.min_confidence;
+      if (typeof conf === "number") {
+        const slider = el("gov-conf-slider");
+        const valEl  = el("gov-conf-val");
+        const pct = Math.round(conf * 100);
+        if (slider) slider.value = pct;
+        if (valEl)  valEl.textContent = pct + "%";
+      }
+    } catch { /* silent — non-critical */ }
+  }
+
+  async function _confApply(pct) {
+    if (!_camId) return;
+    _confSetStatus("Saving…");
+    try {
+      const jwt = await Auth.getJwt();
+      const res = await fetch(`/api/admin/ml-runtime-profile?camera_id=${encodeURIComponent(_camId)}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ min_confidence: pct / 100 }),
+      });
+      if (res.ok) _confSetStatus("Saved — applies on next counter refresh", true);
+      else        _confSetStatus("Save failed (" + res.status + ")", false);
+    } catch (err) {
+      _confSetStatus("Error: " + err.message, false);
+    }
+  }
+
+  async function _initConfSlider() {
+    const session = await Auth.getSession();
+    const isAdmin = session?.user?.app_metadata?.role === "admin";
+    const section = el("gov-conf-section");
+    if (!section) return;
+    if (!isAdmin) { section.classList.add("hidden"); return; }
+    section.classList.remove("hidden");
+    await _confLoad();
+    const slider = el("gov-conf-slider");
+    slider?.addEventListener("input", () => {
+      const pct = Number(slider.value);
+      const valEl = el("gov-conf-val");
+      if (valEl) valEl.textContent = pct + "%";
+      clearTimeout(_confDebounceTimer);
+      _confDebounceTimer = setTimeout(() => _confApply(pct), 600);
+    });
+  }
+
   // ── Analytics loading progress ────────────────────────────────────────────
   function _setProgress(pct, label) {
     const wrap = el("gov-an-progress");
@@ -1640,6 +1707,9 @@ function _connectUserWs(session) {
       if (!_govFrom) _setPreset("1d");
       _loadChartJs(() => { _initDonut(); _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()); });
     }
+
+    // Admin confidence slider (no-op for non-admins)
+    _initConfSlider();
 
     // Start crossings refresh
     _loadGovCrossings();

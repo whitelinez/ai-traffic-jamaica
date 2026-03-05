@@ -999,6 +999,21 @@
             </div>
             <div class="gov-attr">YOLOv8 · Real-time edge inference · 24/7 monitoring</div>
           </div>
+
+          <!-- Admin-only: detection confidence control -->
+          <div class="gov-side-section gov-conf-section hidden" id="gov-conf-section">
+            <div class="gov-side-head">DETECTION THRESHOLD <span class="gov-admin-badge">ADMIN</span></div>
+            <div class="gov-conf-row">
+              <label class="gov-conf-label" for="gov-conf-slider">Min confidence</label>
+              <span class="gov-conf-val" id="gov-conf-val">—</span>
+            </div>
+            <input type="range" id="gov-conf-slider" class="gov-conf-slider"
+              min="20" max="50" step="1" value="22" aria-label="Detection confidence threshold">
+            <div class="gov-conf-hints">
+              <span>Looser</span><span>Stricter</span>
+            </div>
+            <div class="gov-conf-status" id="gov-conf-status"></div>
+          </div>
         </div>
       </div>
     </div>

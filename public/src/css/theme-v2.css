@@ -470,12 +470,12 @@
 .bnr-tile-default {
   height: 72px;
   opacity: 1;
-  border: 1px solid rgba(255,214,0,0.28) !important;
+  border: 1px solid rgba(255,214,0,0.28);
   box-shadow: 0 0 20px rgba(255,214,0,0.07), inset 0 0 24px rgba(0,0,0,0.3);
   cursor: default;
 }
 .bnr-tile-default:hover {
-  border-color: rgba(255,214,0,0.48) !important;
+  border-color: rgba(255,214,0,0.48);
   box-shadow: 0 0 24px rgba(255,214,0,0.12), inset 0 0 24px rgba(0,0,0,0.3);
   transform: none;
 }
@@ -783,8 +783,8 @@
 
 /* Activity items — bet events, gold tinted */
 .chat-activity-item {
-  background: rgba(255,214,0,0.04) !important;
-  border: 1px solid rgba(255,214,0,0.14) !important;
+  background: rgba(255,214,0,0.04);
+  border: 1px solid rgba(255,214,0,0.14);
   border-radius: 6px;
 }
 .chat-activity-item .ca-icon {

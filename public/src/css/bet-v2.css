@@ -112,7 +112,7 @@
 .bpa-receipt-row:last-child { border-bottom: none; }
 .bpa-receipt-row span { color: var(--muted); }
 .bpa-receipt-row strong { color: var(--text); font-variant-numeric: tabular-nums; }
-.bpa-countdown { color: var(--accent) !important; font-variant-numeric: tabular-nums; }
+.bpa-countdown { color: var(--accent); font-variant-numeric: tabular-nums; }
 
 /* ── Inline bet result ───────────────────────────────────────── */
 .bp-result {
@@ -386,81 +386,81 @@
 
 /* ── Count Widget ─────────────────────────────── */
 .count-widget {
-  min-width: 0 !important;
-  max-width: 120px !important;
-  padding: 6px 8px 7px !important;
+  min-width: 0;
+  max-width: 120px;
+  padding: 6px 8px 7px;
   background: transparent !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
 
 .count-widget::before {
-  font-size: 0.44rem !important;
-  letter-spacing: 0.14em !important;
-  margin-bottom: 2px !important;
+  font-size: 0.44rem;
+  letter-spacing: 0.14em;
+  margin-bottom: 2px;
 }
 
 .count-widget-total {
-  margin-bottom: 4px !important;
+  margin-bottom: 4px;
 }
 
 .count-widget-total span:first-child {
-  font-size: 1.7rem !important;
+  font-size: 1.7rem;
 }
 
 .count-widget-breakdown {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 4px 6px !important;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 6px;
 }
 
 .cw-item {
-  display: flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  font-size: 0.65rem !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
 }
 
 .cw-item strong {
-  font-size: 0.7rem !important;
-  min-width: 16px !important;
+  font-size: 0.7rem;
+  min-width: 16px;
 }
 
 .vehicle-icon {
-  width: 18px !important;
-  height: 13px !important;
-  opacity: 1 !important;
+  width: 18px;
+  height: 13px;
+  opacity: 1;
 }
 
 /* ── Vision HUD ───────────────────────────────── */
 .ml-hud {
-  width: min(175px, 34vw) !important;
-  bottom: 10px !important;
-  right: 10px !important;
-  padding: 4px 6px !important;
+  width: min(175px, 34vw);
+  bottom: 10px;
+  right: 10px;
+  padding: 4px 6px;
   background: transparent !important;
   border: none !important;
-  border-radius: 0 !important;
+  border-radius: 0;
   backdrop-filter: none !important;
   box-shadow: none !important;
 }
 
 .ml-hud-head {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  margin-bottom: 3px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
 }
 
 .ml-hud-title {
-  font-size: 0.52rem !important;
-  letter-spacing: 0.1em !important;
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
 }
 
 .ml-hud-state {
-  font-size: 0.47rem !important;
-  padding: 1px 5px !important;
-  border-radius: 3px !important;
+  font-size: 0.47rem;
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 
 /* Hide verbose msg — too much noise */
@@ -471,68 +471,68 @@
 }
 
 .ml-hud-chips {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 3px !important;
-  margin-bottom: 3px !important;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  margin-bottom: 3px;
 }
 
 .ml-chip {
-  padding: 3px 4px !important;
-  border-radius: 3px !important;
+  padding: 3px 4px;
+  border-radius: 3px;
   clip-path: none !important;
-  border: 1px solid rgba(255, 214, 0, 0.25) !important;
+  border: 1px solid rgba(255, 214, 0, 0.25);
   background: transparent !important;
 }
 
 .ml-chip-label {
-  font-size: 0.44rem !important;
-  gap: 3px !important;
+  font-size: 0.44rem;
+  gap: 3px;
 }
 
 .ml-chip strong {
-  font-size: 0.56rem !important;
-  min-width: auto !important;
+  font-size: 0.56rem;
+  min-width: auto;
 }
 
 .ml-hud-cells {
-  gap: 3px !important;
-  margin-bottom: 3px !important;
+  gap: 3px;
+  margin-bottom: 3px;
 }
 
 .ml-cell-row {
-  gap: 2px 5px !important;
+  gap: 2px 5px;
 }
 
 .ml-cell-label {
-  font-size: 0.44rem !important;
+  font-size: 0.44rem;
 }
 
 .ml-cell-row strong {
-  font-size: 0.5rem !important;
+  font-size: 0.5rem;
 }
 
 .ml-cell-note {
-  font-size: 0.42rem !important;
+  font-size: 0.42rem;
 }
 
 .ml-cell-track {
-  height: 4px !important;
+  height: 4px;
   clip-path: none !important;
-  border-radius: 2px !important;
+  border-radius: 2px;
 }
 
 .ml-hud-metrics {
-  font-size: 0.47rem !important;
-  gap: 6px !important;
-  padding-top: 2px !important;
-  border-top: 1px solid rgba(255,214,0,0.1) !important;
+  font-size: 0.47rem;
+  gap: 6px;
+  padding-top: 2px;
+  border-top: 1px solid rgba(255,214,0,0.1);
 }
 
 .ml-ico {
-  width: 12px !important;
-  height: 12px !important;
-  opacity: 0.9 !important;
+  width: 12px;
+  height: 12px;
+  opacity: 0.9;
 }
 
 /* ── Mobile ≤640px ───────────────────────────── */

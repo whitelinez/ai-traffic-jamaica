@@ -22,8 +22,8 @@
   user-select: none !important;
   touch-action: none !important;
   outline: 1px dashed rgba(255, 214, 0, 0.45) !important;
-  outline-offset: 4px !important;
-  transition: outline-color 0.15s !important;
+  outline-offset: 4px;
+  transition: outline-color 0.15s;
 }
 .wl-draggable:hover {
   outline-color: rgba(255, 214, 0, 0.85) !important;
@@ -1019,31 +1019,31 @@
 .gov-intro-dismiss:active { background: #0284c7; }
 
 /* ── Bigger accessible font sizes ────────────────────────────── */
-.gov-tab      { font-size: 11px !important; }
+.gov-tab      { font-size: 11px; }
 
-.gov-kpi-val  { font-size: 36px !important; }
-.gov-kpi-lbl  { font-size: 12px !important; margin-top: 6px !important; }
-.gov-kpi-hint { font-size: 10px !important; }
+.gov-kpi-val  { font-size: 36px; }
+.gov-kpi-lbl  { font-size: 12px; margin-top: 6px; }
+.gov-kpi-hint { font-size: 10px; }
 
-.gov-side-head { font-size: 11px !important; }
-.gov-cls-name  { font-size: 14px !important; }
-.gov-cls-val   { font-size: 19px !important; }
-.gov-cls-pct   { font-size: 11px !important; }
-.gov-flow-val  { font-size: 28px !important; }
-.gov-flow-lbl  { font-size: 12px !important; }
-.gov-attr      { font-size: 10px !important; }
-.gov-chart-head { font-size: 11px !important; }
-.gov-sys-row   { font-size: 13px !important; }
+.gov-side-head { font-size: 11px; }
+.gov-cls-name  { font-size: 14px; }
+.gov-cls-val   { font-size: 19px; }
+.gov-cls-pct   { font-size: 11px; }
+.gov-flow-val  { font-size: 28px; }
+.gov-flow-lbl  { font-size: 12px; }
+.gov-attr      { font-size: 10px; }
+.gov-chart-head { font-size: 11px; }
+.gov-sys-row   { font-size: 13px; }
 
 /* ── Hover effects — tint only, no movement ─────────────────── */
-.gov-kpi-card  { transition: background 0.15s !important; }
-.gov-kpi-card:hover { background: #f8fafc !important; }
-.gov-chart-card { transition: background 0.15s !important; }
-.gov-chart-card:hover { background: #fafafa !important; }
-.gov-tab   { transition: color 0.15s, border-color 0.15s, background 0.15s !important; }
+.gov-kpi-card  { transition: background 0.15s; }
+.gov-kpi-card:hover { background: #f8fafc; }
+.gov-chart-card { transition: background 0.15s; }
+.gov-chart-card:hover { background: #fafafa; }
+.gov-tab   { transition: color 0.15s, border-color 0.15s, background 0.15s; }
 .gov-tab:hover { background: #f8fafc; border-radius: 4px 4px 0 0; }
-.gov-cls-row   { transition: background 0.12s !important; }
-.gov-turning-row { transition: background 0.1s !important; }
+.gov-cls-row   { transition: background 0.12s; }
+.gov-turning-row { transition: background 0.1s; }
 
 .gov-title {
   font-family: "Inter", "Archivo", sans-serif;
@@ -1128,7 +1128,7 @@
   font-family: "Rajdhani", "Archivo", sans-serif;
   font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1;
 }
-.gov-kpi-out { color: var(--muted) !important; }
+.gov-kpi-out { color: var(--muted); }
 .gov-kpi-lbl {
   font-family: "Inter", sans-serif; font-size: 10px; font-weight: 600;
   color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase;
@@ -1215,7 +1215,7 @@
   font-family: "Rajdhani", "Archivo", sans-serif;
   font-size: 22px; font-weight: 700; color: var(--green); line-height: 1;
 }
-.gov-flow-out    { color: var(--muted) !important; }
+.gov-flow-out    { color: var(--muted); }
 .gov-flow-lbl {
   font-family: "Inter", sans-serif; font-size: 9px;
   color: var(--muted); text-transform: uppercase;
@@ -1223,7 +1223,7 @@
 }
 .gov-flow-divider { height: 1px; background: var(--border); }
 .gov-donut-mini   { width: 80px; height: 80px; flex-shrink: 0; }
-.gov-donut-mini canvas { width: 100% !important; height: 100% !important; }
+.gov-donut-mini canvas { width: 100%; height: 100%; }
 
 /* System rows */
 .gov-sys-rows { display: flex; flex-direction: column; gap: 4px; }
@@ -1617,7 +1617,7 @@
   letter-spacing: 0.04em;
 }
 .gov-chart-body { position: relative; height: 200px; }
-.gov-chart-body canvas { width: 100% !important; height: 100% !important; }
+.gov-chart-body canvas { width: 100%; height: 100%; }
 .gov-crossings-wrap { overflow-x: auto; max-height: 280px; overflow-y: auto; }
 .gov-crossings-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .gov-crossings-table th {
@@ -1722,7 +1722,7 @@
 }
 /* Hardcoded dark values inside live panel */
 #gov-panel-live .gov-cls-bar-wrap   { background: #e2e8f0; }
-#gov-panel-live .gov-veh-svg        { stroke: #1e293b !important; }
+#gov-panel-live .gov-veh-svg        { stroke: #1e293b; }
 #gov-panel-live .gov-sys-row        { border-bottom-color: #e2e8f0; }
 #gov-panel-live .gov-scene-badge    { background: rgba(2,132,199,0.08); border-color: rgba(2,132,199,0.2); color: #0284c7; }
 #gov-panel-live .gov-video-slot     { background: #000; }
@@ -1862,7 +1862,7 @@
   100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
 }
 /* Pipe dividers */
-.gov-ag-live-bar > span[style] { color: rgba(0,0,0,0.15) !important; font-size: 10px; }
+.gov-ag-live-bar > span[style] { color: rgba(0,0,0,0.15); font-size: 10px; }
 /* Count and time values */
 .gov-ag-live-bar span[id] { font-weight: 700; color: #0f1c2e; }
 /* Dim label text */
@@ -1914,7 +1914,7 @@
   align-items: flex-start; gap: 6px; border-left: none;
 }
 .gov-agency-featured-right .gov-agency-abbr {
-  font-size: 12px; font-weight: 700; letter-spacing: 2.5px; color: #22c55e !important;
+  font-size: 12px; font-weight: 700; letter-spacing: 2.5px; color: #22c55e;
 }
 .gov-agency-featured-right .gov-agency-val {
   font-family: "Inter", "Rajdhani", sans-serif;
@@ -2219,7 +2219,7 @@
   text-transform: uppercase; letter-spacing: 0.07em; margin-top: 4px;
 }
 .gov-modal-chart-wrap { position: relative; height: 200px; margin-bottom: 16px; }
-.gov-modal-chart-wrap canvas { width: 100% !important; height: 100% !important; }
+.gov-modal-chart-wrap canvas { width: 100%; height: 100%; }
 .gov-modal-section { margin-bottom: 18px; }
 .gov-modal-section-head {
   font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 700;
@@ -3193,17 +3193,17 @@
 /* ── Count widget: minimal floating number only ── */
 .count-widget {
   position: absolute !important;
-  top: 38% !important;
-  left: 14px !important;
-  bottom: auto !important; right: auto !important;
-  min-width: 0 !important; max-width: none !important; width: auto !important; height: auto !important;
-  padding: 0 !important; gap: 0 !important;
+  top: 38%;
+  left: 14px;
+  bottom: auto; right: auto;
+  min-width: 0; max-width: none; width: auto; height: auto;
+  padding: 0; gap: 0;
   clip-path: none !important; border-radius: 0 !important;
-  border: none !important;
+  border: none;
   background: transparent !important;
   backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
-  display: block !important;
+  display: block;
   pointer-events: none;
 }
 /* Hide vehicle breakdown + label + ws dot — just the number */
@@ -3214,18 +3214,18 @@
 .count-widget::before { display: none !important; }
 /* The total number itself — large amber numeral */
 .cw-total-wrap {
-  display: block !important;
-  margin: 0 !important; padding: 0 !important;
+  display: block;
+  margin: 0; padding: 0;
 }
 #cw-total {
-  display: block !important;
-  font-family: 'Rajdhani', sans-serif !important;
-  font-size: 56px !important;
-  font-weight: 700 !important;
-  line-height: 1 !important;
-  color: var(--accent) !important;
-  text-shadow: 0 0 20px rgba(255,184,0,0.35) !important;
-  letter-spacing: -1px !important;
+  display: block;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(255,184,0,0.35);
+  letter-spacing: -1px;
 }
 .count-widget:hover, .count-widget.cw-active {
   clip-path: none !important; background: transparent !important; border: none !important;
@@ -3309,10 +3309,10 @@
    These rules always win via cascade position.
    ============================================= */
 .count-widget {
-  top:  var(--cw-top)  !important;
-  left: var(--cw-left) !important;
-  right: auto          !important;
-  bottom: auto         !important;
+  top:  var(--cw-top) ;
+  left: var(--cw-left);
+  right: auto         ;
+  bottom: auto        ;
 }
 
 /* ── Analytics loading skeletons ───────────────────────────────────────────── */
@@ -3606,7 +3606,7 @@
 .wl-cal-day.wl-cal-avail:hover { background: #e0f2fe; color: #0284c7; }
 .wl-cal-day.wl-cal-today { outline: 2px solid #bae6fd; outline-offset: -2px; }
 .wl-cal-day.wl-cal-sel {
-  background: #0f1c2e !important; color: #ffffff !important;
+  background: #0f1c2e; color: #ffffff;
   font-weight: 700; outline: none;
 }
 .wl-cal-day.wl-cal-inrange { background: #e0f2fe; color: #0369a1; }
@@ -3640,6 +3640,62 @@
 .gov-an-toolbar .gov-date-input { background: var(--bg3); }
 
 
+
+/* ── Admin confidence slider ─────────────────────────────────────────────────*/
+.gov-admin-badge {
+  display: inline-block;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  background: rgba(255, 184, 0, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(255, 184, 0, 0.25);
+  border-radius: 3px;
+  padding: 1px 5px;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.gov-conf-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.gov-conf-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.gov-conf-val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  color: var(--accent);
+  min-width: 3ch;
+  text-align: right;
+}
+.gov-conf-slider {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+  height: 4px;
+  border-radius: 2px;
+}
+.gov-conf-hints {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.58rem;
+  color: var(--dim);
+  margin-top: 4px;
+}
+.gov-conf-status {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 6px;
+  min-height: 1.2em;
+  transition: color 0.2s;
+}
+.gov-conf-status.ok   { color: var(--green, #22c55e); }
+.gov-conf-status.err  { color: var(--red,   #ef4444); }
 
 /* ── Accessibility: respect OS reduced-motion preference ─────────────────────
    Uses near-zero duration instead of "none" to avoid jarring position jumps.
