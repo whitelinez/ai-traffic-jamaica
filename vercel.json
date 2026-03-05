@@ -1,6 +1,6 @@
 {
     "version":  2,
-    "buildCommand": "mkdir -p dist && cp public/maintenance.html dist/index.html",
+    "buildCommand": "mkdir -p dist && cp public/maintenance.html dist/index.html && cp -r public/img dist/img",
     "outputDirectory": "dist",
     "cleanUrls": true,
     "rewrites":  [
