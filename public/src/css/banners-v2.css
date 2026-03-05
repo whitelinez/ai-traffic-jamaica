@@ -1575,10 +1575,10 @@
 
 @media (max-width: 768px) {
 
-  /* ── Count widget — fix old clip-path + resize ── */
+  /* ── Count widget — same top/left as desktop ── */
   .count-widget {
-    top: 8px !important;
-    left: 8px !important;
+    top: var(--cw-top) !important;
+    left: var(--cw-left) !important;
     /* Replace old skewed polygon with correct HUD corner-cut */
     clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)) !important;
     min-width: 0 !important;

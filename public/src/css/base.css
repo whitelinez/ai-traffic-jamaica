@@ -39,14 +39,6 @@
   --cls-moto:  #FFD600;
 }
 
-/* Mobile: move count widget to top-left, clear of the ML HUD */
-@media (max-width: 768px) {
-  :root {
-    --cw-top:   8px;   /* close to stream top edge, above ML HUD */
-    --cw-left:  8px;
-    --cw-right: auto;
-  }
-}
 
 body.dark {
   background: var(--bg);

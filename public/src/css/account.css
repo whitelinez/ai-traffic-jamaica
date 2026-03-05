@@ -572,8 +572,8 @@
   }
 
   .count-widget {
-    top: 40px;
-    left: 8px;
+    top: var(--cw-top);
+    left: var(--cw-left);
     padding: 4px 7px;
     min-width: 0;
     max-width: calc(100% - 16px);
@@ -824,8 +824,8 @@
   .logo-title { font-size: 13px; letter-spacing: 0.07em; }
 
   .count-widget {
-    top: 36px;
-    left: 6px;
+    top: var(--cw-top);
+    left: var(--cw-left);
     padding: 3px 5px 4px;
     border-radius: 0;
     clip-path: polygon(0 52%, 7% 0, 100% 0, 94% 100%, 0 100%);

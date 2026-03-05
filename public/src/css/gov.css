@@ -2718,17 +2718,12 @@
   .header-watching  { display: none !important; }
   .nav-gov-btn      { display: none; } /* gov mode hidden on mobile for now */
 
-  /* ── Count widget — reset old position rules, keep bottom strip ── */
+  /* ── Count widget — top-left overlay, same position as desktop ── */
   .count-widget {
-    top: auto !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    clip-path: none !important;
-    border-radius: 0 !important;
-    height: 40px;
-    padding: 0 10px !important;
-    gap: 12px;
+    top:    var(--cw-top)  !important;
+    left:   var(--cw-left) !important;
+    right:  auto !important;
+    bottom: auto !important;
   }
   .cw-vehicle-num { font-size: 15px; }
   .cw-total-val   { font-size: 20px; }
@@ -3186,50 +3181,8 @@
 .nav-dd-logout:hover { background: rgba(255,61,107,0.08); color: var(--red); }
 .nav-dd-logout:hover svg { color: var(--red); }
 
-/* ══════════════════════════════════════════════════════════════
-   COUNT WIDGET — minimal floating number (no vehicle breakdown)
-   ══════════════════════════════════════════════════════════════ */
-
-/* ── Count widget: minimal floating number only ── */
-.count-widget {
-  position: absolute !important;
-  top: 38%;
-  left: 14px;
-  bottom: auto; right: auto;
-  min-width: 0; max-width: none; width: auto; height: auto;
-  padding: 0; gap: 0;
-  clip-path: none !important; border-radius: 0 !important;
-  border: none;
-  background: transparent !important;
-  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
-  box-shadow: none !important;
-  display: block;
-  pointer-events: none;
-}
-/* Hide vehicle breakdown + label + ws dot — just the number */
-.cw-normal-wrap  { display: none !important; }
-.cw-total-label  { display: none !important; }
-.cw-ws-dot       { display: none !important; }
-.cw-snapshot-badge { display: none !important; }
-.count-widget::before { display: none !important; }
-/* The total number itself — large amber numeral */
-.cw-total-wrap {
-  display: block;
-  margin: 0; padding: 0;
-}
-#cw-total {
-  display: block;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 56px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--accent);
-  text-shadow: 0 0 20px rgba(255,184,0,0.35);
-  letter-spacing: -1px;
-}
-.count-widget:hover, .count-widget.cw-active {
-  clip-path: none !important; background: transparent !important; border: none !important;
-}
+/* COUNT WIDGET global override removed — widget position/style
+   controlled by banners-v2.css and CSS vars (--cw-top / --cw-left) */
 
 /* ── Intel panel: hide when tab not active ── */
 .tab-content.intel-panel:not(.active) { display: none !important; }
