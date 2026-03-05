@@ -1,6 +1,6 @@
 {
     "version":  2,
-    "buildCommand": "npm run build",
+    "buildCommand": "mkdir -p dist && cp public/maintenance.html dist/index.html",
     "outputDirectory": "dist",
     "cleanUrls": true,
     "rewrites":  [
@@ -13,8 +13,8 @@
                          "destination":  "/api/$1"
                      },
                      {
-                         "source":  "/((?!maintenance\\.html).*)",
-                         "destination":  "/maintenance.html"
+                         "source":  "/(.*)",
+                         "destination":  "/index.html"
                      }
                  ],
     "headers":  [
