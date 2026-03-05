@@ -1755,14 +1755,14 @@ button {
 @media (max-width: 640px) {
   .account-page .site-header nav {
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: flex-end;
   }
 
   .account-page .site-header nav a,
   .account-page .site-header nav button {
     font-size: 0.78rem;
-    padding: 6px 8px;
+    padding: 4px 8px;
   }
 
   .account-page .account-main {

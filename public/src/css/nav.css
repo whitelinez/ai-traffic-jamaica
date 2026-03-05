@@ -273,7 +273,32 @@
   50%       { opacity: 0.35; }
 }
 .dev-banner-text { opacity: 0.9; }
+.dev-banner-short { display: none; }
+
 @media (max-width: 480px) {
   .dev-banner { font-size: 10px; gap: 6px; padding: 5px 12px; }
+  .dev-banner-full  { display: none; }
+  .dev-banner-short { display: inline; }
+}
+
+/* ── Account page header — mobile ────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Keep header on one row: hide logo text, rely on logo image only */
+  .account-page .logo-title-block { display: none; }
+
+  /* Remove wrap — fixed-height header clips wrapped rows */
+  .account-page .site-header .header-nav {
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  /* Compact nav buttons */
+  .account-page .header-nav .nav-login-btn {
+    font-size: 10px;
+    padding: 0 8px;
+    height: 28px;
+    border-radius: 6px;
+  }
 }
 
