@@ -20,17 +20,69 @@
       --muted:  #7A9BB5;
       --dim:    #3A5568;
       --accent: #FFB800;
-      --cyan:   #00D4FF;
     }
 
     html, body {
-      min-height: 100%;
+      height: 100%;
       background: var(--bg);
       color: var(--text);
       font-family: "Inter", system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
+      overflow: hidden;
     }
 
+    /* ── Live stream background ── */
+    #bg-video {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      opacity: 0;
+      transition: opacity 1.2s ease;
+    }
+    #bg-video.loaded { opacity: 0.38; }
+
+    /* ── Dark overlay ── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+        160deg,
+        rgba(8,12,20,0.82) 0%,
+        rgba(8,12,20,0.68) 50%,
+        rgba(8,12,20,0.88) 100%
+      );
+      z-index: 1;
+    }
+
+    /* ── Subtle grid on top of video ── */
+    .grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(26,45,66,0.4) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(26,45,66,0.4) 1px, transparent 1px);
+      background-size: 56px 56px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* ── Accent glow ── */
+    .glow {
+      position: fixed;
+      top: -180px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 360px;
+      background: radial-gradient(ellipse, rgba(255,184,0,0.055) 0%, transparent 68%);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* ── Page layout ── */
     body {
       display: flex;
       flex-direction: column;
@@ -40,41 +92,13 @@
       padding: 40px 20px;
     }
 
-    /* Subtle grid */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image:
-        linear-gradient(var(--border) 1px, transparent 1px),
-        linear-gradient(90deg, var(--border) 1px, transparent 1px);
-      background-size: 56px 56px;
-      opacity: 0.18;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* Accent glow */
-    body::after {
-      content: '';
-      position: fixed;
-      top: -160px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 600px;
-      height: 320px;
-      background: radial-gradient(ellipse, rgba(255,184,0,0.06) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
     .wrap {
       position: relative;
-      z-index: 1;
+      z-index: 3;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 32px;
+      gap: 28px;
       width: 100%;
       max-width: 500px;
     }
@@ -85,9 +109,9 @@
       height: 72px;
       border-radius: 16px;
       overflow: hidden;
-      border: 1px solid var(--border);
+      border: 1px solid rgba(255,184,0,0.18);
       background: var(--bg2);
-      box-shadow: 0 0 0 1px rgba(255,184,0,0.08), 0 8px 32px rgba(0,0,0,0.5);
+      box-shadow: 0 0 0 1px rgba(255,184,0,0.07), 0 8px 40px rgba(0,0,0,0.6);
     }
     .logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
@@ -96,8 +120,8 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(255,184,0,0.06);
-      border: 1px solid rgba(255,184,0,0.15);
+      background: rgba(255,184,0,0.07);
+      border: 1px solid rgba(255,184,0,0.18);
       border-radius: 100px;
       padding: 5px 14px 5px 10px;
       font-family: "Archivo", sans-serif;
@@ -117,9 +141,7 @@
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
 
     /* ── Headline ── */
-    .headline {
-      text-align: center;
-    }
+    .headline { text-align: center; }
     h1 {
       font-family: "Archivo", sans-serif;
       font-size: clamp(2rem, 7vw, 2.8rem);
@@ -127,11 +149,9 @@
       letter-spacing: -0.03em;
       line-height: 1.08;
       color: var(--text);
+      text-shadow: 0 2px 24px rgba(0,0,0,0.8);
     }
-    h1 em {
-      color: var(--accent);
-      font-style: normal;
-    }
+    h1 em { color: var(--accent); font-style: normal; }
     .sub {
       margin-top: 12px;
       font-size: 0.88rem;
@@ -143,14 +163,15 @@
     /* ── Card ── */
     .card {
       width: 100%;
-      background: var(--bg2);
+      background: rgba(13,21,32,0.88);
       border: 1px solid var(--border);
       border-radius: 12px;
       overflow: hidden;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
-
     .card-head {
-      padding: 14px 20px;
+      padding: 12px 20px;
       border-bottom: 1px solid var(--border);
       font-family: "Archivo", sans-serif;
       font-size: 0.62rem;
@@ -159,49 +180,57 @@
       text-transform: uppercase;
       color: var(--dim);
     }
-
-    .needs {
-      padding: 4px 0;
-    }
-
     .need-row {
       display: flex;
       align-items: flex-start;
       gap: 14px;
-      padding: 16px 20px;
+      padding: 14px 20px;
       border-bottom: 1px solid var(--border);
     }
     .need-row:last-child { border-bottom: none; }
-
     .need-icon {
       flex-shrink: 0;
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+      width: 30px; height: 30px;
+      border-radius: 7px;
       background: var(--bg3);
       border: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-top: 1px;
       color: var(--accent);
+      margin-top: 2px;
     }
-    .need-icon svg {
-      display: block;
-    }
-
     .need-text strong {
       display: block;
-      font-size: 0.82rem;
+      font-size: 0.81rem;
       font-weight: 600;
       color: var(--text);
-      margin-bottom: 3px;
+      margin-bottom: 2px;
       letter-spacing: -0.01em;
     }
     .need-text span {
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       color: var(--muted);
       line-height: 1.5;
+    }
+
+    /* ── Stream label ── */
+    .stream-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .stream-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #22C55E;
+      animation: blink 2s ease-in-out infinite;
+      flex-shrink: 0;
     }
 
     /* ── Footer ── */
@@ -210,11 +239,18 @@
       font-weight: 600;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--dim);
+      color: rgba(58,85,104,0.9);
     }
   </style>
 </head>
 <body>
+
+  <!-- Full-screen live stream background -->
+  <video id="bg-video" autoplay muted playsinline></video>
+  <div class="overlay"></div>
+  <div class="grid"></div>
+  <div class="glow"></div>
+
   <div class="wrap">
 
     <div class="logo">
@@ -237,89 +273,106 @@
 
     <div class="card">
       <div class="card-head">What we're upgrading</div>
-      <div class="needs">
 
-        <!-- Live stream -->
-        <div class="need-row">
-          <div class="need-icon">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2.5 11.5a7.5 7.5 0 0 1 0-7M5 10a4.5 4.5 0 0 1 0-4M8 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" fill="currentColor" stroke="none"/>
-              <path d="M8 8m0 0"/>
-              <path d="M5 10a4.5 4.5 0 0 1 0-4"/>
-              <path d="M2.5 11.5a7.5 7.5 0 0 1 0-7"/>
-              <path d="M11 10a4.5 4.5 0 0 0 0-4"/>
-              <path d="M13.5 11.5a7.5 7.5 0 0 0 0-7"/>
-              <circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/>
-            </svg>
-          </div>
-          <div class="need-text">
-            <strong>Low-Latency Live Stream</strong>
-            <span>Current stream introduces detection delay — upgrading to a direct, low-latency feed for frame-accurate YOLO inference.</span>
-          </div>
+      <div class="need-row">
+        <div class="need-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 10a4.5 4.5 0 0 0 0-4"/><path d="M13.5 11.5a7.5 7.5 0 0 0 0-7"/>
+            <path d="M5 10a4.5 4.5 0 0 1 0-4"/><path d="M2.5 11.5a7.5 7.5 0 0 1 0-7"/>
+            <circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/>
+          </svg>
         </div>
-
-        <!-- GPU -->
-        <div class="need-row">
-          <div class="need-icon">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="10" height="10" rx="2"/>
-              <rect x="5.5" y="5.5" width="5" height="5" rx="1"/>
-              <line x1="5.5" y1="1.5" x2="5.5" y2="3"/>
-              <line x1="8"   y1="1.5" x2="8"   y2="3"/>
-              <line x1="10.5" y1="1.5" x2="10.5" y2="3"/>
-              <line x1="5.5" y1="13" x2="5.5" y2="14.5"/>
-              <line x1="8"   y1="13" x2="8"   y2="14.5"/>
-              <line x1="10.5" y1="13" x2="10.5" y2="14.5"/>
-              <line x1="1.5" y1="5.5" x2="3" y2="5.5"/>
-              <line x1="1.5" y1="8"   x2="3" y2="8"/>
-              <line x1="1.5" y1="10.5" x2="3" y2="10.5"/>
-              <line x1="13"  y1="5.5" x2="14.5" y2="5.5"/>
-              <line x1="13"  y1="8"   x2="14.5" y2="8"/>
-              <line x1="13"  y1="10.5" x2="14.5" y2="10.5"/>
-            </svg>
-          </div>
-          <div class="need-text">
-            <strong>Dedicated GPU</strong>
-            <span>YOLOv8 inference needs consistent GPU compute — provisioning a dedicated card for real-time detection at full accuracy.</span>
-          </div>
+        <div class="need-text">
+          <strong>Low-Latency Live Stream</strong>
+          <span>Current stream introduces detection delay — upgrading to a direct, low-latency feed for frame-accurate YOLO inference.</span>
         </div>
-
-        <!-- Database -->
-        <div class="need-row">
-          <div class="need-icon">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <ellipse cx="8" cy="4.5" rx="5.5" ry="2"/>
-              <path d="M2.5 4.5v3c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2v-3"/>
-              <path d="M2.5 7.5v3c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2v-3"/>
-            </svg>
-          </div>
-          <div class="need-text">
-            <strong>Database Capacity</strong>
-            <span>High-frequency detection events and snapshots require substantially more storage than the current free tier allows.</span>
-          </div>
-        </div>
-
-        <!-- Serverless -->
-        <div class="need-row">
-          <div class="need-icon">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3.5 10.5A3 3 0 0 1 4 4.5h.3A4.5 4.5 0 0 1 13 7a2.5 2.5 0 0 1-.5 5H3.5z"/>
-              <line x1="6"  y1="10.5" x2="6"  y2="13.5"/>
-              <line x1="10" y1="10.5" x2="10" y2="13.5"/>
-              <line x1="4"  y1="13.5" x2="12" y2="13.5"/>
-            </svg>
-          </div>
-          <div class="need-text">
-            <strong>Serverless Functions</strong>
-            <span>API proxies hit cold-start and duration limits under real traffic — moving to a proper compute tier to handle load.</span>
-          </div>
-        </div>
-
       </div>
+
+      <div class="need-row">
+        <div class="need-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="10" height="10" rx="2"/>
+            <rect x="5.5" y="5.5" width="5" height="5" rx="1"/>
+            <line x1="5.5" y1="1.5" x2="5.5" y2="3"/><line x1="8" y1="1.5" x2="8" y2="3"/><line x1="10.5" y1="1.5" x2="10.5" y2="3"/>
+            <line x1="5.5" y1="13" x2="5.5" y2="14.5"/><line x1="8" y1="13" x2="8" y2="14.5"/><line x1="10.5" y1="13" x2="10.5" y2="14.5"/>
+            <line x1="1.5" y1="5.5" x2="3" y2="5.5"/><line x1="1.5" y1="8" x2="3" y2="8"/><line x1="1.5" y1="10.5" x2="3" y2="10.5"/>
+            <line x1="13" y1="5.5" x2="14.5" y2="5.5"/><line x1="13" y1="8" x2="14.5" y2="8"/><line x1="13" y1="10.5" x2="14.5" y2="10.5"/>
+          </svg>
+        </div>
+        <div class="need-text">
+          <strong>Dedicated GPU</strong>
+          <span>YOLOv8 inference needs consistent GPU compute — provisioning a dedicated card for real-time detection at full accuracy.</span>
+        </div>
+      </div>
+
+      <div class="need-row">
+        <div class="need-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="8" cy="4.5" rx="5.5" ry="2"/>
+            <path d="M2.5 4.5v3c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2v-3"/>
+            <path d="M2.5 7.5v3c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2v-3"/>
+          </svg>
+        </div>
+        <div class="need-text">
+          <strong>Database Capacity</strong>
+          <span>High-frequency detection events and snapshots require substantially more storage than the current free tier allows.</span>
+        </div>
+      </div>
+
+      <div class="need-row">
+        <div class="need-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3.5 10.5A3 3 0 0 1 4 4.5h.3A4.5 4.5 0 0 1 13 7a2.5 2.5 0 0 1-.5 5H3.5z"/>
+            <line x1="6" y1="10.5" x2="6" y2="13.5"/><line x1="10" y1="10.5" x2="10" y2="13.5"/>
+            <line x1="4" y1="13.5" x2="12" y2="13.5"/>
+          </svg>
+        </div>
+        <div class="need-text">
+          <strong>Serverless Functions</strong>
+          <span>API proxies hit cold-start and duration limits under real traffic — moving to a proper compute tier to handle load.</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="stream-label">
+      <span class="stream-dot"></span>
+      Molynes Boulevard East — Live
     </div>
 
     <div class="footer">AI Traffic Jamaica &nbsp;·&nbsp; Real-Time Vehicle Detection</div>
 
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+  <script>
+    (async function () {
+      const video  = document.getElementById('bg-video');
+      const FALLBACK = 'https://s35.ipcamlive.com/streams/232zgnsxlbat7wune/stream.m3u8';
+
+      let url = FALLBACK;
+      try {
+        const res  = await fetch('/api/stream');
+        const data = await res.json();
+        const fresh = data?.url || data?.hls_url || '';
+        if (fresh && fresh.startsWith('http')) url = fresh;
+      } catch (_) {}
+
+      function onPlaying() { video.classList.add('loaded'); }
+      video.addEventListener('playing', onPlaying, { once: true });
+
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = url;
+        video.play().catch(() => {});
+      } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+        const hls = new Hls({ enableWorker: true, maxBufferLength: 8, maxMaxBufferLength: 16 });
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+        hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal && url !== FALLBACK) { url = FALLBACK; hls.loadSource(url); } });
+      }
+    })();
+  </script>
+
 </body>
 </html>
