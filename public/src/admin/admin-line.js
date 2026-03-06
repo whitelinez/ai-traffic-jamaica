@@ -10,7 +10,7 @@
  *   - Ground: fixed 4 points (top-left -> top-right -> bottom-right -> bottom-left)
  */
 
-const AdminLine = (() => {
+export const AdminLine = (() => {
   // Preset A — Day / clear conditions
   const DEFAULT_COUNT_SETTINGS = {
     min_track_frames: 2,
@@ -1016,4 +1016,3 @@ const AdminLine = (() => {
   return { init, clearActive, saveZones, refresh, saveCountSettingsOnly, loadZones: loadExistingZones };
 })();
 
-window.AdminLine = AdminLine;
