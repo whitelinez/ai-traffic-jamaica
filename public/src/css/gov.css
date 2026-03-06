@@ -2726,7 +2726,7 @@
     bottom: auto !important;
   }
   .cw-vehicle-num { font-size: 15px; }
-  .cw-total-val   { font-size: 20px; }
+  .cw-total-val   { font-size: 42px; }
 
   /* ── Vision HUD — small transparent overlay, bottom-RIGHT ── */
   .ml-hud {
@@ -3028,7 +3028,7 @@
   .logo-part-main     { font-size: 12px; }
   .header-play-btn    { padding: 5px 10px; font-size: 11px; }
   .cw-vehicle-num     { font-size: 13px; }
-  .cw-total-val       { font-size: 18px; }
+  .cw-total-val       { font-size: 42px; }
   .cam-pill           { height: 24px; padding: 0 9px; font-size: 10px; }
   .aip-stats-row      { max-width: 55vw; }
   .scene-chips        { right: 6px; }
@@ -3100,7 +3100,7 @@
   /* Compact count strip in landscape */
   .count-widget { height: 34px; gap: 10px; }
   .cw-vehicle-num { font-size: 13px; }
-  .cw-total-val   { font-size: 17px; }
+  .cw-total-val   { font-size: 38px; }
 
   /* AI pulse strip stays at top */
   .ml-hud { height: 24px; }
@@ -3196,7 +3196,7 @@
 /* ── Mobile overrides ── */
 @media (max-width: 767px) {
   /* Count widget — compact HUD at top-left (matches desktop position) */
-  #cw-total { font-size: 20px !important; }   /* was 40px (leftover from old bottom-strip) */
+  #cw-total { font-size: 42px !important; }
   /* Replace emoji ::before with inline SVG icons */
   .tab-btn::before { content: none !important; display: none !important; }
   .tab-icon { display: block !important; }
