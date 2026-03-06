@@ -3196,19 +3196,7 @@
 /* ── Mobile overrides ── */
 @media (max-width: 767px) {
   /* Count widget — compact HUD at top-left (matches desktop position) */
-  #cw-total        { font-size: 20px !important; }   /* was 40px (leftover from old bottom-strip) */
-  .cw-total-label  { font-size: 7px !important; }
-  .cw-total-wrap   { gap: 4px !important; }
-  /* Breakdown: 2×2 compact grid inside max-width:160px widget */
-  .cw-normal-wrap  {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 3px 8px !important;
-    flex: none !important;
-  }
-  .cw-vehicle-item { gap: 3px !important; }
-  .cw-vehicle-icon { width: 14px !important; height: 8px !important; }
-  .cw-vehicle-num  { font-size: 13px !important; min-width: 0 !important; }
+  #cw-total { font-size: 20px !important; }   /* was 40px (leftover from old bottom-strip) */
   /* Replace emoji ::before with inline SVG icons */
   .tab-btn::before { content: none !important; display: none !important; }
   .tab-icon { display: block !important; }
