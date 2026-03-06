@@ -269,7 +269,7 @@
       <section class="admin-panel" id="panel-detection">
         <div class="panel-head">
           <h2>Detection</h2>
-          <p>Zone editor and count tuning. <span class="muted">Visual overlay → Visual · Runtime profiles → Profiles</span></p>
+          <p>Draw a count band over the road. The midline of the band is the vehicle crossing trigger.</p>
         </div>
 
         <div class="zone-editor-workflow">
@@ -283,48 +283,66 @@
           <!-- Controls sidebar -->
           <div class="zone-controls-dock">
             <div class="admin-line-controls">
-              <div class="zone-toggle-group">
-                <button id="btn-zone-detect" class="zone-toggle detect">Detect</button>
-                <button id="btn-zone-count" class="zone-toggle count active">Count</button>
-                <button id="btn-zone-ground" class="zone-toggle">3D Mask</button>
-                <button id="btn-zone-landmarks" class="zone-toggle" type="button" title="Place landmark labels (bus stops, signs, etc.)">Labels</button>
-                <button id="btn-zone-guides" class="zone-toggle active" type="button" title="Toggle perspective guides">Guides</button>
-                <button id="btn-zone-snap" class="zone-toggle active" type="button" title="Snap clicks to perspective guides">Snap</button>
+
+              <!-- Primary: Count Band -->
+              <div class="zone-mode-section">
+                <div class="zone-mode-label">COUNTING</div>
+                <div class="zone-toggle-group zone-toggle-group-primary">
+                  <button id="btn-zone-count" class="zone-toggle count active" title="Draw 4 points over the road. The midline becomes the crossing trigger.">Count Band</button>
+                </div>
+                <p class="zone-mode-hint">Click 4 points on the video to define the count band. The yellow line in the middle is what triggers counting.</p>
               </div>
-              <button id="btn-clear-line" class="btn-secondary" type="button">Clear</button>
-              <button id="btn-save-line" class="btn-primary" type="button" disabled>Save Zones</button>
-              <button id="btn-save-landmarks" class="btn-primary" type="button" disabled style="display:none;">Save Labels</button>
+
+              <!-- Secondary: optional extras -->
+              <details class="zone-advanced-section">
+                <summary class="zone-advanced-toggle">Advanced zones</summary>
+                <div class="zone-toggle-group zone-toggle-group-secondary" style="margin-top:8px;">
+                  <button id="btn-zone-detect" class="zone-toggle detect" title="Optional polygon filter — only detections inside this area are processed">Detect Filter</button>
+                  <button id="btn-zone-ground" class="zone-toggle" title="Set 4-corner ground quad for 3D perspective overlay">3D Mask</button>
+                  <button id="btn-zone-landmarks" class="zone-toggle" type="button" title="Place landmark labels (bus stops, signs, etc.)">Labels</button>
+                </div>
+              </details>
+
+              <!-- Tools row -->
+              <div class="zone-tools-row">
+                <button id="btn-zone-guides" class="zone-toggle active zone-tool-btn" type="button" title="Toggle perspective guides">Guides</button>
+                <button id="btn-zone-snap" class="zone-toggle active zone-tool-btn" type="button" title="Snap clicks to perspective guides">Snap</button>
+                <button id="btn-clear-line" class="btn-secondary" type="button">Clear</button>
+                <button id="btn-save-line" class="btn-primary" type="button" disabled>Save</button>
+                <button id="btn-save-landmarks" class="btn-primary" type="button" disabled style="display:none;">Save Labels</button>
+              </div>
+
               <span id="line-status" class="line-status"></span>
             </div>
 
             <div class="card-box count-tuning-box compact-controls" style="margin-top:10px;">
-              <h4>Count Tuning</h4>
+              <h4>Count Tuning <span class="muted" style="font-weight:400;font-size:0.78rem;">— optional</span></h4>
               <div class="count-tuning-grid">
                 <div class="field">
                   <label for="count-min-track-frames">Min Track Frames</label>
-                  <input id="count-min-track-frames" type="number" min="1" max="30" step="1" value="6" />
+                  <input id="count-min-track-frames" type="number" min="1" max="30" step="1" value="2" />
                 </div>
                 <div class="field">
                   <label for="count-min-confidence">Min Confidence</label>
-                  <input id="count-min-confidence" type="number" min="0" max="1" step="0.05" value="0.30" />
+                  <input id="count-min-confidence" type="number" min="0" max="1" step="0.05" value="0.22" />
                 </div>
                 <div class="field">
                   <label for="count-min-box-area-ratio">Min Object Size</label>
-                  <input id="count-min-box-area-ratio" type="number" min="0" max="1" step="0.001" value="0.004" />
+                  <input id="count-min-box-area-ratio" type="number" min="0" max="1" step="0.001" value="0.001" />
                 </div>
                 <div class="field count-tuning-wide">
                   <label for="count-allowed-classes">Allowed Classes</label>
                   <input id="count-allowed-classes" type="text" value="car, truck, bus, motorcycle" placeholder="car, truck, bus, motorcycle" />
                 </div>
                 <div class="field count-tuning-wide">
-                  <label for="count-class-min-confidence">Class Confidence Rules</label>
-                  <input id="count-class-min-confidence" type="text" value="car:0.30, truck:0.42, bus:0.45, motorcycle:0.32" placeholder="car:0.35, truck:0.40" />
+                  <label for="count-class-min-confidence">Per-class Confidence</label>
+                  <input id="count-class-min-confidence" type="text" value="car:0.22, truck:0.25, bus:0.25, motorcycle:0.22" placeholder="car:0.22, truck:0.25" />
                 </div>
               </div>
               <div class="count-tuning-actions">
-                <button id="btn-count-preset-balanced" class="btn-secondary" type="button">Day (Clear)</button>
-                <button id="btn-count-preset-night" class="btn-secondary" type="button">Night (Low-Light)</button>
-                <button id="btn-save-count-settings" class="btn-primary" type="button">Save Count Tuning</button>
+                <button id="btn-count-preset-balanced" class="btn-secondary" type="button">Day preset</button>
+                <button id="btn-count-preset-night" class="btn-secondary" type="button">Night preset</button>
+                <button id="btn-save-count-settings" class="btn-primary" type="button">Save Tuning</button>
                 <span id="count-settings-status" class="line-status"></span>
               </div>
             </div>

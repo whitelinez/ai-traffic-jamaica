@@ -1,6 +1,3 @@
-import { sb } from '../core/supabase.js';
-import { getContentBounds, contentToPixel, pixelToContent } from '../utils/coord-utils.js';
-
 /**
  * admin-line.js — Dual zone canvas editor for admin.
  * Three modes toggled by buttons:
@@ -13,31 +10,31 @@ import { getContentBounds, contentToPixel, pixelToContent } from '../utils/coord
  *   - Ground: fixed 4 points (top-left -> top-right -> bottom-right -> bottom-left)
  */
 
-export const AdminLine = (() => {
+const AdminLine = (() => {
   // Preset A — Day / clear conditions
   const DEFAULT_COUNT_SETTINGS = {
-    min_track_frames: 6,
-    min_box_area_ratio: 0.003,
-    min_confidence: 0.35,
+    min_track_frames: 2,
+    min_box_area_ratio: 0.001,
+    min_confidence: 0.28,
     allowed_classes: ["car", "truck", "bus", "motorcycle"],
     class_min_confidence: {
-      car: 0.35,
-      truck: 0.38,
-      bus: 0.40,
-      motorcycle: 0.30,
+      car: 0.22,
+      truck: 0.25,
+      bus: 0.25,
+      motorcycle: 0.22,
     },
   };
   // Preset B — Night / low-light
   const COUNT_SETTINGS_NIGHT_PRESET = {
-    min_track_frames: 4,
-    min_box_area_ratio: 0.003,
-    min_confidence: 0.25,
+    min_track_frames: 2,
+    min_box_area_ratio: 0.001,
+    min_confidence: 0.22,
     allowed_classes: ["car", "truck", "bus", "motorcycle"],
     class_min_confidence: {
-      car: 0.25,
-      truck: 0.28,
-      bus: 0.30,
-      motorcycle: 0.22,
+      car: 0.20,
+      truck: 0.22,
+      bus: 0.22,
+      motorcycle: 0.20,
     },
   };
 
@@ -119,10 +116,11 @@ export const AdminLine = (() => {
   function setMode(mode) {
     activeMode = mode;
     updateModeUI();
-    let label = "COUNT ZONE (yellow)";
-    if (mode === "detect") label = "DETECT ZONE (cyan)";
-    if (mode === "ground") label = "3D MASK / GROUND (aqua)";
-    updateStatus(`Editing: ${label}`);
+    let label = "Count Band — click 4 points over the road. Yellow midline = crossing trigger.";
+    if (mode === "detect") label = "Detect Filter — draw polygon around road area (optional).";
+    if (mode === "ground") label = "3D Mask — click 4 corners of road surface for ground overlay.";
+    if (mode === "landmarks") label = "Labels — click to place landmark markers.";
+    updateStatus(label);
   }
 
   function updateModeUI() {
@@ -184,7 +182,7 @@ export const AdminLine = (() => {
     try {
       let data = null;
       try {
-        const primary = await sb
+        const primary = await window.sb
           .from("cameras")
           .select("count_line, detect_zone, count_settings, feed_appearance")
           .eq("id", cameraId)
@@ -192,7 +190,7 @@ export const AdminLine = (() => {
         if (primary.error) throw primary.error;
         data = primary.data;
       } catch {
-        const fallback = await sb
+        const fallback = await window.sb
           .from("cameras")
           .select("count_line, detect_zone, feed_appearance")
           .eq("id", cameraId)
@@ -318,14 +316,18 @@ export const AdminLine = (() => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawPerspectiveGuides();
 
-    // Draw detect zone (cyan)
+    // Draw detect zone (cyan) — optional filter area
     if (detectPoints.length > 0) {
-      _drawPoints(detectPoints, "#00BCD4", "DETECT ZONE");
+      _drawPoints(detectPoints, "#00BCD4", "DETECT FILTER");
     }
 
-    // Draw count zone (yellow)
+    // Draw count band (yellow) — with midline when 4 points defined
     if (countPoints.length > 0) {
-      _drawPoints(countPoints, "#FFD600", "COUNT ZONE");
+      if (countPoints.length === 4) {
+        _drawCountBand(countPoints);
+      } else {
+        _drawPoints(countPoints, "#FFD600", "COUNT BAND");
+      }
     }
 
     // Draw ground quad (aqua)
@@ -538,6 +540,107 @@ export const AdminLine = (() => {
     });
   }
 
+  function _drawCountBand(pts) {
+    const px = pts.map(toCanvas);
+    const [p1, p2, p3, p4] = px;
+
+    // Band fill
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.lineTo(p3.x, p3.y);
+    ctx.lineTo(p4.x, p4.y);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(255,214,0,0.10)";
+    ctx.fill();
+
+    // Band outline (dashed)
+    ctx.strokeStyle = "rgba(255,214,0,0.55)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([7, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Midline: midpoint(p1,p4) → midpoint(p2,p3)  — matches backend formula
+    const mx1 = (p1.x + p4.x) / 2;
+    const my1 = (p1.y + p4.y) / 2;
+    const mx2 = (p2.x + p3.x) / 2;
+    const my2 = (p2.y + p3.y) / 2;
+
+    // Midline glow
+    ctx.beginPath();
+    ctx.moveTo(mx1, my1);
+    ctx.lineTo(mx2, my2);
+    ctx.strokeStyle = "rgba(255,214,0,0.25)";
+    ctx.lineWidth = 8;
+    ctx.stroke();
+
+    // Midline solid
+    ctx.beginPath();
+    ctx.moveTo(mx1, my1);
+    ctx.lineTo(mx2, my2);
+    ctx.strokeStyle = "#FFD600";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Direction arrows along midline
+    const dx = mx2 - mx1;
+    const dy = my2 - my1;
+    const len = Math.hypot(dx, dy);
+    if (len > 0) {
+      const ux = dx / len;
+      const uy = dy / len;
+      // Perpendicular arrows at 30% and 70%
+      [0.30, 0.70].forEach(t => {
+        const ax = mx1 + dx * t;
+        const ay = my1 + dy * t;
+        const arrowLen = 9;
+        const angle = Math.PI / 6; // 30°
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(
+          ax - arrowLen * (ux * Math.cos(angle) - uy * Math.sin(angle)),
+          ay - arrowLen * (uy * Math.cos(angle) + ux * Math.sin(angle)),
+        );
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(
+          ax - arrowLen * (ux * Math.cos(-angle) - uy * Math.sin(-angle)),
+          ay - arrowLen * (uy * Math.cos(-angle) + ux * Math.sin(-angle)),
+        );
+        ctx.strokeStyle = "#FFD600";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+    }
+
+    // Label on midline
+    const labelX = (mx1 + mx2) / 2;
+    const labelY = (my1 + my2) / 2;
+    ctx.font = "bold 11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.fillText("CROSSING LINE", labelX + 1, labelY + 1);
+    ctx.fillStyle = "#FFD600";
+    ctx.fillText("CROSSING LINE", labelX, labelY);
+
+    // Corner dots with numbers
+    px.forEach((p, i) => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = "#FFD600";
+      ctx.fill();
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = "#000";
+      ctx.font = "bold 9px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(i + 1, p.x, p.y);
+    });
+  }
+
   function clearActive() {
     if (activeMode === "detect") detectPoints = [];
     else if (activeMode === "ground") {
@@ -609,7 +712,7 @@ export const AdminLine = (() => {
 
     try {
       let err = null;
-      const primary = await sb
+      const primary = await window.sb
         .from("cameras")
         .update(updateData)
         .eq("id", cameraId);
@@ -621,7 +724,7 @@ export const AdminLine = (() => {
           const fallbackPayload = { ...updateData };
           delete fallbackPayload.count_settings;
           delete fallbackPayload.feed_appearance;
-          const fallback = await sb
+          const fallback = await window.sb
             .from("cameras")
             .update(fallbackPayload)
             .eq("id", cameraId);
@@ -717,7 +820,7 @@ export const AdminLine = (() => {
     updateCountSettingsStatus("Saving...");
     try {
       const countSettings = readCountSettingsFromForm();
-      const { error } = await sb
+      const { error } = await window.sb
         .from("cameras")
         .update({ count_settings: countSettings })
         .eq("id", cameraId);
@@ -912,3 +1015,5 @@ export const AdminLine = (() => {
 
   return { init, clearActive, saveZones, refresh, saveCountSettingsOnly, loadZones: loadExistingZones };
 })();
+
+window.AdminLine = AdminLine;
