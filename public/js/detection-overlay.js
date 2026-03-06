@@ -33,6 +33,18 @@ const DetectionOverlay = (() => {
   let ghostSeq = 0;
   const laneSmoothing = new Map();
 
+  // Offscreen canvas used to measure label text widths accurately for the Pixi path.
+  let _labelMeasureCtx = null;
+  function _measureLabelWidth(text, fs) {
+    try {
+      if (!_labelMeasureCtx) _labelMeasureCtx = document.createElement('canvas').getContext('2d');
+      _labelMeasureCtx.font = `700 ${fs}px "JetBrains Mono", monospace`;
+      return _labelMeasureCtx.measureText(text).width;
+    } catch {
+      return text.length * (fs * 0.72); // safe fallback
+    }
+  }
+
   // ── Analytics zone overlay ────────────────────────────────────
   let _analyticsZones  = [];
   let _zonesLoadedAt   = 0;
@@ -674,14 +686,14 @@ const DetectionOverlay = (() => {
     const labelStr = clsStr + confStr;
 
     // background pill via Graphics
+    const fs = 10;
+    const px = 4, py = 2;
+    const tw = _measureLabelWidth(labelStr, fs);
+    const tagW = tw + px * 2;
+    const tagH = fs + py * 2;
+    const ty = (p1.y - tagH >= 0) ? p1.y - tagH : p1.y;
     const bg = getPixiGraphic();
     if (bg) {
-      const fs = 10;
-      const px = 4, py = 2;
-      const approxCharW = fs * 0.62;
-      const tagW = labelStr.length * approxCharW + px * 2;
-      const tagH = fs + py * 2;
-      const ty = (p1.y - tagH >= 0) ? p1.y - tagH : p1.y;
       bg.beginFill(colorNum, 0.88);
       bg.drawRect(p1.x, ty, tagW, tagH);
       bg.endFill();
@@ -689,13 +701,12 @@ const DetectionOverlay = (() => {
 
     const txt = getPixiText();
     if (!txt) return;
-    const fs = 10;
-    const py = 2;
-    const ty = (p1.y - (fs + py * 2) >= 0) ? p1.y - (fs + py * 2) : p1.y;
     txt.text = labelStr;
-    txt.style.fill = 0x000000;
+    txt.style.fontSize = fs;
+    txt.style.fontFamily = '"JetBrains Mono", monospace';
     txt.style.fontWeight = '700';
-    txt.x = p1.x + 4;
+    txt.style.fill = 0x000000;
+    txt.x = p1.x + px;
     txt.y = ty + py;
   }
 
