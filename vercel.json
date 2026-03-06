@@ -9,6 +9,22 @@
                          "destination":  "/api/admin/ml?_route=:slug"
                      },
                      {
+                         "source":  "/api/analytics/traffic",
+                         "destination":  "/api/analytics/index?_route=traffic"
+                     },
+                     {
+                         "source":  "/api/analytics/data",
+                         "destination":  "/api/analytics/index?_route=data"
+                     },
+                     {
+                         "source":  "/api/analytics/export",
+                         "destination":  "/api/analytics/index?_route=export"
+                     },
+                     {
+                         "source":  "/api/analytics/zones",
+                         "destination":  "/api/analytics/index?_route=zones"
+                     },
+                     {
                          "source":  "/api/(.*)",
                          "destination":  "/api/$1"
                      },
