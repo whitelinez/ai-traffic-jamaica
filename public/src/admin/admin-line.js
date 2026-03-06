@@ -384,21 +384,6 @@ export const AdminLine = (() => {
     drawLine(topMid, botMid);
     ctx.setLineDash([]);
 
-    // Vanishing point + horizon helper.
-    const vp = lineIntersection(tl, bl, tr, br);
-    if (vp && Number.isFinite(vp.x) && Number.isFinite(vp.y)) {
-      ctx.strokeStyle = "rgba(255, 214, 0, 0.32)";
-      ctx.lineWidth = 1;
-      drawLine({ x: 0, y: vp.y }, { x: canvas.width, y: vp.y });
-      ctx.beginPath();
-      ctx.arc(vp.x, vp.y, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255, 214, 0, 0.78)";
-      ctx.fill();
-      ctx.font = "bold 10px sans-serif";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "bottom";
-      ctx.fillText("VP", vp.x + 6, vp.y - 4);
-    }
     ctx.restore();
   }
 
