@@ -47,7 +47,6 @@
  * TODO (future infrastructure work):
  *   - RunPod GPU backend: detect via /api/health.gpu_active, show badge in HUD
  *   - WebRTC stream: replace HLS with lower-latency WebRTC when backend supports it
- *   - Detection confidence: expose threshold slider in gov overlay settings
  *   - Per-camera analytics: wire _camId into all chart queries when multi-camera is active
  */
 
