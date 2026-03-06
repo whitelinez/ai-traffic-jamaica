@@ -1,3 +1,6 @@
+import { sb } from '../core/supabase.js';
+import { getContentBounds, contentToPixel, pixelToContent } from '../utils/coord-utils.js';
+
 /**
  * admin-line.js — Dual zone canvas editor for admin.
  * Three modes toggled by buttons:
@@ -182,7 +185,7 @@ export const AdminLine = (() => {
     try {
       let data = null;
       try {
-        const primary = await window.sb
+        const primary = await sb
           .from("cameras")
           .select("count_line, detect_zone, count_settings, feed_appearance")
           .eq("id", cameraId)
@@ -190,7 +193,7 @@ export const AdminLine = (() => {
         if (primary.error) throw primary.error;
         data = primary.data;
       } catch {
-        const fallback = await window.sb
+        const fallback = await sb
           .from("cameras")
           .select("count_line, detect_zone, feed_appearance")
           .eq("id", cameraId)
@@ -712,7 +715,7 @@ export const AdminLine = (() => {
 
     try {
       let err = null;
-      const primary = await window.sb
+      const primary = await sb
         .from("cameras")
         .update(updateData)
         .eq("id", cameraId);
@@ -724,7 +727,7 @@ export const AdminLine = (() => {
           const fallbackPayload = { ...updateData };
           delete fallbackPayload.count_settings;
           delete fallbackPayload.feed_appearance;
-          const fallback = await window.sb
+          const fallback = await sb
             .from("cameras")
             .update(fallbackPayload)
             .eq("id", cameraId);
@@ -820,7 +823,7 @@ export const AdminLine = (() => {
     updateCountSettingsStatus("Saving...");
     try {
       const countSettings = readCountSettingsFromForm();
-      const { error } = await window.sb
+      const { error } = await sb
         .from("cameras")
         .update({ count_settings: countSettings })
         .eq("id", cameraId);
