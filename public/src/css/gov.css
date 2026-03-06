@@ -2490,7 +2490,7 @@
    ============================================================ */
 @media (max-width: 768px) {
   .header-cam-chip { display: none; }
-  .header-watching { display: none !important; }
+  .header-watching { display: none; }
   .gov-body { grid-template-columns: 1fr; }
   .gov-stat-grid { grid-template-columns: repeat(2, 1fr); }
   .gov-data-col { display: none; }
@@ -2545,7 +2545,7 @@
   /* ── Main grid → flex column, full viewport height ── */
   /* .site-header is outside .main-grid in DOM — subtract its height */
   .main-grid {
-    display: flex !important;
+    display: flex;
     flex-direction: column;
     height: calc(100dvh - var(--header-h));
     height: calc(100vh - var(--header-h)); /* fallback */
@@ -2583,7 +2583,7 @@
     flex: 1 1 auto;
     min-height: 0;
     height: auto;
-    aspect-ratio: unset !important;
+    aspect-ratio: unset;
     position: relative;
     overflow: hidden;
     overscroll-behavior: none;
@@ -2632,7 +2632,7 @@
 
   /* ── Bottom tab bar ── */
   .sidebar-tabs {
-    display: grid !important;
+    display: grid;
     grid-template-columns: repeat(4, 1fr);
     height: var(--bottom-bar-h);
     flex-shrink: 0;
@@ -2715,7 +2715,7 @@
   .logo-part-loc    { display: block; font-size: 8px; }
   .logo-part-main   { font-size: 13px; }
   .header-cam-chip  { padding: 4px 9px; font-size: 10px; }
-  .header-watching  { display: none !important; }
+  .header-watching  { display: none; }
   .nav-gov-btn      { display: none; } /* gov mode hidden on mobile for now */
 
   /* ── Count widget — top-left overlay, same position as desktop ── */
@@ -2730,51 +2730,51 @@
 
   /* ── Vision HUD — small transparent overlay, bottom-RIGHT ── */
   .ml-hud {
-    position: absolute !important;
-    top: auto    !important;
-    left: auto   !important;
-    right: 8px   !important;
-    bottom: 8px  !important;
-    width: 66px  !important;
-    max-width: 66px !important;
-    height: auto !important;
-    min-width: unset !important;
-    border-radius: 0 !important;
-    border: none !important;
-    background: transparent !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    overflow: visible !important;
-    transform: none !important;
-    transform-origin: unset !important;
-    z-index: 6 !important;
+    position: absolute;
+    top: auto;
+    left: auto;
+    right: 8px;
+    bottom: 8px;
+    width: 66px  !important;  /* beats banners-v2: 110px !important */
+    max-width: 66px !important;  /* beats banners-v2: 110px !important */
+    height: auto;
+    min-width: unset;
+    border-radius: 0;
+    border: none;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+    padding: 0;
+    overflow: visible;
+    transform: none;
+    transform-origin: unset;
+    z-index: 6;
   }
   /* Restore all sections hidden by intermediate breakpoints */
   /* Hide everything except weather, detection rate, frames, objects */
-  .ml-hud-msg          { display: none !important; }
-  .ml-hud-verbose      { display: none !important; }
-  .ml-hud-bot          { display: none !important; }
-  .ml-cell-row-traffic { display: none !important; }
+  .ml-hud-msg          { display: none; }
+  .ml-hud-verbose      { display: none; }
+  .ml-hud-bot          { display: none; }
+  .ml-cell-row-traffic { display: none; }
   /* Keep: detection rate row + metrics (frames only) */
-  .ml-hud-metrics { display: flex  !important; font-size: 0.24rem; gap: 4px !important; }
-  .ml-hud-metrics span:nth-child(2) { display: none !important; }
-  .ml-hud-cells   { display: grid  !important; margin-bottom: 1px; }
+  .ml-hud-metrics { display: flex;  font-size: 0.24rem; gap: 4px; }
+  .ml-hud-metrics span:nth-child(2) { display: none; }
+  .ml-hud-cells   { display: grid;  margin-bottom: 1px; }
   .ml-cell-row    {
-    grid-template-columns: 1fr auto !important;
-    gap: 1px 3px !important;
-    align-items: baseline !important;
-    overflow: hidden !important;
+    grid-template-columns: 1fr auto;
+    gap: 1px 3px;
+    align-items: baseline;
+    overflow: hidden;
   }
   .ml-hud-title        { font-size: 0.30rem; }
   .ml-cell-label       { font-size: 0.22rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ml-cell-row strong  { font-size: 0.26rem; white-space: nowrap; flex-shrink: 0; }
-  .ml-cell-track       { height: 2px; clip-path: none !important; border-radius: 1px !important; }
+  .ml-cell-track       { height: 2px; clip-path: none; border-radius: 1px; }
 
   /* ── Stream chat overlay — watching count + messages, top-RIGHT ── */
   .stream-chat-overlay {
-    display: flex !important;
+    display: flex;
     top: 8px;
     right: 8px;
     width: 148px;
@@ -2785,14 +2785,14 @@
 
   /* ── FPS overlay — bottom-left, above count widget ── */
   .fps-overlay {
-    display: block !important;
-    left: 4px   !important;
-    bottom: 6px !important;
-    font-size: 0.5rem !important;
+    display: block;
+    left: 4px   !important;  /* beats banners-v2: 8px !important */
+    bottom: 6px !important;  /* beats banners-v2: 8px !important */
+    font-size: 0.5rem;
   }
 
   /* ── Scene chips: hidden on mobile (weather shown in Vision HUD) ── */
-  .scene-chips { display: none !important; }
+  .scene-chips { display: none; }
 
   /* ── Camera pill strip positioning in stream panel ── */
   /* Already outside .stream-wrapper, stays between header and video */
@@ -2841,7 +2841,7 @@
   }
   .btn-count-adj:active { background: rgba(0,212,255,0.1); }
   #bp-count {
-    font-size: 32px !important;
+    font-size: 32px;
     height: 60px;
     text-align: center;
     background: none;
@@ -2899,7 +2899,7 @@
      ───────────────────────────────────────────── */
   /* Use .tab-content#tab-chat to beat the desktop padding-top:28px rule */
   .tab-content#tab-chat {
-    padding: 0 !important;
+    padding: 0;
     position: static;
     /* no display:flex here — .tab-content.active handles visibility;
        setting display:flex on the ID would override display:none
@@ -3042,7 +3042,7 @@
   html, body.dark { overflow: hidden; }
 
   .main-grid {
-    flex-direction: row !important;
+    flex-direction: row;
     height: 100dvh;
     height: 100vh;
   }
@@ -3058,8 +3058,8 @@
 
   .sidebar {
     flex: 0 0 260px;
-    height: 100dvh !important;
-    height: 100vh !important;
+    height: 100dvh;
+    height: 100vh;
     border-top: none;
     border-left: 1px solid var(--border);
     overflow: hidden;
@@ -3067,11 +3067,11 @@
     flex-direction: row;
     transition: none;
   }
-  .sidebar.expanded { height: 100dvh !important; height: 100vh !important; }
+  .sidebar.expanded { height: 100dvh; height: 100vh; }
 
   /* Vertical tab bar on the left side of sidebar */
   .sidebar-tabs {
-    display: flex !important;
+    display: flex;
     flex-direction: column;
     grid-template-columns: none;
     width: 52px;
@@ -3185,10 +3185,10 @@
    controlled by banners-v2.css and CSS vars (--cw-top / --cw-left) */
 
 /* ── Intel panel: hide when tab not active ── */
-.tab-content.intel-panel:not(.active) { display: none !important; }
+.tab-content.intel-panel:not(.active) { display: none; }
 
 /* ── Location chip: hidden (redundant with header) ── */
-#chip-location { display: none !important; }
+#chip-location { display: none; }
 
 /* ── Tab icons: hidden on desktop ── */
 .tab-icon { display: none; }
@@ -3196,10 +3196,10 @@
 /* ── Mobile overrides ── */
 @media (max-width: 767px) {
   /* Count widget — compact HUD at top-left (matches desktop position) */
-  #cw-total { font-size: 42px !important; }
+  #cw-total { font-size: 42px; }
   /* Replace emoji ::before with inline SVG icons */
-  .tab-btn::before { content: none !important; display: none !important; }
-  .tab-icon { display: block !important; }
+  .tab-btn::before { content: none; display: none; }
+  .tab-icon { display: block; }
 }
 
 /* ── ML showcase stream items ── */
@@ -3269,7 +3269,7 @@
 }
 
 /* .cw-strip-label is the old bottom-strip label — the floating HUD uses ::before instead */
-.cw-strip-label { display: none !important; }
+.cw-strip-label { display: none; }
 
 /* ── Analytics loading skeletons ───────────────────────────────────────────── */
 @keyframes gov-shimmer {
@@ -3375,7 +3375,7 @@
   .gov-hdr-logo-wrap,
   .gov-hdr-logo,
   .gov-hdr-aiframe { width: 38px; height: 38px; }
-  .gov-title    { font-size: 12px !important; }
+  .gov-title    { font-size: 12px; }
   .gov-subtitle { font-size: 9px; }
 
   /* ── Tab bar — horizontal scroll ────────────────── */
@@ -3388,7 +3388,7 @@
   .gov-tabbar::-webkit-scrollbar { display: none; }
   .gov-tab {
     padding: 10px 14px;
-    font-size: 9px !important;
+    font-size: 9px;
     letter-spacing: 0.1em;
     flex-shrink: 0;
   }
@@ -3396,9 +3396,9 @@
   /* ── KPI strip — 2 × 2 grid ─────────────────────── */
   .gov-kpi-strip { grid-template-columns: repeat(2, 1fr); }
   .gov-kpi-card  { padding: 10px 12px; }
-  .gov-kpi-val   { font-size: 28px !important; }
-  .gov-kpi-lbl   { font-size: 10px !important; margin-top: 4px !important; }
-  .gov-kpi-hint  { font-size: 9px !important; }
+  .gov-kpi-val   { font-size: 28px; }
+  .gov-kpi-lbl   { font-size: 10px; margin-top: 4px; }
+  .gov-kpi-hint  { font-size: 9px; }
 
   /* ── AI health stripe — hide on mobile ──────────── */
   .gov-ai-stripe { display: none; }
@@ -3498,8 +3498,8 @@
 /* ── Very narrow phones (≤ 400px) ─────────────────── */
 @media (max-width: 400px) {
   .gov-hdr { padding: 6px 10px; }
-  .gov-tab  { padding: 9px 11px; font-size: 8px !important; }
-  .gov-kpi-val { font-size: 24px !important; }
+  .gov-tab  { padding: 9px 11px; font-size: 8px; }
+  .gov-kpi-val { font-size: 24px; }
   .gov-pill, .gov-gran-pill { font-size: 10px; padding: 5px 8px; }
   .gov-an-charts { padding: 10px 10px; gap: 8px; }
   .gov-chart-body { height: 130px; }

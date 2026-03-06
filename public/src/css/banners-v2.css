@@ -89,7 +89,7 @@
   opacity: 0;
 }
 .chat-msg.chat-continued .chat-head {
-  display: none !important;
+  display: none;
 }
 .chat-msg.chat-continued {
   padding-top: 1px;
@@ -122,7 +122,7 @@
 /* Live dot variants */
 .bnr-ai-dot-live {
   background: #FFD600;
-  animation: bnr-ai-pulse 0.85s ease-in-out infinite !important;
+  animation: bnr-ai-pulse 0.85s ease-in-out infinite;
 }
 
 /* "BET NOW" label — glowing yellow */
