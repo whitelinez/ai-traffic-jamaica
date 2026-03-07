@@ -185,6 +185,16 @@ export const LiveBet = (() => {
     activeEl.classList.remove("hidden");
     submitBtn.classList.add("hidden");
 
+    // Hide form fields — user is just watching the count
+    document.querySelector("#bp-window-pills")?.closest(".bp-field")?.classList.add("hidden");
+    document.querySelector("#bp-count")?.closest(".bp-field")?.classList.add("hidden");
+    document.getElementById("bp-prize-hint")?.classList.add("hidden");
+    document.getElementById("bp-title")?.classList.add("hidden");
+    document.getElementById("bp-market-label")?.classList.add("hidden");
+
+    // Live count listener
+    window.addEventListener("count:update", _onBpCountUpdate);
+
     const endTime = new Date(windowEndIso).getTime();
 
     clearInterval(_countdownTimer);
@@ -201,9 +211,21 @@ export const LiveBet = (() => {
     }, 200);
   }
 
+  function _onBpCountUpdate(e) {
+    const el = document.getElementById("bpa-live-count");
+    if (el && e.detail?.total != null) el.textContent = Number(e.detail.total).toLocaleString();
+  }
+
   function _hideBpActiveBet(showSubmit = true) {
     clearInterval(_countdownTimer);
+    window.removeEventListener("count:update", _onBpCountUpdate);
     document.getElementById("bp-active-bet")?.classList.add("hidden");
+    // Restore hidden form fields
+    document.querySelector("#bp-window-pills")?.closest(".bp-field")?.classList.remove("hidden");
+    document.querySelector("#bp-count")?.closest(".bp-field")?.classList.remove("hidden");
+    document.getElementById("bp-prize-hint")?.classList.remove("hidden");
+    document.getElementById("bp-title")?.classList.remove("hidden");
+    document.getElementById("bp-market-label")?.classList.remove("hidden");
     if (showSubmit) document.getElementById("bp-submit")?.classList.remove("hidden");
   }
 
@@ -261,6 +283,21 @@ export const LiveBet = (() => {
     if (actualEl) actualEl.textContent = actual;
     if (payEl)    payEl.textContent    = won ? `+${payout.toLocaleString()} pts` : "0 pts";
 
+    // Show tolerance info so user understands close/miss boundary
+    const tolRow = document.getElementById("bpr-tolerance-row");
+    const tolLbl = document.getElementById("bpr-tolerance-lbl");
+    const tolVal = document.getElementById("bpr-tolerance-val");
+    if (tolRow && tolLbl && tolVal && Number.isFinite(+exact) && Number.isFinite(+actual)) {
+      const diff      = Math.abs(+actual - +exact);
+      const tolerance = Math.max(1, Math.round(+exact * 0.20));
+      tolRow.style.display = "";
+      tolLbl.textContent   = "Off by";
+      tolVal.textContent   = diff === 0
+        ? "0 — perfect!"
+        : `${diff} (need ≤${tolerance} for CLOSE)`;
+      tolVal.style.color = diff === 0 ? "#4ade80" : diff <= tolerance ? "var(--accent)" : "#f87171";
+    }
+
     document.getElementById("bp-submit")?.classList.add("hidden");
     resultEl.classList.remove("hidden");
   }
@@ -268,6 +305,8 @@ export const LiveBet = (() => {
   function _hideBpResult() {
     document.getElementById("bp-result")?.classList.add("hidden");
     document.getElementById("bp-submit")?.classList.remove("hidden");
+    const tolRow = document.getElementById("bpr-tolerance-row");
+    if (tolRow) tolRow.style.display = "none";
   }
 
   function _showToast(msg, type = "info") {

@@ -493,7 +493,7 @@
         <!-- Prize hint (shown before submit) -->
         <div id="bp-prize-hint" class="bp-prize-hint">
           <span class="bp-ph-row"><span class="bp-ph-badge bp-ph-exact">EXACT</span> Perfect match → Maximum pts</span>
-          <span class="bp-ph-row"><span class="bp-ph-badge bp-ph-close">CLOSE</span> Within ±3 → Partial pts</span>
+          <span class="bp-ph-row"><span class="bp-ph-badge bp-ph-close">CLOSE</span> Within ±20% → Partial pts</span>
           <span class="bp-ph-row"><span class="bp-ph-badge bp-ph-miss">MISS</span> Too far off → 0 pts</span>
         </div>
 
@@ -532,6 +532,10 @@
               <strong id="bp-countdown" class="bpa-countdown">--:--</strong>
             </div>
           </div>
+          <div class="bpa-live-count-wrap">
+            <div class="bpa-live-label">COUNT SO FAR</div>
+            <div id="bpa-live-count" class="bpa-live-val">—</div>
+          </div>
           <p id="bp-active-hint" class="bpa-hint">Your guess is locked in. AI is counting...</p>
         </div>
 
@@ -553,6 +557,10 @@
             <div class="bpa-receipt-row">
               <span>Points earned</span>
               <strong id="bpr-payout">—</strong>
+            </div>
+            <div class="bpa-receipt-row" id="bpr-tolerance-row" style="display:none">
+              <span id="bpr-tolerance-lbl">Off by</span>
+              <strong id="bpr-tolerance-val">—</strong>
             </div>
           </div>
           <!-- ── Replay sparkline ──────────────────────────────── -->
