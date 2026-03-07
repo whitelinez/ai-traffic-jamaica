@@ -30,14 +30,16 @@ async function getJwt() {
   return session?.access_token ?? null;
 }
 
-async function requireAuth(redirectTo = '/login') {
+async function requireAuth(redirectTo = '/?login=1') {
   const session = await getSession();
   if (!session) { window.location.href = redirectTo; return null; }
   return session;
 }
 
 async function requireAdmin(redirectTo = '/') {
-  const session = await requireAuth();
+  // Pass intended destination so login modal can redirect back after auth
+  const returnTo = encodeURIComponent(window.location.pathname);
+  const session = await requireAuth(`/?login=1&return=${returnTo}`);
   if (!session) return null;
   const role = session.user?.app_metadata?.role;
   if (role !== 'admin') { window.location.href = redirectTo; return null; }

@@ -218,10 +218,17 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
     history.replaceState(null, "", window.location.pathname);
   }
 
-  // Auto-open auth modal when redirected from /login
+  // Auto-open auth modal when redirected from a protected page
   if (window.location.search.includes("login=1")) {
+    const _returnTo = new URLSearchParams(window.location.search).get("return") || "";
     history.replaceState(null, "", window.location.pathname);
     document.getElementById("btn-open-login")?.click();
+    // After successful login, redirect to the page they were trying to reach
+    if (_returnTo) {
+      window.addEventListener("auth:signed_in", () => {
+        window.location.href = decodeURIComponent(_returnTo);
+      }, { once: true });
+    }
   }
 
   const session = await Auth.getSession();
