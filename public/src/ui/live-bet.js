@@ -289,7 +289,7 @@ export const LiveBet = (() => {
     const tolVal = document.getElementById("bpr-tolerance-val");
     if (tolRow && tolLbl && tolVal && Number.isFinite(+exact) && Number.isFinite(+actual)) {
       const diff      = Math.abs(+actual - +exact);
-      const tolerance = Math.max(1, Math.round(+exact * 0.20));
+      const tolerance = Math.max(1, Math.round(+exact * 0.40));
       tolRow.style.display = "";
       tolLbl.textContent   = "Off by";
       tolVal.textContent   = diff === 0
