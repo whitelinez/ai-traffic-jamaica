@@ -2279,10 +2279,34 @@
   color: #0f1c2e;
   border-color: #e2e8f0;
 }
+/* ── White theme: text colour fixes ────────────────────────── */
+/* KPI values (was amber → dark navy) */
 .gov-modal-box .gov-kpi-val { color: #0f1c2e; }
 .gov-modal-box .gov-kpi-out { color: #475569; }
 .gov-modal-box .gov-kpi-lbl { color: #475569; }
 .gov-modal-box .gov-an-sumcard--accent .gov-an-sumcard-val { color: #0f1c2e; }
+
+/* Bump --dim to same as --muted so var(--dim) text is legible on white */
+.gov-modal-box,
+#gov-panel-analytics,
+#gov-panel-live,
+#gov-panel-export { --dim: #64748b; }
+
+/* Hardcoded #94a3b8 values that don't use var(--dim) — override per-class */
+.gov-modal-box .gov-hdr-metric-date { color: #64748b; }
+.gov-modal-box .gov-intro-label     { color: #64748b; }
+.gov-modal-box .gov-head-muted      { color: #64748b; }
+.gov-modal-box .gov-rec-milestone.pending { color: #64748b; }
+
+/* Progress bar tracks — dark navy track → light grey on white bg */
+#gov-panel-analytics .gov-cls-bar-wrap  { background: #e2e8f0; }
+#gov-panel-analytics .gov-veh-svg       { stroke: #1e293b; }
+#gov-panel-export    .gov-cls-bar-wrap  { background: #e2e8f0; }
+
+/* Row borders — rgba(26,45,66,0.4) is dark on white; use border colour instead */
+#gov-panel-analytics .gov-sys-row              { border-bottom-color: #e2e8f0; }
+#gov-panel-analytics .gov-crossings-table td   { border-bottom-color: #e2e8f0; }
+#gov-panel-export    .gov-sys-row              { border-bottom-color: #e2e8f0; }
 .gov-modal-hdr      { background: #ffffff; border-bottom-color: #e2e8f0; }
 .gov-modal-title    { color: #0284c7; }
 .gov-modal-close    { color: #64748b; }
