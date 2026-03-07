@@ -1743,10 +1743,10 @@
 #gov-panel-live .gov-scene-badge    { background: rgba(2,132,199,0.08); border-color: rgba(2,132,199,0.2); color: #0284c7; }
 #gov-panel-live .gov-video-slot     { background: #000; }
 /* KPI strip — amber accent on white background is unreadable */
-#gov-panel-live .gov-kpi-val        { color: #0f1c2e; }
-#gov-panel-live .gov-kpi-out        { color: #475569; }
-#gov-panel-live .gov-kpi-lbl        { color: #475569; }
-#gov-panel-live .gov-kpi-hint       { color: #64748b; }
+#gov-panel-live .gov-kpi-val        { color: #0f1c2e !important; }
+#gov-panel-live .gov-kpi-out        { color: #475569 !important; }
+#gov-panel-live .gov-kpi-lbl        { color: #475569 !important; }
+#gov-panel-live .gov-kpi-hint       { color: #64748b !important; }
 
 /* =====================================================
    EXPORT PANEL — WHITE THEME
@@ -1765,6 +1765,12 @@
 }
 /* Fix hardcoded dark color-scheme on date inputs */
 #gov-panel-export .gov-date-input { color-scheme: light; }
+/* Export button — amber on white is unreadable; use blue */
+#gov-panel-export .gov-export-btn         { color: #0284c7; border-color: #0284c7; }
+#gov-panel-export .gov-export-btn:hover   { background: rgba(2,132,199,0.08); }
+/* Analytics panel export button same fix */
+#gov-panel-analytics .gov-export-btn      { color: #0284c7; border-color: #0284c7; }
+#gov-panel-analytics .gov-export-btn:hover { background: rgba(2,132,199,0.08); }
 
 /* =====================================================
    AGENCIES PAGE — MICROANALYTICS-STYLE REDESIGN
