@@ -3146,6 +3146,26 @@ function _connectUserWs(session) {
     // ── Derive metrics from analytics data ─────────────────────────────────
     const summary    = _analyticsData?.summary || {};
     const rows       = _analyticsData?.rows    || [];
+
+    // ── Compute display period ──────────────────────────────────────────────
+    const _fmtD = (iso) => {
+      if (!iso) return null;
+      const d = new Date(iso.includes("T") ? iso : iso + "T12:00:00");
+      return isNaN(d) ? null : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    };
+    const periodFrom = _govFrom
+      ? _fmtD(_govFrom)
+      : _fmtD(summary.first_date || new Date().toISOString().slice(0, 10));
+    const periodTo   = _govTo
+      ? _fmtD(_govTo.slice(0, 10))
+      : _fmtD(new Date().toISOString().slice(0, 10));
+    const periodLabel = (periodFrom && periodTo && periodFrom !== periodTo)
+      ? `${periodFrom} — ${periodTo}`
+      : (periodFrom || "Today");
+    const _dcEst    = rows.length > 0 ? Math.max(1, Math.round(rows.length / 24)) : 1;
+    const dataScope = rows.length > 0
+      ? `${rows.length} hourly buckets · ${_dcEst} day${_dcEst !== 1 ? "s" : ""}`
+      : "No data loaded";
     const ct         = summary.class_totals || {};
     const cp         = summary.class_pct    || {};
     const total      = summary.period_total || 0;
@@ -3314,10 +3334,15 @@ function _connectUserWs(session) {
           <div class="gov-modal-badge ${badgeCls}">${badgeTxt}</div>
           <div class="gov-modal-title">${d.abbr} — Data Package</div>
           <div class="gov-modal-sub" style="font-style:italic">"${d.problem}"</div>
+          <div class="gov-ag-period-stamp">
+            <span class="gov-ag-period-icon">📅</span>
+            <span class="gov-ag-period-range">${periodLabel}</span>
+            <span class="gov-ag-period-scope">${dataScope}</span>
+          </div>
         </div>
       </div>
       <div class="gov-ag-body">
-        <div class="gov-modal-section-head">LIVE METRICS — ${d.name.toUpperCase()}</div>
+        <div class="gov-modal-section-head">METRICS FOR SELECTED PERIOD</div>
         <div class="gov-ag-kpi-row">${kpiHtml}</div>
 
         <div class="gov-modal-section-head">KEY INSIGHTS</div>
@@ -3371,10 +3396,13 @@ function _connectUserWs(session) {
         agency,
       }).then(() => {});
 
-      // Trigger CSV download via fetch + blob
+      // Trigger CSV download via fetch + blob — honour current date range selection
       const today     = new Date().toISOString().split("T")[0];
-      const firstDate = _analyticsData?.summary?.first_date || "2026-01-01";
-      const url   = `/api/analytics/export?camera_id=${_camId || ""}&from=${firstDate}&to=${today}`;
+      const fromDate  = _govFrom
+        ? _govFrom.slice(0, 10)
+        : (_analyticsData?.summary?.first_date || "2026-01-01");
+      const toDate    = _govTo ? _govTo.slice(0, 10) : today;
+      const url   = `/api/analytics/export?camera_id=${_camId || ""}&from=${fromDate}&to=${toDate}`;
       const resp  = await fetch(url, { headers: { Authorization: `Bearer ${session.access_token}` } });
       if (!resp.ok) throw new Error(`Export API returned ${resp.status}`);
 
