@@ -2602,7 +2602,7 @@ function _connectUserWs(session) {
     const fmtDate = start.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
     const milestones = [
-      { days: 1,  label: "DAY 1" },
+      { days: 1,  label: "START" },
       { days: 7,  label: "7-DAY" },
       { days: 30, label: "30-DAY" },
     ];
