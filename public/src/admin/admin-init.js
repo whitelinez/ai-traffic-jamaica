@@ -2476,7 +2476,9 @@ async function loadRegisteredUsers() {
   try {
     const jwt = await getAdminJwt();
     if (!jwt) throw new Error("Admin session expired");
-    const users = await fetchAllAdminUsers(jwt);
+    const allUsers = await fetchAllAdminUsers(jwt);
+    // Only show non-anonymous users (those with an email address)
+    const users = allUsers.filter(u => u.email);
     if (!users.length) {
       box.innerHTML = `<p class="muted" style="font-size:0.82rem;">No registered users found.</p>`;
       return;
