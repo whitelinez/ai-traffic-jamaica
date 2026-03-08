@@ -34,6 +34,9 @@ import { sb } from '../core/supabase.js';
 
   async function logSiteView() {
     if (!sb) return;
+    // Skip headless bots — Vercel preview screenshots, crawlers, etc.
+    const ua = navigator.userAgent || "";
+    if (/vercel-screenshot|Googlebot|bingbot|AhrefsBot|SemrushBot|DotBot/i.test(ua)) return;
     const path = `${window.location.pathname || "/"}${window.location.search || ""}`;
     if (!shouldSend(path)) return;
 

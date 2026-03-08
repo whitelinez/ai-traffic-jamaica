@@ -1342,6 +1342,9 @@
 .gov-rec-milestone.reached { background: rgba(22,163,74,0.08); color: #16a34a; border: 1px solid rgba(22,163,74,0.25); }
 .gov-rec-milestone.pending { background: #f8fafc; color: #94a3b8; border: 1px solid #e2e8f0; }
 .gov-rec-eta { font-weight: 400; opacity: 0.8; }
+.gov-rec-growing { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #f59e0b; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25);
+  border-radius: 4px; padding: 2px 7px; }
 
 /* Analytics loading progress overlay */
 .gov-an-progress {

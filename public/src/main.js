@@ -2588,11 +2588,15 @@ function _connectUserWs(session) {
       return `<span class="gov-rec-milestone ${reached ? "reached" : "pending"}">${m.label}${!reached ? ` <span class="gov-rec-eta">· ${dateStr}</span>` : ""}</span>`;
     }).join("");
 
-    const daysLabel = `DAY ${daysSince + 1}`;
+    const daysLabel  = daysSince === 0 ? "DAY 1 — LIVE" : `DAY ${daysSince + 1}`;
+    const growingTag = daysSince < 7
+      ? `<span class="gov-rec-growing">Dataset growing · ${(daysSince + 1) === 1 ? "first 24 hrs" : `${daysSince + 1} days collected`}</span>`
+      : "";
     el_.innerHTML = `
       <span class="gov-rec-label">RECORDING SINCE</span>
       <span class="gov-rec-date">${fmtDate}</span>
       <span class="gov-rec-days">${daysLabel}</span>
+      ${growingTag}
       <span class="gov-rec-milestones">${milestonesHtml}</span>`;
     el_.classList.remove("hidden");
   }
@@ -2877,7 +2881,11 @@ function _connectUserWs(session) {
     const from   = new Date((fromEl?.value || today) + "T00:00:00");
     const to     = new Date((toEl?.value   || today) + "T23:59:59");
     const jwt    = await (Auth?.getJwt?.() || Promise.resolve(null));
-    if (!jwt) { _showModal("EXPORT", `<p class="gov-modal-pitch">Please log in to export traffic data.</p>`); return; }
+    if (!jwt) {
+      _showModal("EXPORT", `<p class="gov-modal-pitch">Please log in to export traffic data.</p>
+        <button class="gov-modal-login-btn" onclick="Auth?.openLoginModal?.();document.querySelector('.gov-modal-close')?.click()">Login to Download →</button>`);
+      return;
+    }
     const url = `/api/analytics/export?from=${from.toISOString()}&to=${to.toISOString()}${_camId ? `&camera_id=${_camId}` : ""}`;
     try {
       const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
@@ -3168,8 +3176,9 @@ function _connectUserWs(session) {
       }).then(() => {});
 
       // Trigger CSV download via fetch + blob
-      const today = new Date().toISOString().split("T")[0];
-      const url   = `/api/analytics/export?camera_id=${_camId || ""}&from=2024-01-01&to=${today}`;
+      const today     = new Date().toISOString().split("T")[0];
+      const firstDate = _analyticsData?.summary?.first_date || "2026-01-01";
+      const url   = `/api/analytics/export?camera_id=${_camId || ""}&from=${firstDate}&to=${today}`;
       const resp  = await fetch(url, { headers: { Authorization: `Bearer ${session.access_token}` } });
       if (!resp.ok) throw new Error(`Export API returned ${resp.status}`);
 

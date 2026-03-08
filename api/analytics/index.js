@@ -135,6 +135,7 @@ async function handleTraffic(req, res) {
       _firstDate(SUPABASE_URL, headers, camera_id),
     ]);
 
+    res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=30");
     return res.status(200).json({
       rows,
       summary: {
@@ -415,10 +416,17 @@ async function _handleDataTurnings(req, res, SUPABASE_URL, SERVICE_KEY) {
       ? { avg_kmh: +(speeds.reduce((a, b) => a + b, 0) / speeds.length).toFixed(1), p85_kmh: speeds[Math.floor(speeds.length * 0.85)] || null, min_kmh: speeds[0], max_kmh: speeds[speeds.length - 1], samples: speeds.length }
       : null;
 
+    // Downsample queue_series to max 50 evenly-spaced points to keep response small
+    const _downsample = (arr, maxPts) => {
+      if (arr.length <= maxPts) return arr;
+      const step = arr.length / maxPts;
+      return Array.from({ length: maxPts }, (_, i) => arr[Math.round(i * step)]);
+    };
+
     return res.status(200).json({
       matrix,
       top_movements: Object.values(matrix).sort((a, b) => b.total - a.total).slice(0, 10),
-      queue_series: queueSeries, queue_summary: queueSummary,
+      queue_series: _downsample(queueSeries, 50), queue_summary: queueSummary,
       speed: speedStats, class_totals: clsTotals,
       time_series: Object.values(timeBuckets).sort((a, b) => a.period.localeCompare(b.period)),
       period: { from: fromISO, to: toISO, total_movements: totalMovements },
