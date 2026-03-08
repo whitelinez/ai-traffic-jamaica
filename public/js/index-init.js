@@ -2502,45 +2502,69 @@ function _connectUserWs(session) {
     txt("gov-ag-live-total",  Number(total).toLocaleString());
   }
 
-  // ── Crossings data (recent vehicle events) ────────────────────────────────
-  // ── AI detection telemetry (ml_detection_events last 24h) ───────────────────
+  // ── AI detection telemetry ─────────────────────────────────────────────────
+  // Source: ml_detection_events only. Last known values cached in _aiTelemetryCache
+  // so the fields survive the 2h prune window between backend writes.
+  const _aiTelemetryCache = {};
+
   async function _loadAiTelemetry() {
-    if (!window.sb || !_camId) return;
+    if (!window.sb || !_camId) {
+      // No camera yet — re-apply cache if we have it
+      _applyAiTelemetryCache();
+      return;
+    }
     try {
-      const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-      const { data } = await window.sb
+      const since = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
+      let q = window.sb
         .from("ml_detection_events")
-        .select("avg_confidence,detections_count,scene_lighting,scene_weather,model_name,captured_at")
+        .select("avg_confidence,detections_count,scene_lighting,scene_weather,model_name,fps,captured_at")
         .eq("camera_id", _camId)
         .gte("captured_at", since)
         .order("captured_at", { ascending: false })
-        .limit(500);
+        .limit(200);
+      const { data } = await q;
 
-      if (!data || data.length === 0) return;
+      if (data && data.length > 0) {
+        const latest = data[0];
 
-      // Avg confidence
-      const confs = data.map(r => parseFloat(r.avg_confidence || 0)).filter(v => v > 0);
-      if (confs.length > 0) {
-        const avg = confs.reduce((a, b) => a + b, 0) / confs.length;
-        txt("gov-ai-conf", `${(avg * 100).toFixed(1)}%`);
+        // Avg confidence
+        const confs = data.map(r => parseFloat(r.avg_confidence || 0)).filter(v => v > 0);
+        if (confs.length > 0)
+          _aiTelemetryCache.conf = `${((confs.reduce((a, b) => a + b, 0) / confs.length) * 100).toFixed(1)}%`;
+
+        // Detections per hour
+        const totalDet = data.reduce((s, r) => s + (r.detections_count || 0), 0);
+        _aiTelemetryCache.detHr = Math.round(totalDet / Math.max(1, data.length / 60)).toLocaleString();
+
+        // Scene
+        const sceneParts = [latest.scene_lighting, latest.scene_weather].filter(Boolean);
+        if (sceneParts.length) _aiTelemetryCache.scene = sceneParts.join(" · ");
+
+        // Model + fps
+        if (latest.model_name) {
+          const fpsList = data.map(r => parseFloat(r.fps || 0)).filter(v => v > 0);
+          const avgFps  = fpsList.length ? Math.round(fpsList.reduce((a, b) => a + b, 0) / fpsList.length) : null;
+          _aiTelemetryCache.model = avgFps ? `${latest.model_name} · ${avgFps} fps` : latest.model_name;
+        }
+
+        // Last update
+        _aiTelemetryCache.last = new Date(latest.captured_at).toLocaleTimeString();
       }
+    } catch {}
 
-      // Detections per hour (total detections / hours covered)
-      const totalDet = data.reduce((s, r) => s + (r.detections_count || 0), 0);
-      const hours = Math.max(1, data.length / 3600);   // ml_events ≈ 1/s; rough hourly rate
-      const dph = Math.round(totalDet / 24);
-      txt("gov-ai-det-hr", dph.toLocaleString());
+    // Always apply whatever is in cache (fresh or previously stored)
+    _applyAiTelemetryCache();
+  }
 
-      // Scene from most recent row
-      const latest = data[0];
-      const sceneParts = [latest.scene_lighting, latest.scene_weather].filter(Boolean);
-      txt("gov-ai-scene", sceneParts.join(" / ") || "—");
-
-      // Update model if available
-      if (latest.model_name) txt("gov-model", latest.model_name);
-    } catch (err) {
-      // Non-critical — silently fail
-    }
+  function _applyAiTelemetryCache() {
+    if (_aiTelemetryCache.conf)  txt("gov-ai-conf",  _aiTelemetryCache.conf);
+    if (_aiTelemetryCache.detHr) txt("gov-ai-det-hr", _aiTelemetryCache.detHr);
+    if (_aiTelemetryCache.scene) txt("gov-ai-scene",  _aiTelemetryCache.scene);
+    if (_aiTelemetryCache.model) txt("gov-model",     _aiTelemetryCache.model);
+    // Only set gov-last from cache if WS hasn't already set it
+    const lastEl = el("gov-last");
+    if (_aiTelemetryCache.last && lastEl && (lastEl.textContent === "—" || !lastEl.textContent))
+      txt("gov-last", _aiTelemetryCache.last);
   }
 
   async function _loadGovCrossings() {
