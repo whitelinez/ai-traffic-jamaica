@@ -355,8 +355,14 @@ export const Banners = (() => {
       document.getElementById("modal-reg-email")?.focus();
     });
 
-    // Wire play CTA → enter round view (shows markets, hides banners)
-    section.querySelector(".bnr-play-cta")?.addEventListener("click", () => {
+    // Wire play tile (whole tile + CTA button) → enter round view
+    const playTile = section.querySelector(".bnr-tile-play");
+    if (playTile) {
+      playTile.style.cursor = "pointer";
+      playTile.addEventListener("click", () => Markets?.enterRound?.());
+    }
+    section.querySelector(".bnr-play-cta")?.addEventListener("click", (e) => {
+      e.stopPropagation();
       Markets?.enterRound?.();
     });
 

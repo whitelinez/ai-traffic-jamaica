@@ -552,6 +552,14 @@
 .tab-content.active { display: flex; flex-direction: column; }
 
 
+/* ── Vision HUD mobile — prevent right-edge overflow ──────────────────────── */
+@media (max-width: 480px) {
+  .ml-hud {
+    right: 6px;
+    max-width: min(170px, calc(100vw - 90px));
+  }
+}
+
 /* ── Count widget mobile — prevent number cut-off ─────────────────────────── */
 @media (max-width: 480px) {
   /* Hide text label (::before already shows "LIVE COUNT") to save width */

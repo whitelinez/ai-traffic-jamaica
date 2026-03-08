@@ -324,6 +324,9 @@ export const Markets = (() => {
       document.getElementById("round-guide-toggle")?.addEventListener("click", () => {
         _setRoundGuideCollapsed(!roundGuideCollapsed);
       });
+      document.querySelector(".round-guide-head")?.addEventListener("click", (e) => {
+        if (e.target.id !== "round-guide-toggle") _setRoundGuideCollapsed(!roundGuideCollapsed);
+      });
 
       // New round → stay on banners, let user choose to enter
       if (isNewRound) {
@@ -360,9 +363,11 @@ export const Markets = (() => {
 
   function _loadRoundGuidePref() {
     try {
-      roundGuideCollapsed = localStorage.getItem(ROUND_GUIDE_COLLAPSE_KEY) === "1";
+      const stored = localStorage.getItem(ROUND_GUIDE_COLLAPSE_KEY);
+      // Default collapsed on mobile if no pref saved yet
+      roundGuideCollapsed = stored !== null ? stored === "1" : window.innerWidth < 600;
     } catch {
-      roundGuideCollapsed = false;
+      roundGuideCollapsed = window.innerWidth < 600;
     }
   }
 

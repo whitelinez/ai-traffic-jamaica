@@ -364,14 +364,9 @@
 .timing-row strong { color: var(--accent); font-variant-numeric: tabular-nums; }
 
 .round-guide {
-  margin: 0 0 10px;
-  padding: 10px;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius);
-  background: rgba(0,188,212,0.06);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  margin: 0 0 8px;
+  border-top: 1px solid rgba(0,212,255,0.12);
+  border-bottom: 1px solid rgba(0,212,255,0.12);
 }
 
 .round-guide-head {
@@ -379,32 +374,44 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding: 7px 0;
+  cursor: pointer;
 }
 
 .round-guide-title {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: #baf8ff;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .round-guide-toggle {
-  padding: 4px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(186, 248, 255, 0.45);
-  background: rgba(186, 248, 255, 0.08);
-  color: #baf8ff;
-  font-size: 0.72rem;
+  border: 1px solid rgba(100,130,165,0.3);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.65rem;
   font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color 0.14s, color 0.14s;
 }
+.round-guide-toggle:hover { border-color: rgba(0,212,255,0.4); color: var(--cyan); }
 
+.round-guide-body {
+  padding-bottom: 8px;
+}
 .round-guide-body.collapsed {
   display: none;
 }
 
 .round-guide-line {
-  font-size: 0.77rem;
-  color: #cfe7ee;
-  line-height: 1.45;
+  font-size: 0.74rem;
+  color: rgba(180,200,215,0.75);
+  line-height: 1.5;
+  margin-bottom: 3px;
 }
 
 /* #user-round-bet is now a transparent wrapper for .bet-receipt */

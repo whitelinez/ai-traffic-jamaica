@@ -67,15 +67,18 @@ export const AdminModel = (() => {
       sb.from('camera_zones').select('id', { count: 'exact', head: true }).eq('active', true),
       sb.from('turning_movements').select('id', { count: 'exact', head: true }).gte('captured_at', since24h),
     ]);
-    // Class breakdown for 24h crossings
-    const { data: clsData } = await sb
-      .from('vehicle_crossings')
-      .select('vehicle_class')
-      .gte('captured_at', since24h);
+    // Class breakdown for 24h crossings — wrapped so a slow query can't abort the return
     const classCounts = {};
-    (clsData || []).forEach(r => {
-      classCounts[r.vehicle_class] = (classCounts[r.vehicle_class] || 0) + 1;
-    });
+    try {
+      const { data: clsData } = await sb
+        .from('vehicle_crossings')
+        .select('vehicle_class')
+        .gte('captured_at', since24h)
+        .limit(2000);
+      (clsData || []).forEach(r => {
+        classCounts[r.vehicle_class] = (classCounts[r.vehicle_class] || 0) + 1;
+      });
+    } catch { /* non-critical */ }
     return {
       crossings_total: xTotal.status === 'fulfilled' ? (xTotal.value.count ?? 0) : 0,
       crossings_24h:   x24h.status === 'fulfilled'   ? (x24h.value.count ?? 0) : 0,
