@@ -86,7 +86,10 @@ async function handleTraffic(req, res) {
         + `&order=date.asc`;
       if (camera_id) url += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
 
-      const r = await fetch(url, { headers });
+      const [r, outMap] = await Promise.all([
+        fetch(url, { headers }),
+        _outboundCounts(SUPABASE_URL, headers, camera_id, fromISO, toISO, granularity),
+      ]);
       const dailyRows = r.ok ? (await r.json()) : [];
 
       if (granularity === "week") {
@@ -107,14 +110,14 @@ async function handleTraffic(req, res) {
         }
         rows = Object.values(weeks).map(w => ({
           period: w.period, total: w.total, car: w.car, truck: w.truck, bus: w.bus, motorcycle: w.motorcycle,
-          in: w.in, out: w.out,
+          in: w.in, out: outMap[w.period] ?? w.out,
           avg_queue: w._q_n > 0 ? +(w._q_sum / w._q_n).toFixed(2) : null,
           avg_speed: w._s_n > 0 ? +(w._s_sum / w._s_n).toFixed(1) : null,
         })).sort((a, b) => a.period.localeCompare(b.period));
       } else {
         rows = dailyRows.map(d => ({
           period: d.date, total: d.total_crossings, car: d.car_count, truck: d.truck_count,
-          bus: d.bus_count, motorcycle: d.motorcycle_count, in: d.count_in, out: d.count_out,
+          bus: d.bus_count, motorcycle: d.motorcycle_count, in: d.count_in, out: outMap[d.date] ?? d.count_out ?? 0,
           avg_queue: d.avg_queue_depth, avg_speed: d.avg_speed_kmh,
           peak_queue: d.peak_queue_depth, peak_hour: d.peak_hour,
         }));
@@ -177,18 +180,26 @@ async function handleTraffic(req, res) {
 }
 
 async function _hourlyData(SUPABASE_URL, headers, camera_id, fromISO, toISO) {
-  const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/analytics_traffic_hourly`, {
-    method: "POST", headers,
-    body: JSON.stringify({ p_camera_id: camera_id || null, p_since: fromISO }),
-  });
+  const [rpcRes, outMap] = await Promise.all([
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/analytics_traffic_hourly`, {
+      method: "POST", headers,
+      body: JSON.stringify({ p_camera_id: camera_id || null, p_since: fromISO }),
+    }),
+    _outboundCounts(SUPABASE_URL, headers, camera_id, fromISO, toISO, "hour"),
+  ]);
   if (rpcRes.ok) {
     const rows = await rpcRes.json();
-    if (rows && rows.length > 0) return rows.map(r => ({ ...r, period: r.hour }));
+    if (rows && rows.length > 0)
+      return rows.map(r => {
+        const key = new Date(r.hour).toISOString().slice(0, 13) + ":00:00Z";
+        return { ...r, period: r.hour, out: outMap[key] ?? 0 };
+      });
   }
-  return _hourlyFallback(SUPABASE_URL, headers, camera_id, fromISO, toISO, "hour");
+  return _hourlyFallback(SUPABASE_URL, headers, camera_id, fromISO, toISO, "hour", outMap);
 }
 
-async function _hourlyFallback(SUPABASE_URL, headers, camera_id, fromISO, toISO, targetGranularity) {
+async function _hourlyFallback(SUPABASE_URL, headers, camera_id, fromISO, toISO, targetGranularity, outMap) {
+  if (!outMap) outMap = await _outboundCounts(SUPABASE_URL, headers, camera_id, fromISO, toISO, targetGranularity);
   let url = `${SUPABASE_URL}/rest/v1/vehicle_crossings`
     + `?select=captured_at,vehicle_class,direction,zone_source,track_id`
     + `&captured_at=gte.${encodeURIComponent(fromISO)}`
@@ -216,7 +227,34 @@ async function _hourlyFallback(SUPABASE_URL, headers, camera_id, fromISO, toISO,
     if (row.direction === "in")  buckets[key].in  += 1;
     if (row.direction === "out") buckets[key].out += 1;
   }
+  // Merge outbound counts from turning_movements
+  for (const [key, val] of Object.entries(outMap)) {
+    if (buckets[key]) buckets[key].out = val;
+  }
   return Object.values(buckets).sort((a, b) => a.period.localeCompare(b.period));
+}
+
+// Returns a map of { period_key → outbound_count } by bucketing turning_movements via RPC
+async function _outboundCounts(SUPABASE_URL, headers, camera_id, fromISO, toISO, targetGranularity) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/analytics_turnings_hourly`, {
+      method: "POST", headers,
+      body: JSON.stringify({ p_camera_id: camera_id || null, p_since: fromISO, p_until: toISO }),
+    });
+    if (!res.ok) return {};
+    const rows = await res.json();
+    const map = {};
+    for (const r of rows) {
+      const h = r.hour; // ISO string "2026-03-08T14:00:00+00:00"
+      const key = targetGranularity === "hour"
+        ? new Date(h).toISOString().slice(0, 13) + ":00:00Z"
+        : targetGranularity === "day"
+          ? new Date(h).toISOString().slice(0, 10)
+          : _getMondayISO(new Date(h).toISOString().slice(0, 10));
+      map[key] = (map[key] || 0) + Number(r.total || 0);
+    }
+    return map;
+  } catch { return {}; }
 }
 
 async function _firstDate(SUPABASE_URL, headers, camera_id) {
