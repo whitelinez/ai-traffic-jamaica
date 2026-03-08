@@ -2721,7 +2721,8 @@ function _connectUserWs(session) {
     const todayStr = today.toISOString().slice(0, 10);
     _govTo = null;
     if (preset === "1d") {
-      _govFrom = todayStr;
+      _govFrom = null; // use hours-based rolling window, not calendar date
+      _govHours = 24;
       _govGranularity = "hour";
     } else if (preset === "7d") {
       _govFrom = new Date(today - 7 * 86400000).toISOString().slice(0, 10);
