@@ -994,6 +994,7 @@ const Markets = (() => {
         amount: Number(latestResolved.amount || 0),
         market_label: latestResolved?.markets?.label || null,
         status: latestResolved.status,
+        window_duration_sec: latestResolved.window_duration_sec || null,
       };
       _persistResolvedCard();
       _renderResolvedOutcomeCard();
@@ -1110,6 +1111,7 @@ const Markets = (() => {
         amount: Number(d.amount || 0),
         market_label: d.market_label || null,
         status: d.won ? "won" : "lost",
+        window_duration_sec: d.window_duration_sec || null,
       };
       _persistResolvedCard();
       _renderResolvedOutcomeCard();
@@ -1165,15 +1167,33 @@ const Markets = (() => {
     card.id = "round-result-card";
     card.className = `round-result-card ${latestResolvedCard.won ? "result-win" : "result-loss"}`;
 
-    const isWin = latestResolvedCard.won;
-    const subtitle = latestResolvedCard.market_label
-      ? latestResolvedCard.market_label
-      : `Exact ${latestResolvedCard.exact ?? "?"}${latestResolvedCard.vehicle_class ? ` · ${latestResolvedCard.vehicle_class}` : ""}`;
-    const payoutVal = isWin
-      ? `+${Number(latestResolvedCard.payout || 0).toLocaleString()} cr`
-      : `−${Number(latestResolvedCard.amount || 0).toLocaleString()} cr`;
-    const winColor = isWin ? "#22c55e" : "#ef4444";
+    const isWin  = latestResolvedCard.won;
+    const actual = latestResolvedCard.actual ?? null;
+    const exact  = latestResolvedCard.exact  ?? null;
+    const payout = Number(latestResolvedCard.payout || 0);
+
+    // Score tier
+    const isExact = isWin && String(actual) === String(exact);
+    const tier = isExact ? "exact" : isWin ? "close" : "miss";
+    const tierLabel = tier === "exact" ? "EXACT" : tier === "close" ? "CLOSE" : "MISS";
+    const tierColor = tier === "exact" ? "#4ade80" : tier === "close" ? "var(--accent,#facc15)" : "#f87171";
+
+    // Off by
+    const diff = (actual != null && exact != null) ? Math.abs(Number(actual) - Number(exact)) : null;
+    const offByLabel = diff === null ? "—"
+      : diff === 0 ? "0 — perfect!"
+      : diff === 1 ? "1 car"
+      : `${diff} cars`;
+    const offByColor = diff === 0 ? "#4ade80" : diff !== null && diff <= Math.max(1, Math.round(Number(exact) * 0.4)) ? "var(--accent,#facc15)" : "#f87171";
+
+    // Window label
+    const winSec = latestResolvedCard.window_duration_sec;
+    const winLabel = winSec === 60 ? "1 MIN" : winSec === 180 ? "3 MIN" : winSec === 300 ? "5 MIN" : winSec ? `${Math.round(winSec / 60)} MIN` : null;
+    const vcLabel = latestResolvedCard.vehicle_class ? ` · ${latestResolvedCard.vehicle_class}` : "";
+    const subtitle = latestResolvedCard.market_label || (winLabel ? `${winLabel} WINDOW${vcLabel}` : `EXACT ${exact ?? "?"}${vcLabel}`);
+
     const cornerStroke = isWin ? "#22c55e" : "#ef4444";
+    const artColor     = isWin ? "#22c55e" : "#ef4444";
 
     card.innerHTML = `
       <div class="rrc-art">
@@ -1182,8 +1202,8 @@ const Markets = (() => {
           <path d="M102 8 H112 V18" stroke="${cornerStroke}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M8 36 V46 H18" stroke="${cornerStroke}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M102 46 H112 V36" stroke="${cornerStroke}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <text x="60" y="29" text-anchor="middle" fill="${winColor}" font-size="14" font-weight="800" font-family="monospace" letter-spacing="3">${isWin ? "WIN" : "LOSS"}</text>
-          <text x="60" y="40" text-anchor="middle" fill="${winColor}" font-size="5.5" font-family="monospace" opacity="0.65" letter-spacing="0.5">${payoutVal}</text>
+          <text x="60" y="29" text-anchor="middle" fill="${artColor}" font-size="14" font-weight="800" font-family="monospace" letter-spacing="3">${isWin ? "WIN" : "LOSS"}</text>
+          <text x="60" y="40" text-anchor="middle" fill="${artColor}" font-size="5.5" font-family="monospace" opacity="0.65" letter-spacing="0.5">${isWin ? `+${payout.toLocaleString()} pts` : "0 pts"}</text>
         </svg>
       </div>
       <div class="rrc-bar">
@@ -1193,8 +1213,12 @@ const Markets = (() => {
         </button>
       </div>
       <div class="rrc-body">
-        <div class="rrc-row"><span>ACTUAL</span><strong>${latestResolvedCard.actual ?? "—"}</strong></div>
-        <div class="rrc-row"><span>TARGET</span><strong>${latestResolvedCard.exact ?? "—"}</strong></div>
+        <div class="rrc-row"><span>GUESS</span><strong>${exact ?? "—"}</strong></div>
+        <div class="rrc-row"><span>ACTUAL</span><strong>${actual ?? "—"}</strong></div>
+        <div class="rrc-row"><span>RESULT</span><strong style="color:${tierColor}">${tierLabel}</strong></div>
+        <div class="rrc-row"><span>OFF BY</span><strong style="color:${offByColor}">${offByLabel}</strong></div>
+        ${winLabel ? `<div class="rrc-row"><span>WINDOW</span><strong>${winLabel}</strong></div>` : ""}
+        <div class="rrc-row"><span>POINTS</span><strong style="color:${isWin ? "#4ade80" : "rgba(255,255,255,0.3)"}">${isWin ? `+${payout.toLocaleString()}` : "0"}</strong></div>
       </div>
     `;
 
