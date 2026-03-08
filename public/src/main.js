@@ -1206,6 +1206,7 @@ function _connectUserWs(session) {
   let _govGranularity = "hour"; // "hour" | "day" | "week"
   let _chartJsReady = false;
   let _trendChart   = null;
+  let _chartsBuilding = false; // guard against concurrent _initAllCharts calls
   let _donutChart   = null;
   let _clsChart     = null;
   let _peakChart    = null;
@@ -2024,6 +2025,8 @@ function _connectUserWs(session) {
   // ── Analytics charts ──────────────────────────────────────────────────────
   async function _initAllCharts(hours) {
     if (!window.Chart) return;
+    if (_chartsBuilding) return; // prevent concurrent double-call
+    _chartsBuilding = true;
     _setAnalyticsLoading(true);
     _setProgress(30, "Fetching traffic data…");
 
@@ -2104,6 +2107,8 @@ function _connectUserWs(session) {
       console.warn("[GovAnalytics] Chart load failed:", err);
       _setAnalyticsLoading(false);
       _setProgress(100);
+    } finally {
+      _chartsBuilding = false;
     }
   }
 
@@ -2319,8 +2324,10 @@ function _connectUserWs(session) {
         _buildClsChart({ class_totals: tm.class_totals, class_pct: clsPct });
       }
 
-      // Trend + Peak charts — use zone time series if available
-      if (tm.time_series?.length && window.Chart) {
+      // Trend + Peak charts — use zone time series only if it has non-zero crossings.
+      // If time_series is empty/all-zeros, keep the vehicle_crossings chart from _initAllCharts.
+      const hasZoneData = tm.time_series?.some(r => (r.total || 0) > 0);
+      if (hasZoneData && window.Chart) {
         _buildTrendChart(tm.time_series);
         _buildPeakChart(tm.time_series);
         _updatePeakKpiFromChart();
