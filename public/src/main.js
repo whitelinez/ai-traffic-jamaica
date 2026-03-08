@@ -2433,15 +2433,15 @@ function _connectUserWs(session) {
 
   function _buildSpeedChart(data) {
     const canvas = el("gov-speed-canvas");
+    const card   = el("gov-speed-card");
     if (!canvas || !window.Chart) return;
     if (_speedChart) { _speedChart.destroy(); _speedChart = null; }
     const sp = data.speed;
     if (!sp || !sp.samples) {
-      _chartEmpty("gov-speed-canvas", "Speed data unavailable — requires optical flow detection.");
+      if (card) card.style.display = "none";
       return;
     }
-    canvas.style.display = "";
-    canvas.closest(".gov-chart-body")?.querySelector(".gov-chart-empty")?.remove();
+    if (card) card.style.display = "";
     _speedChart = new window.Chart(canvas, {
       type: "bar",
       data: {
