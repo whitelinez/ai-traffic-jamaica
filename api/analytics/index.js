@@ -54,7 +54,7 @@ async function handleTraffic(req, res) {
     fromISO = from ? new Date(from).toISOString() : new Date(0).toISOString();
     toISO   = to   ? new Date(to).toISOString()   : new Date().toISOString();
   } else {
-    const hoursInt = Math.min(168, Math.max(1, parseInt(hours, 10) || 24));
+    const hoursInt = Math.max(1, parseInt(hours, 10) || 24);
     toISO   = new Date().toISOString();
     fromISO = new Date(Date.now() - hoursInt * 3600 * 1000).toISOString();
   }
@@ -67,7 +67,7 @@ async function handleTraffic(req, res) {
       const toDate   = toISO.slice(0, 10);
       let url = `${SUPABASE_URL}/rest/v1/traffic_daily`
         + `?date=gte.${fromDate}&date=lte.${toDate}`
-        + `&order=date.asc&limit=400`;
+        + `&order=date.asc`;
       if (camera_id) url += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
 
       const r = await fetch(url, { headers });
@@ -173,21 +173,25 @@ async function _hourlyData(SUPABASE_URL, headers, camera_id, fromISO, toISO) {
 
 async function _hourlyFallback(SUPABASE_URL, headers, camera_id, fromISO, toISO, targetGranularity) {
   let url = `${SUPABASE_URL}/rest/v1/vehicle_crossings`
-    + `?select=captured_at,vehicle_class,direction,zone_source`
+    + `?select=captured_at,vehicle_class,direction,zone_source,track_id`
     + `&captured_at=gte.${encodeURIComponent(fromISO)}`
     + `&captured_at=lte.${encodeURIComponent(toISO)}`
-    + `&zone_source=eq.entry&limit=10000`;
+    + `&zone_source=eq.entry`;
   if (camera_id) url += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
   const r = await fetch(url, { headers });
   if (!r.ok) return [];
   const rows = await r.json();
-  const effectiveRows = rows;
+  // Deduplicate: count each track_id only once per bucket (first occurrence)
+  const seen = new Set();
   const buckets = {};
-  for (const row of effectiveRows) {
+  for (const row of rows) {
     const dt  = new Date(row.captured_at);
     const key = targetGranularity === "hour"
       ? dt.toISOString().slice(0, 13) + ":00:00Z"
       : dt.toISOString().slice(0, 10);
+    const dedupeKey = row.track_id != null ? `${key}:${row.track_id}` : null;
+    if (dedupeKey && seen.has(dedupeKey)) continue;
+    if (dedupeKey) seen.add(dedupeKey);
     if (!buckets[key]) buckets[key] = { period: key, total: 0, car: 0, truck: 0, bus: 0, motorcycle: 0, in: 0, out: 0 };
     buckets[key].total += 1;
     const cls = (row.vehicle_class || "car").toLowerCase();
@@ -330,7 +334,7 @@ async function _handleDataTurnings(req, res, SUPABASE_URL, SERVICE_KEY) {
 
     // Fetch rows for matrix/charts + exact count in parallel
     const [tmRes, tmCountRes] = await Promise.all([
-      fetch(tmBase + `&select=entry_zone,exit_zone,vehicle_class,dwell_ms,captured_at&limit=5000`, { headers: h }),
+      fetch(tmBase + `&select=entry_zone,exit_zone,vehicle_class,dwell_ms,captured_at`, { headers: h }),
       fetch(tmBase + `&select=id&limit=1`, { headers: { ...h, Prefer: "count=exact" } }),
     ]);
     const tmRows = tmRes.ok ? await tmRes.json() : [];
@@ -365,7 +369,7 @@ async function _handleDataTurnings(req, res, SUPABASE_URL, SERVICE_KEY) {
       let u = `${SUPABASE_URL}/rest/v1/traffic_snapshots`
         + `?select=captured_at,queue_depth,total_visible`
         + `&captured_at=gte.${encodeURIComponent(from)}`
-        + `&captured_at=lte.${encodeURIComponent(to)}&order=captured_at.asc&limit=2000`;
+        + `&captured_at=lte.${encodeURIComponent(to)}&order=captured_at.asc`;
       if (camera_id) u += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
       return fetch(u, { headers: h }).then(r => r.ok ? r.json() : []);
     };
@@ -387,7 +391,7 @@ async function _handleDataTurnings(req, res, SUPABASE_URL, SERVICE_KEY) {
     let speedUrl = `${SUPABASE_URL}/rest/v1/vehicle_crossings`
       + `?select=speed_kmh&speed_kmh=not.is.null`
       + `&captured_at=gte.${encodeURIComponent(fromISO)}`
-      + `&captured_at=lte.${encodeURIComponent(toISO)}&limit=2000`;
+      + `&captured_at=lte.${encodeURIComponent(toISO)}`;
     if (camera_id) speedUrl += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
 
     const spRows   = await fetch(speedUrl, { headers: h }).then(r => r.ok ? r.json() : []);
