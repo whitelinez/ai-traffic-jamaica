@@ -327,42 +327,57 @@ async function _handleDataTurnings(req, res, SUPABASE_URL, SERVICE_KEY) {
   const h = sbHeaders(SERVICE_KEY);
 
   try {
-    const tmBase = `${SUPABASE_URL}/rest/v1/turning_movements`
+    const rpcBase = { method: "POST", headers: h };
+
+    // Fetch hourly time series + entry→exit matrix via pre-aggregated RPCs (avoid 1000-row PostgREST cap)
+    // Also get exact total count in parallel
+    const tmCountBase = `${SUPABASE_URL}/rest/v1/turning_movements`
       + `?captured_at=gte.${encodeURIComponent(fromISO)}`
       + `&captured_at=lte.${encodeURIComponent(toISO)}`
       + (camera_id ? `&camera_id=eq.${encodeURIComponent(camera_id)}` : "");
 
-    // Fetch rows for matrix/charts + exact count in parallel
-    const [tmRes, tmCountRes] = await Promise.all([
-      fetch(tmBase + `&select=entry_zone,exit_zone,vehicle_class,dwell_ms,captured_at`, { headers: h }),
-      fetch(tmBase + `&select=id&limit=1`, { headers: { ...h, Prefer: "count=exact" } }),
+    const [hourlyRes, matrixRes, tmCountRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/rpc/analytics_turnings_hourly`, {
+        ...rpcBase,
+        body: JSON.stringify({ p_camera_id: camera_id || null, p_since: fromISO, p_until: toISO }),
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/rpc/analytics_turnings_matrix`, {
+        ...rpcBase,
+        body: JSON.stringify({ p_camera_id: camera_id || null, p_since: fromISO, p_until: toISO }),
+      }),
+      fetch(tmCountBase + `&select=id&limit=1`, { headers: { ...h, Prefer: "count=exact" } }),
     ]);
-    const tmRows = tmRes.ok ? await tmRes.json() : [];
-    const tmCountRange = tmCountRes.headers?.get("Content-Range") || "";
-    const totalMovements = parseInt(tmCountRange.split("/")[1] || "") || tmRows.length;
 
+    const hourlyRows = hourlyRes.ok ? await hourlyRes.json() : [];
+    const matrixRows = matrixRes.ok ? await matrixRes.json() : [];
+    const tmCountRange = tmCountRes.headers?.get("Content-Range") || "";
+    const totalMovements = parseInt(tmCountRange.split("/")[1] || "") || 0;
+
+    // Build matrix object from RPC results
     const matrix = {};
     const clsTotals = { car: 0, truck: 0, bus: 0, motorcycle: 0 };
-    const timeBuckets = {};
-    for (const r of tmRows) {
+    for (const r of matrixRows) {
       const key = `${r.entry_zone}→${r.exit_zone}`;
-      if (!matrix[key]) matrix[key] = { from: r.entry_zone, to: r.exit_zone, total: 0, car: 0, truck: 0, bus: 0, motorcycle: 0, avg_dwell_ms: 0, _dwell_sum: 0 };
-      matrix[key].total += 1;
-      const cls = (r.vehicle_class || "car").toLowerCase();
-      if (cls in matrix[key]) matrix[key][cls] += 1;
-      if (cls in clsTotals)   clsTotals[cls] += 1;
-      if (r.dwell_ms) matrix[key]._dwell_sum += r.dwell_ms;
-      if (r.captured_at) {
-        const bucket = _bucketKey(r.captured_at);
-        if (!timeBuckets[bucket]) timeBuckets[bucket] = { period: bucket, total: 0, car: 0, truck: 0, bus: 0, motorcycle: 0 };
-        timeBuckets[bucket].total += 1;
-        if (cls in timeBuckets[bucket]) timeBuckets[bucket][cls] += 1;
-      }
+      matrix[key] = {
+        from: r.entry_zone, to: r.exit_zone,
+        total: Number(r.total), car: Number(r.car), truck: Number(r.truck),
+        bus: Number(r.bus), motorcycle: Number(r.motorcycle),
+        avg_dwell_ms: Number(r.avg_dwell_ms) || 0,
+      };
+      for (const cls of ["car","truck","bus","motorcycle"])
+        clsTotals[cls] += Number(r[cls]) || 0;
     }
-    for (const k of Object.keys(matrix)) {
-      const m = matrix[k];
-      m.avg_dwell_ms = m.total > 0 ? Math.round(m._dwell_sum / m.total) : 0;
-      delete m._dwell_sum;
+
+    // Build time buckets from hourly RPC, re-bucket to day/week if needed
+    const timeBuckets = {};
+    for (const r of hourlyRows) {
+      const bucket = _bucketKey(r.hour);
+      if (!timeBuckets[bucket]) timeBuckets[bucket] = { period: bucket, total: 0, car: 0, truck: 0, bus: 0, motorcycle: 0 };
+      timeBuckets[bucket].total      += Number(r.total);
+      timeBuckets[bucket].car        += Number(r.car);
+      timeBuckets[bucket].truck      += Number(r.truck);
+      timeBuckets[bucket].bus        += Number(r.bus);
+      timeBuckets[bucket].motorcycle += Number(r.motorcycle);
     }
 
     const _qFetch = (from, to) => {
@@ -487,19 +502,17 @@ async function handleZones(req, res) {
   const headers = sbHeaders(SERVICE_KEY);
 
   const { camera_id, from, to } = req.query;
-  if (!camera_id)
-    return res.status(400).json({ error: "camera_id is required" });
 
   const toISO   = to   ? new Date(to).toISOString()   : new Date().toISOString();
   const fromISO = from ? new Date(from).toISOString()
                        : new Date(Date.now() - 24 * 3600 * 1000).toISOString();
 
   try {
-    const url = `${SUPABASE_URL}/rest/v1/vehicle_crossings`
+    let url = `${SUPABASE_URL}/rest/v1/vehicle_crossings`
       + `?select=zone_name,vehicle_class&zone_source=eq.entry`
-      + `&camera_id=eq.${encodeURIComponent(camera_id)}`
       + `&captured_at=gte.${encodeURIComponent(fromISO)}`
-      + `&captured_at=lte.${encodeURIComponent(toISO)}&limit=50000`;
+      + `&captured_at=lte.${encodeURIComponent(toISO)}`;
+    if (camera_id) url += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
 
     const r = await fetch(url, { headers });
     if (!r.ok) return res.status(502).json({ error: "DB query failed" });

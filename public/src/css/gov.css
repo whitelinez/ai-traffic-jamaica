@@ -1669,6 +1669,20 @@
 .gov-zb-cls-none { font-size: 10px; color: var(--muted); }
 .gov-zb-footer { font-size: 9px; color: var(--muted); padding: 8px 4px 0; }
 
+/* ── Zones breakdown rows (.zbd-*) ────────────────────────────────────── */
+.zbd-row      { display: grid; grid-template-columns: 120px 1fr 60px 36px; grid-template-rows: auto auto;
+                align-items: center; gap: 2px 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.zbd-row:last-child { border-bottom: none; }
+.zbd-label    { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text);
+                grid-column: 1; grid-row: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zbd-bar-wrap { grid-column: 2; grid-row: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.zbd-bar      { height: 100%; background: #4CAF50; border-radius: 3px; transition: width 0.5s ease; }
+.zbd-count    { grid-column: 3; grid-row: 1; font-family: "JetBrains Mono", monospace; font-size: 12px;
+                font-weight: 700; color: var(--text); text-align: right; }
+.zbd-pct      { grid-column: 4; grid-row: 1; font-size: 10px; color: var(--muted); text-align: right; }
+.zbd-detail   { grid-column: 2 / -1; grid-row: 2; font-size: 10px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.zbd-cls      { font-weight: 600; }
+
 .gov-turnings-body    { padding: 12px 4px 4px; }
 .gov-turnings-empty   { color: var(--muted); font-size: 11px; padding: 4px; }
 .gov-turnings-summary {

@@ -1742,7 +1742,6 @@ function _connectUserWs(session) {
       // Charts already loaded by preloader — build from prefetched data then populate everything
       _initDonut();
       _loadChartJs(() => _initAllCharts(_govHours).then(() => _updatePeakKpiFromChart()));
-      _loadZoneAnalytics();
     } else {
       _moveVideoGroup("gov-video-slot");
       _startZoneCanvas(); // draw admin zones over live feed
@@ -1889,12 +1888,16 @@ function _connectUserWs(session) {
   }
 
   // ── Chart.js lazy loading ─────────────────────────────────────────────────
+  let _chartJsLoading = false;
+  const _chartJsCbs = [];
   function _loadChartJs(cb) {
     if (window.Chart) { cb(); return; }
-    if (_chartJsReady) { cb(); return; }
+    _chartJsCbs.push(cb);
+    if (_chartJsLoading) return; // script tag already injected — callback queued above
+    _chartJsLoading = true;
     const s = document.createElement("script");
     s.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js";
-    s.onload = () => { _chartJsReady = true; cb(); };
+    s.onload = () => { _chartJsReady = true; _chartJsCbs.splice(0).forEach(fn => fn()); };
     document.head.appendChild(s);
   }
 
@@ -2251,14 +2254,15 @@ function _connectUserWs(session) {
     const tBody = el("gov-turnings-body");
     if (tBody) tBody.innerHTML = _turningsSkeleton();
 
-    // Load zone list + turnings in parallel
+    // Load zone geometry, turnings, and per-zone vehicle counts in parallel
     const fromParam = _govFrom || new Date(Date.now() - _govHours * 3600 * 1000).toISOString();
     const toParam   = _govTo   || new Date().toISOString();
     const camQ      = _camId ? `&camera_id=${_camId}` : "";
 
-    const [zonesRes, turningsRes] = await Promise.allSettled([
+    const [zonesRes, turningsRes, zoneCountsRes] = await Promise.allSettled([
       fetch(`/api/analytics/data?type=zones${camQ}`),
       fetch(`/api/analytics/data?type=turnings${camQ}&from=${fromParam}&to=${toParam}&granularity=${_govGranularity}`),
+      fetch(`/api/analytics/zones?${camQ ? `camera_id=${_camId}&` : ""}from=${fromParam}&to=${toParam}`),
     ]);
 
     // Render active zones bar + store for canvas draw loop
@@ -2267,6 +2271,11 @@ function _connectUserWs(session) {
       zones = await zonesRes.value.json();
       _govAnalyticsZones = zones;   // used by _drawGovZones() RAF loop
       _renderZonesBar(zones);
+    }
+
+    // Render WHERE VEHICLES ENTER breakdown
+    if (zoneCountsRes.status === "fulfilled" && zoneCountsRes.value.ok) {
+      _renderZonesBreakdown(await zoneCountsRes.value.json());
     }
 
     // Render turnings / queue / speed
@@ -2390,6 +2399,37 @@ function _connectUserWs(session) {
       `<span class="gov-zone-chip" style="background:rgba(122,155,181,0.06);border-color:rgba(122,155,181,0.2);color:#7A9BB5">
         Total ${zones.length}
       </span>`;
+  }
+
+  /** Renders the WHERE VEHICLES ENTER breakdown bars into gov-zones-breakdown-body. */
+  function _renderZonesBreakdown(data) {
+    const body = el("gov-zones-breakdown-body");
+    if (!body) return;
+    const zoneList = data?.zones || [];
+    if (!zoneList.length) {
+      body.innerHTML = `<p class="gov-turnings-empty">No entry zone data for this period.</p>`;
+      return;
+    }
+    const maxTotal = Math.max(...zoneList.map(z => z.total), 1);
+    body.innerHTML = zoneList.map(z => {
+      const pct     = Math.round((z.total / maxTotal) * 100);
+      const ofTotal = z.pct_of_total ?? Math.round((z.total / (data.period_total || 1)) * 100);
+      const cls     = [
+        z.car       ? `<span class="zbd-cls" style="color:var(--cls-car)">${z.car.toLocaleString()} car</span>` : "",
+        z.truck     ? `<span class="zbd-cls" style="color:var(--cls-truck)">${z.truck.toLocaleString()} truck</span>` : "",
+        z.bus       ? `<span class="zbd-cls" style="color:var(--cls-bus)">${z.bus.toLocaleString()} bus</span>` : "",
+        z.motorcycle? `<span class="zbd-cls" style="color:var(--cls-moto)">${z.motorcycle.toLocaleString()} moto</span>` : "",
+      ].filter(Boolean).join(" · ");
+      return `<div class="zbd-row">
+        <div class="zbd-label">${z.zone_name}</div>
+        <div class="zbd-bar-wrap">
+          <div class="zbd-bar" style="width:${pct}%"></div>
+        </div>
+        <div class="zbd-count">${z.total.toLocaleString()}</div>
+        <div class="zbd-pct">${ofTotal}%</div>
+        <div class="zbd-detail">${cls}</div>
+      </div>`;
+    }).join("");
   }
 
   /** Show a text placeholder inside a chart body when there's no data to render. */
