@@ -29,6 +29,7 @@ function copyDir(src, dest) {
 console.log('[postbuild] Copying static files...')
 copy('robots.txt')
 copy('sitemap.xml')
+copy('manifest.json')
 copy('google2e5bb7df731f7762.html')
 copyDir('img')
 console.log('[postbuild] Done.')

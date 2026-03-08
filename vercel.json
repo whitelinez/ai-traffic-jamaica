@@ -56,6 +56,10 @@
                                         {
                                             "key":  "Permissions-Policy",
                                             "value":  "camera=(), microphone=(), geolocation=()"
+                                        },
+                                        {
+                                            "key":  "Strict-Transport-Security",
+                                            "value":  "max-age=31536000; includeSubDomains; preload"
                                         }
                                     ]
                     },
@@ -78,6 +82,9 @@
                                           "maxDuration":  25
                                       }
                   },
+    "crons":      [
+                      { "path": "/api/cron/daily-backfill", "schedule": "0 2 * * *" }
+                  ],
     "images":     {
                       "sizes":           [32, 64, 96, 128, 256],
                       "formats":         ["image/avif", "image/webp"],

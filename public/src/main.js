@@ -79,6 +79,16 @@ import './utils/site-views.js';
 const el  = (id) => document.getElementById(id);
 const txt = (id, val) => { const e = el(id); if (e) e.textContent = String(val ?? "—"); };
 
+// ── Toast notifications ───────────────────────────────────────────────────────
+// Reuses .toast / .toast-info / .toast-win / .toast-loss CSS (leaderboard.css).
+function _toast(msg, type = "info", ms = 4500) {
+  const t = document.createElement("div");
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), ms);
+}
+
 // ── Scroll lock ───────────────────────────────────────────────────────────────
 // Single control point for body scroll — prevents double/missed overflow sets.
 // Called by openGov() with true (lock) and closeGov() + _pl.hide() with false.
@@ -780,6 +790,7 @@ function _connectUserWs(session) {
       }
       if (!opened && attempts >= 8) {
         // Keep nav balance alive via HTTP polling; stop aggressive WS retry loop.
+        _toast("Live updates paused — balance updates via polling", "info", 6000);
         return;
       }
       backoff = Math.min(backoff * 2, 30000);
@@ -3413,6 +3424,11 @@ function _connectUserWs(session) {
       _setBtnState("loading", '<span class="gov-dl-spinner"></span> Preparing data…');
 
       const resp = await fetch(url, { headers: { Authorization: `Bearer ${session.access_token}` } });
+      if (resp.status === 204) return _showError("No data in selected range");
+      if (resp.status === 400) {
+        const msg = (await resp.json().catch(() => ({}))).error || "Invalid request";
+        return _showError(msg);
+      }
       if (!resp.ok) {
         const errText = await resp.text().catch(() => resp.status);
         console.error("[agency-dl] export API error:", errText);

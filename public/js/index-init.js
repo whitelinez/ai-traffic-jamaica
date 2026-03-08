@@ -204,6 +204,28 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
         if (!sponsor.link_url) linkEl.style.pointerEvents = "none";
       }
       barEl.classList.remove("hidden");
+
+      // ── Impression + click tracking ─────────────────────────────────────────
+      try {
+        const _sId = sessionStorage.getItem("wlz.sid") || (() => {
+          const s = (crypto.randomUUID?.() || Math.random().toString(36).slice(2));
+          sessionStorage.setItem("wlz.sid", s); return s;
+        })();
+        window.sb.from("sponsor_events").insert({
+          event_type: "impression", sponsor_name: sponsor.name,
+          camera_id: null, session_id: _sId,
+        }).then(() => {}).catch(() => {});
+        const sLink = document.getElementById("sponsor-link");
+        if (sLink && !sLink.dataset.trackd) {
+          sLink.dataset.trackd = "1";
+          sLink.addEventListener("click", () => {
+            window.sb.from("sponsor_events").insert({
+              event_type: "click", sponsor_name: sponsor.name,
+              camera_id: null, session_id: _sId,
+            }).then(() => {}).catch(() => {});
+          });
+        }
+      } catch {}
     } catch {
       // Non-critical
     }

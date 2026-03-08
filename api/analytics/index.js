@@ -466,16 +466,38 @@ async function handleExport(req, res) {
   const dateStr  = fromDate.slice(0, 10);
   const headers  = sbHeaders(SERVICE_KEY);
 
+  // ── 90-day range guard ──────────────────────────────────────────────────────
+  const diffDays = (new Date(toDate) - new Date(fromDate)) / 86400000;
+  if (diffDays > 90)
+    return res.status(400).json({ error: "Date range exceeds 90 days. Narrow your selection and try again." });
+
   try {
-    let url = `${SUPABASE_URL}/rest/v1/vehicle_crossings?select=captured_at,vehicle_class,direction,confidence,scene_lighting,scene_weather,dwell_frames,cameras(name)&captured_at=gte.${encodeURIComponent(fromDate)}&captured_at=lte.${encodeURIComponent(toDate)}&order=captured_at.asc&limit=50000`;
+    // Select only vehicle classes; include track_id for deduplication
+    let url = `${SUPABASE_URL}/rest/v1/vehicle_crossings`
+      + `?select=captured_at,track_id,vehicle_class,direction,confidence,scene_lighting,scene_weather,dwell_frames,cameras(name)`
+      + `&vehicle_class=in.(car,truck,bus,motorcycle)`
+      + `&captured_at=gte.${encodeURIComponent(fromDate)}`
+      + `&captured_at=lte.${encodeURIComponent(toDate)}`
+      + `&order=captured_at.asc&limit=50000`;
     if (camera_id) url += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
 
     const dataRes = await fetch(url, { headers });
     if (!dataRes.ok) return res.status(502).json({ error: "Data query failed" });
     const rows = await dataRes.json();
 
-    const csvLines = ["timestamp,camera,vehicle_class,direction,confidence,scene_lighting,scene_weather,dwell_frames"];
-    for (const r of rows) {
+    // ── Deduplicate by track_id (first occurrence per unique vehicle) ─────────
+    const seenTracks = new Set();
+    const deduped = rows.filter(r => {
+      if (!r.track_id) return true;            // rows without track_id always included
+      if (seenTracks.has(r.track_id)) return false;
+      seenTracks.add(r.track_id); return true;
+    });
+
+    if (deduped.length === 0)
+      return res.status(204).end();            // No content — triggers "no data" UI state
+
+    const csvLines = ["timestamp,camera,vehicle_class,direction,confidence,scene_lighting,scene_weather,dwell_frames,track_id"];
+    for (const r of deduped) {
       csvLines.push([
         r.captured_at || "",
         (r.cameras?.name || "").replace(/,/g, ";"),
@@ -485,12 +507,14 @@ async function handleExport(req, res) {
         r.scene_lighting || "",
         r.scene_weather || "",
         r.dwell_frames != null ? r.dwell_frames : "",
+        r.track_id || "",
       ].join(","));
     }
 
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="traffic-${dateStr}.csv"`);
     res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Total-Rows", String(deduped.length));
     return res.status(200).send(csvLines.join("\n"));
   } catch (err) {
     console.error("[/api/analytics/export]", err);
