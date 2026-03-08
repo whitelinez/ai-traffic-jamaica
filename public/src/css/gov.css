@@ -2625,8 +2625,10 @@
    ============================================================ */
 @media (max-width: 767px) {
 
-  /* Prevent page-level scroll, pull-to-refresh, and gesture fullscreen */
-  html, body.dark {
+  /* Prevent page-level scroll, pull-to-refresh, and gesture fullscreen.
+     Scoped away from admin pages which need normal document scroll.     */
+  html:not(:has(body.admin-page)),
+  body.dark:not(.admin-page) {
     height: 100%;
     overflow: hidden;
     overflow-x: hidden;
@@ -3130,7 +3132,8 @@
    LANDSCAPE PHONES (rotated) — two-column like desktop
    ============================================================ */
 @media (max-width: 767px) and (orientation: landscape) {
-  html, body.dark { overflow: hidden; }
+  html:not(:has(body.admin-page)),
+  body.dark:not(.admin-page) { overflow: hidden; }
 
   .main-grid {
     flex-direction: row;
