@@ -13,6 +13,14 @@ export const LiveBet = (() => {
   let _wsAccountRef = null;  // set by index-init
   let _baselineCount = null; // count at bet placement time (for window delta)
   let _guessCount = 0;       // user's exact-count guess (for progress bar)
+  let _lastKnownTotal = null; // latest global count — updated on every count:update
+  let _windowHistory = [];    // [{t, v}] — delta samples recorded during window for replay chart
+  let _replayChart = null;
+
+  // Track latest global total so we can use it as baseline if API doesn't send one
+  window.addEventListener("count:update", (e) => {
+    if (e.detail?.total != null) _lastKnownTotal = Number(e.detail.total);
+  });
 
   function _ensureSpinnerStyle() {
     if (document.getElementById("live-bet-spinner-style")) return;
@@ -176,7 +184,9 @@ export const LiveBet = (() => {
 
     // Store for progress tracking
     _guessCount    = Number(guessCount) || 0;
-    _baselineCount = (baseline != null) ? Number(baseline) : null;
+    // Use API baseline if provided; fall back to latest known total from count:update
+    _baselineCount = (baseline != null) ? Number(baseline) : _lastKnownTotal;
+    _windowHistory = [];
 
     // Receipt fields
     const receiptGuessEl = document.getElementById("bpa-receipt-guess");
@@ -226,6 +236,9 @@ export const LiveBet = (() => {
     if (e.detail?.total == null) return;
     const total = Number(e.detail.total);
     const delta = (_baselineCount != null) ? Math.max(0, total - _baselineCount) : total;
+
+    // Record for replay chart
+    _windowHistory.push({ t: Date.now(), v: delta });
 
     const el = document.getElementById("bpa-live-count");
     if (el) {
@@ -330,11 +343,76 @@ export const LiveBet = (() => {
 
     document.getElementById("bp-submit")?.classList.add("hidden");
     resultEl.classList.remove("hidden");
+
+    // Render replay sparkline from in-memory window history
+    _renderReplayChart(Number(exact));
+  }
+
+  function _renderReplayChart(guessVal) {
+    const replayEl = document.getElementById("bpr-replay");
+    const canvas   = document.getElementById("bpr-replay-canvas");
+    if (!replayEl || !canvas || !window.Chart) { replayEl?.classList.add("hidden"); return; }
+
+    if (_windowHistory.length < 2) { replayEl.classList.add("hidden"); return; }
+
+    if (_replayChart) { _replayChart.destroy(); _replayChart = null; }
+
+    // Downsample to max 60 points so the chart stays readable
+    const src  = _windowHistory;
+    const step = Math.max(1, Math.floor(src.length / 60));
+    const pts  = src.filter((_, i) => i % step === 0);
+
+    const t0     = pts[0].t;
+    const labels = pts.map(p => {
+      const s = Math.round((p.t - t0) / 1000);
+      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    });
+    const counts = pts.map(p => p.v);
+
+    const lineColor  = "#29B6F6";
+    const guessColor = "#facc15";
+    const mutedColor = "rgba(255,255,255,0.12)";
+
+    _replayChart = new window.Chart(canvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Count", data: counts,
+            borderColor: lineColor, backgroundColor: `${lineColor}22`,
+            fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2,
+          },
+          {
+            label: "Your guess", data: new Array(counts.length).fill(guessVal),
+            borderColor: guessColor, borderWidth: 1.5, borderDash: [4, 3],
+            pointRadius: 0, fill: false, tension: 0,
+          },
+        ],
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { display: false },
+          y: {
+            display: true,
+            ticks: { maxTicksLimit: 3, font: { size: 9 }, color: mutedColor },
+            grid: { color: mutedColor }, border: { display: false },
+          },
+        },
+      },
+    });
+
+    replayEl.classList.remove("hidden");
   }
 
   function _hideBpResult() {
     document.getElementById("bp-result")?.classList.add("hidden");
     document.getElementById("bp-submit")?.classList.remove("hidden");
+    document.getElementById("bpr-replay")?.classList.add("hidden");
+    if (_replayChart) { _replayChart.destroy(); _replayChart = null; }
+    _windowHistory = [];
     const tolRow = document.getElementById("bpr-tolerance-row");
     if (tolRow) tolRow.style.display = "none";
     // Reset form so the panel feels fresh for the next guess
