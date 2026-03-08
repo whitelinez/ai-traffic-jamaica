@@ -1611,11 +1611,12 @@ function _connectUserWs(session) {
     _pl.set(72, "Fetching analytics data…");
     if (!_camId && sb) {
       try {
-        const { data } = await sb.from("cameras")
+        const { data, error } = await sb.from("cameras")
           .select("id,ipcam_alias,name").eq("is_active", true).limit(1).single();
-        _camId   = data?.id;
+        if (error) console.warn("[GovAnalytics] Camera query error:", error.message);
+        _camId   = data?.id ?? null;
         _camName = data?.name || data?.ipcam_alias || "Camera 1";
-      } catch {}
+      } catch (e) { console.warn("[GovAnalytics] Camera query threw:", e); }
     }
     try { await _prefetchAnalytics(); } catch {}
     _pl.set(95, "Almost ready…");
@@ -1720,11 +1721,12 @@ function _connectUserWs(session) {
     // Resolve camera (may already be resolved by preloader)
     if (!_camId && sb) {
       try {
-        const { data } = await sb.from("cameras")
+        const { data, error } = await sb.from("cameras")
           .select("id, ipcam_alias, name").eq("is_active", true).limit(1).single();
-        _camId   = data?.id;
+        if (error) console.warn("[GovAnalytics] Camera resolve error:", error.message);
+        _camId   = data?.id ?? null;
         _camName = data?.name || data?.ipcam_alias || "Camera 1";
-      } catch {}
+      } catch (e) { console.warn("[GovAnalytics] Camera resolve threw:", e); }
     }
     txt("gov-cam-subtitle", `Live Feed · ${_camName}`);
     const _todayFmt = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }).toUpperCase();
@@ -2242,7 +2244,6 @@ function _connectUserWs(session) {
 
   // ── Zone analytics (Turnings / Queue / Speed) ─────────────────────────────
   async function _loadZoneAnalytics() {
-    if (!_camId) return;
     _govExitTotal = null; // reset so stale period values don't persist
 
     // Show turnings skeleton while loading
@@ -2252,10 +2253,11 @@ function _connectUserWs(session) {
     // Load zone list + turnings in parallel
     const fromParam = _govFrom || new Date(Date.now() - _govHours * 3600 * 1000).toISOString();
     const toParam   = _govTo   || new Date().toISOString();
+    const camQ      = _camId ? `&camera_id=${_camId}` : "";
 
     const [zonesRes, turningsRes] = await Promise.allSettled([
-      fetch(`/api/analytics/data?type=zones&camera_id=${_camId}`),
-      fetch(`/api/analytics/data?type=turnings&camera_id=${_camId}&from=${fromParam}&to=${toParam}&granularity=${_govGranularity}`),
+      fetch(`/api/analytics/data?type=zones${camQ}`),
+      fetch(`/api/analytics/data?type=turnings${camQ}&from=${fromParam}&to=${toParam}&granularity=${_govGranularity}`),
     ]);
 
     // Render active zones bar + store for canvas draw loop
