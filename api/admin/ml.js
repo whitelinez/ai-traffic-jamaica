@@ -117,6 +117,8 @@ async function handleRuntimeProfile(req, res, railwayUrl, auth) {
 
 // ── main handler ─────────────────────────────────────────────────────────────
 
+import { verifyAdminJwt } from "../_lib/admin-auth.js";
+
 export default async function handler(req, res) {
   const route = String(req.query._route || "").toLowerCase();
 
@@ -124,9 +126,8 @@ export default async function handler(req, res) {
   if (!railwayUrl) return res.status(500).json({ error: "Server misconfiguration" });
 
   const auth = req.headers["authorization"] || "";
-  if (!auth.startsWith("Bearer ")) return res.status(401).json({ error: "Missing Bearer token" });
-  if (auth.slice(7).trim().split(".").length !== 3)
-    return res.status(401).json({ error: "Malformed token" });
+  const authCheck = await verifyAdminJwt(auth);
+  if (!authCheck.ok) return res.status(authCheck.status).json({ error: authCheck.error });
 
   try {
     switch (route) {

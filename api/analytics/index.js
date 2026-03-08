@@ -18,6 +18,12 @@ export default async function handler(req, res) {
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
+/** Prevent CSV formula injection by prefixing cells that start with formula chars. */
+function _csvSanitize(value) {
+  const s = String(value == null ? "" : value);
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+}
+
 function _parseDate(s, fallback) {
   if (!s) return fallback;
   const d = new Date(s);
@@ -64,7 +70,7 @@ async function handleTraffic(req, res) {
     fromISO = fd.toISOString();
     toISO   = td.toISOString();
   } else {
-    const hoursInt = Math.max(1, parseInt(hours, 10) || 24);
+    const hoursInt = Math.min(Math.max(1, parseInt(hours, 10) || 24), 8760); // cap at 1 year
     toISO   = new Date().toISOString();
     fromISO = new Date(Date.now() - hoursInt * 3600 * 1000).toISOString();
   }
@@ -275,26 +281,68 @@ async function _handleDataZones(req, res, SUPABASE_URL, SERVICE_KEY) {
     url += "&order=created_at.asc";
     try {
       const r = await fetch(url, { headers });
-      if (!r.ok) return res.status(r.status).json({ error: await r.text() });
+      if (!r.ok) {
+        console.error("[zones GET] Supabase error:", await r.text());
+        return res.status(502).json({ error: "Zone query failed" });
+      }
       return res.status(200).json(await r.json());
-    } catch (err) { return res.status(502).json({ error: String(err) }); }
+    } catch (err) {
+      console.error("[zones GET]", err);
+      return res.status(502).json({ error: "Zone query failed" });
+    }
+  }
+
+  if (req.method === "POST" || req.method === "DELETE") {
+    // Zone writes require admin authentication.
+    const authHeader = req.headers.authorization || "";
+    const jwt = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+    if (!jwt) return res.status(401).json({ error: "Authentication required" });
+    try {
+      const verifyRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${jwt}` },
+      });
+      if (!verifyRes.ok) return res.status(401).json({ error: "Invalid or expired token" });
+      const user = await verifyRes.json();
+      if (user?.app_metadata?.role !== "admin")
+        return res.status(403).json({ error: "Admin role required" });
+    } catch {
+      return res.status(401).json({ error: "Token verification failed" });
+    }
   }
 
   if (req.method === "POST") {
     const { camera_id, zones } = req.body || {};
     if (!camera_id || !Array.isArray(zones) || !zones.length)
       return res.status(400).json({ error: "camera_id and zones[] required" });
-    const rows = zones.map(z => ({
-      camera_id, zone_type: z.zone_type, name: z.name,
-      points: z.points, metadata: z.metadata || null, color: z.color || null, active: true,
-    }));
+
+    const VALID_ZONE_TYPES = new Set(["detection", "counting", "entry", "exit", "exclusion"]);
+    let rows;
+    try {
+      rows = zones.slice(0, 50).map(z => {
+        if (!VALID_ZONE_TYPES.has(z.zone_type)) throw new Error("Invalid zone_type");
+        if (typeof z.name !== "string" || z.name.length > 100) throw new Error("Invalid name");
+        if (!Array.isArray(z.points) || z.points.length > 200) throw new Error("Invalid points");
+        const colorHex = /^#[0-9a-fA-F]{3,8}$/.test(z.color || "") ? z.color : null;
+        return { camera_id, zone_type: z.zone_type, name: z.name.slice(0, 100),
+                 points: z.points, metadata: null, color: colorHex, active: true };
+      });
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
     try {
       const r = await fetch(`${SUPABASE_URL}/rest/v1/camera_zones`, {
         method: "POST", headers, body: JSON.stringify(rows),
       });
-      if (!r.ok) return res.status(r.status).json({ error: await r.text() });
+      if (!r.ok) {
+        console.error("[zones POST] Supabase error:", await r.text());
+        return res.status(502).json({ error: "Zone write failed" });
+      }
       return res.status(201).json(await r.json());
-    } catch (err) { return res.status(502).json({ error: String(err) }); }
+    } catch (err) {
+      console.error("[zones POST]", err);
+      return res.status(502).json({ error: "Zone write failed" });
+    }
   }
 
   if (req.method === "DELETE") {
@@ -305,9 +353,15 @@ async function _handleDataZones(req, res, SUPABASE_URL, SERVICE_KEY) {
         `${SUPABASE_URL}/rest/v1/camera_zones?id=eq.${encodeURIComponent(zone_id)}`,
         { method: "PATCH", headers, body: JSON.stringify({ active: false }) }
       );
-      if (!r.ok) return res.status(r.status).json({ error: await r.text() });
+      if (!r.ok) {
+        console.error("[zones DELETE] Supabase error:", await r.text());
+        return res.status(502).json({ error: "Zone update failed" });
+      }
       return res.status(200).json({ ok: true });
-    } catch (err) { return res.status(502).json({ error: String(err) }); }
+    } catch (err) {
+      console.error("[zones DELETE]", err);
+      return res.status(502).json({ error: "Zone update failed" });
+    }
   }
 
   return res.status(405).json({ error: "Method not allowed" });
@@ -468,6 +522,9 @@ async function handleExport(req, res) {
       headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${jwt}` },
     });
     if (!verifyRes.ok) return res.status(401).json({ error: "Invalid or expired token" });
+    const user = await verifyRes.json();
+    if (user?.app_metadata?.role !== "admin")
+      return res.status(403).json({ error: "Admin role required for data export" });
   } catch {
     return res.status(401).json({ error: "Token verification failed" });
   }
@@ -515,15 +572,15 @@ async function handleExport(req, res) {
     const csvLines = ["timestamp,camera,vehicle_class,direction,confidence,scene_lighting,scene_weather,dwell_frames,track_id"];
     for (const r of deduped) {
       csvLines.push([
-        r.captured_at || "",
-        (r.cameras?.name || "").replace(/,/g, ";"),
-        r.vehicle_class || "",
-        r.direction || "",
+        _csvSanitize(r.captured_at),
+        _csvSanitize((r.cameras?.name || "").replace(/,/g, ";")),
+        _csvSanitize(r.vehicle_class),
+        _csvSanitize(r.direction),
         r.confidence != null ? r.confidence : "",
-        r.scene_lighting || "",
-        r.scene_weather || "",
+        _csvSanitize(r.scene_lighting),
+        _csvSanitize(r.scene_weather),
         r.dwell_frames != null ? r.dwell_frames : "",
-        r.track_id || "",
+        _csvSanitize(r.track_id),
       ].join(","));
     }
 

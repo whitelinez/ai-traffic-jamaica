@@ -1,0 +1,78 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - status [ref=e2]:
+    - img [ref=e3]
+    - generic [ref=e5]: Site is under heavy development — features may change without notice
+    - button "Dismiss" [ref=e6] [cursor=pointer]: ✕
+  - banner [ref=e7]:
+    - link "TRAFFIC.AI JAMAICA AI TRAFFIC JAMAICA" [ref=e8] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e9]:
+        - img "TRAFFIC.AI JAMAICA" [ref=e10]
+        - img [ref=e11]
+      - generic [ref=e12]:
+        - generic [ref=e13]: AI TRAFFIC
+        - generic [ref=e14]: JAMAICA
+    - generic "Live vehicle count" [ref=e15]:
+      - generic [ref=e17]: 11,007
+      - generic [ref=e18]: vehicles counted
+    - navigation [ref=e19]:
+      - button "ANALYTICS" [ref=e20] [cursor=pointer]
+      - button "Login" [ref=e22] [cursor=pointer]
+  - main [ref=e23]:
+    - generic [ref=e25]:
+      - generic: FPS 5.0
+      - generic "floating vehicle count widget" [ref=e27] [cursor=pointer]:
+        - text: LIVE COUNT
+        - generic "vehicle count value" [ref=e29]: 11,008
+      - generic "Toggle AI details" [ref=e31] [cursor=pointer]:
+        - generic [ref=e32]:
+          - generic [ref=e33]: LIVE VISION HUD
+          - generic [ref=e34]:
+            - img [ref=e35]
+            - generic [ref=e37]: Day · Raining
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: Detection Rate
+            - strong [ref=e41]: 0.0/m
+          - generic [ref=e43]:
+            - generic [ref=e44]: Traffic Load
+            - generic [ref=e45]: Traffic is light right now.
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - text: Frames
+            - strong [ref=e48]: "133"
+          - generic [ref=e49]:
+            - text: Objects
+            - strong [ref=e50]: "658"
+      - generic:
+        - generic:
+          - generic: 4 watching
+        - generic:
+          - generic: Guest-VXYW joined
+          - generic: Guest-QJXC joined
+    - complementary [ref=e51]:
+      - tablist [ref=e52]:
+        - tab "Play" [ref=e53] [cursor=pointer]: PLAY
+        - tab "Rankings" [ref=e54] [cursor=pointer]: RANKINGS
+        - tab "Chat" [ref=e55] [cursor=pointer]: LIVE
+        - tab "Intel" [ref=e56] [cursor=pointer]: INTEL
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - img [ref=e60]
+          - generic [ref=e62]: Updates & Announcements
+        - generic [ref=e63]:
+          - button "How it works" [ref=e64] [cursor=pointer]:
+            - generic: NO ACTIVE ROUND
+            - paragraph [ref=e70]: AI scanning live traffic — next round incoming.
+            - generic [ref=e73]: Tap to see how the game works while you wait
+          - button "Switch camera location" [ref=e74] [cursor=pointer]:
+            - generic: CAMERAS
+            - paragraph [ref=e80]: Tap to browse and switch active camera feeds.
+            - generic [ref=e81]:
+              - generic [ref=e83]: MULTI-CAM
+              - generic [ref=e84]: VIEW ALL
+  - text: Total vehicles the AI has counted at this intersection today The busiest single hour recorded today — tap to see the breakdown Vehicles travelling into the intersection today Vehicles that have exited through a named zone today — from the Traffic Intelligence system LIVE TRAFFIC INTELLIGENCE · JAMAICA ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+```

@@ -1,0 +1,93 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - status [ref=e2]:
+    - img [ref=e3]
+    - generic [ref=e5]: Site is under heavy development — features may change without notice
+    - button "Dismiss" [ref=e6] [cursor=pointer]: ✕
+  - banner [ref=e7]:
+    - link "TRAFFIC.AI JAMAICA AI TRAFFIC JAMAICA" [ref=e8] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e9]:
+        - img "TRAFFIC.AI JAMAICA" [ref=e10]
+        - img [ref=e11]
+      - generic [ref=e12]:
+        - generic [ref=e13]: AI TRAFFIC
+        - generic [ref=e14]: JAMAICA
+    - generic "Live vehicle count" [ref=e15]:
+      - generic [ref=e17]: 11,007
+      - generic [ref=e18]: vehicles counted
+    - navigation [ref=e19]:
+      - button "ANALYTICS" [ref=e20] [cursor=pointer]
+      - button "Login" [ref=e22] [cursor=pointer]
+  - main [ref=e23]:
+    - generic [ref=e25]:
+      - generic: FPS --.-
+      - generic "floating vehicle count widget" [ref=e27] [cursor=pointer]:
+        - text: LIVE COUNT
+        - generic "vehicle count value" [ref=e29]: 11,007
+      - generic "Toggle AI details" [ref=e31] [cursor=pointer]:
+        - generic [ref=e32]:
+          - generic [ref=e33]: LIVE VISION HUD
+          - generic [ref=e34]:
+            - img [ref=e35]
+            - generic [ref=e37]: Day · Raining
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: Detection Rate
+            - strong [ref=e41]: 0.0/m
+          - generic [ref=e43]:
+            - generic [ref=e44]: Traffic Load
+            - generic [ref=e45]: Traffic is light right now.
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - text: Frames
+            - strong [ref=e48]: "127"
+          - generic [ref=e49]:
+            - text: Objects
+            - strong [ref=e50]: "671"
+      - generic:
+        - generic:
+          - generic: 4 watching
+        - generic:
+          - generic: Guest-UPFX joined
+    - complementary [ref=e51]:
+      - tablist [ref=e52]:
+        - tab "Play" [ref=e53] [cursor=pointer]: PLAY
+        - tab "Rankings" [ref=e54] [cursor=pointer]: RANKINGS
+        - tab "Chat" [ref=e55] [cursor=pointer]: LIVE
+        - tab "Intel" [ref=e56] [cursor=pointer]: INTEL
+  - dialog "Sign in" [ref=e64]:
+    - generic [ref=e66]:
+      - button "Close" [ref=e67] [cursor=pointer]:
+        - img [ref=e68]
+      - link "AI TRAFFIC JAMAICA AI TRAFFIC JAMAICA" [ref=e71] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e72]:
+          - img "AI TRAFFIC JAMAICA" [ref=e73]
+          - img [ref=e74]
+        - generic [ref=e75]: AI TRAFFIC JAMAICA
+      - heading "Sign In" [level=1] [ref=e76]
+      - button "Continue with Google" [ref=e77] [cursor=pointer]:
+        - img [ref=e78]
+        - text: Continue with Google
+      - button "Continue as Guest" [ref=e83] [cursor=pointer]:
+        - img [ref=e84]
+        - text: Continue as Guest
+      - generic [ref=e88]: or sign in with email
+      - generic [ref=e89]:
+        - generic [ref=e90]:
+          - generic [ref=e91]: Email
+          - textbox "Email" [ref=e92]: test@example.com
+        - generic [ref=e93]:
+          - generic [ref=e94]: Password
+          - textbox "Password" [ref=e95]: wrongpassword123
+        - alert [ref=e96]: Invalid login credentials
+        - button "Sign In" [ref=e97] [cursor=pointer]
+      - paragraph [ref=e98]:
+        - text: Don't have an account?
+        - link "Register" [ref=e99] [cursor=pointer]:
+          - /url: "#"
+  - text: Total vehicles the AI has counted at this intersection today The busiest single hour recorded today — tap to see the breakdown Vehicles travelling into the intersection today Vehicles that have exited through a named zone today — from the Traffic Intelligence system LIVE TRAFFIC INTELLIGENCE · JAMAICA ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+```

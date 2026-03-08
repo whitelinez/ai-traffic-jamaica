@@ -1905,19 +1905,21 @@ async function loadRecentRounds() {
 
     container.innerHTML = data.map(r => {
       const d = new Date(r.opens_at);
-      const timeStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
+      const timeStr = escHtml(d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }));
       const canResolve = r.status === "locked" || r.status === "resolved";
       const resolveLabel = r.status === "resolved" ? "Override" : "Resolve";
+      const rStatus = escHtml(String(r.status || ""));
+      const rMarket = escHtml(String(r.market_type || "").replace(/_/g, " "));
       return `
         <div class="round-row">
           <div class="round-row-info">
-            <span class="round-row-id">${r.id.slice(0,8)}…</span>
+            <span class="round-row-id">${escHtml(r.id.slice(0,8))}…</span>
             <span class="round-row-meta">
-              <span class="round-badge round-${r.status}">${r.status.toUpperCase()}</span>
-              ${r.market_type.replace(/_/g," ")} · ${timeStr}
+              <span class="round-badge round-${rStatus}">${rStatus.toUpperCase()}</span>
+              ${rMarket} · ${timeStr}
             </span>
           </div>
-          ${canResolve ? `<button class="btn-resolve" data-round-id="${r.id}">${resolveLabel}</button>` : ""}
+          ${canResolve ? `<button class="btn-resolve" data-round-id="${escHtml(r.id)}">${escHtml(resolveLabel)}</button>` : ""}
         </div>`;
     }).join("");
 
@@ -2020,16 +2022,17 @@ async function loadRecentBets() {
     }
 
     box.innerHTML = bets.slice(0, 120).map((b) => {
-      const userLabel = b.username || (b.user_id ? `${String(b.user_id).slice(0, 8)}…` : "unknown");
+      const userLabel = escHtml(b.username || (b.user_id ? `${String(b.user_id).slice(0, 8)}…` : "unknown"));
       const placed = b.placed_at
-        ? new Date(b.placed_at).toLocaleString([], { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+        ? escHtml(new Date(b.placed_at).toLocaleString([], { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }))
         : "—";
+      const bStatus = escHtml(String(b.status || "pending"));
       return `
         <div class="round-row">
           <div class="round-row-info">
             <span class="round-row-id">${userLabel} • ${placed}</span>
               <span class="round-row-meta">
-                <span class="round-badge round-${b.status}">${String(b.status || "pending").toUpperCase()}</span>
+                <span class="round-badge round-${bStatus}">${bStatus.toUpperCase()}</span>
                 ${formatBetDescriptor(b)} • Stake ${Number(b.amount || 0).toLocaleString()} • Payout ${Number(b.potential_payout || 0).toLocaleString()}
                 <br><span class="muted" style="font-size:0.78rem;">${formatBetDebugInfo(b)}</span>
               </span>
@@ -2227,10 +2230,10 @@ async function loadRoundSessions() {
       return `
         <div class="round-row">
           <div class="round-row-info">
-            <span class="round-row-id">${String(s.id).slice(0, 8)}... <span class="round-badge round-${status === "active" ? "open" : "locked"}">${status.toUpperCase()}</span></span>
-            <span class="round-row-meta">${s.market_type}${vc} • ${th} • next ${next} • rounds ${Number(s.created_rounds || 0)}${s.max_rounds ? "/" + s.max_rounds : ""}</span>
+            <span class="round-row-id">${escHtml(String(s.id).slice(0, 8))}... <span class="round-badge round-${status === "active" ? "open" : "locked"}">${escHtml(status.toUpperCase())}</span></span>
+            <span class="round-row-meta">${escHtml(s.market_type || "")}${escHtml(vc)} • ${escHtml(th)} • next ${escHtml(next)} • rounds ${Number(s.created_rounds || 0)}${s.max_rounds ? "/" + Number(s.max_rounds) : ""}</span>
           </div>
-          ${status === "active" ? `<button class="btn-resolve btn-stop-session" data-id="${s.id}">Stop</button>` : ""}
+          ${status === "active" ? `<button class="btn-resolve btn-stop-session" data-id="${escHtml(s.id)}">Stop</button>` : ""}
         </div>
       `;
     }).join("");

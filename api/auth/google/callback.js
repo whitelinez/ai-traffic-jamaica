@@ -80,17 +80,28 @@ export default async function handler(req) {
   }
 
   // ── 3. Redirect back to frontend with session tokens ────────────────────
-  // Frontend reads _sb_at / _sb_rt, calls sb.auth.setSession(), cleans URL.
+  // Tokens go in the URL fragment (#) so they are never sent to servers,
+  // never appear in Vercel/Referrer logs, and are not accessible to third-party scripts.
+  // Frontend reads _sb_at / _sb_rt from location.hash, calls sb.auth.setSession(), clears hash.
+
+  // Validate state: only allow redirects to aitrafficja.com to prevent open-redirect.
   let redirectTo = SITE_URL;
   try {
-    if (state) redirectTo = decodeURIComponent(state);
+    if (state) {
+      const candidate = decodeURIComponent(state);
+      const candidateUrl = new URL(candidate);
+      if (candidateUrl.origin === SITE_URL) {
+        redirectTo = candidate;
+      }
+      // Silently fall back to SITE_URL for any external origin.
+    }
   } catch {}
 
   const params = new URLSearchParams({
     _sb_at: sbData.access_token,
     _sb_rt: sbData.refresh_token || "",
-    _sb_ei: String(sbData.expires_in || 3600),
   });
 
-  return Response.redirect(`${redirectTo}?${params}`, 302);
+  // Use fragment (#) to keep tokens out of server logs and Referrer headers.
+  return Response.redirect(`${redirectTo}#${params}`, 302);
 }

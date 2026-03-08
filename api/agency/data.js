@@ -62,14 +62,27 @@ export default async function handler(req, res) {
   const keyRow = keys[0];
   const today  = new Date().toISOString().slice(0, 10);
 
-  // ── Rate limit: upsert usage counter ────────────────────────────────────────
-  const usageUpsert = await fetch(`${SUPABASE_URL}/rest/v1/agency_api_usage`, {
-    method: "POST",
-    headers: { ...sbH, Prefer: "resolution=merge-duplicates,return=representation" },
-    body: JSON.stringify({ key_id: keyRow.id, agency: keyRow.agency, date: today, hits: 1 }),
-  });
-  const usageRows = usageUpsert.ok ? await usageUpsert.json() : [];
-  const currentHits = usageRows[0]?.hits ?? 1;
+  // ── Rate limit: read current usage then upsert incremented value ────────────
+  let currentHits = 1;
+  try {
+    // Step 1: fetch today's existing hit count (if any).
+    const getRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/agency_api_usage?key_id=eq.${encodeURIComponent(keyRow.id)}&date=eq.${today}&select=hits`,
+      { headers: sbH }
+    );
+    const getRows = getRes.ok ? await getRes.json() : [];
+    const prevHits = getRows[0]?.hits ?? 0;
+    currentHits = prevHits + 1;
+
+    // Step 2: upsert with the correctly incremented value.
+    await fetch(`${SUPABASE_URL}/rest/v1/agency_api_usage`, {
+      method: "POST",
+      headers: { ...sbH, Prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify({ key_id: keyRow.id, agency: keyRow.agency, date: today, hits: currentHits }),
+    });
+  } catch {
+    // Non-fatal — continue without rate limit enforcement on error.
+  }
 
   if (currentHits > keyRow.rate_limit_day)
     return res.status(429).json({
@@ -126,17 +139,21 @@ export default async function handler(req, res) {
 
     // ── CSV format ─────────────────────────────────────────────────────────────
     if (format === "csv") {
+      const _csvSanitize = (v) => {
+        const s = String(v == null ? "" : v);
+        return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+      };
       const lines = ["timestamp,vehicle_class,direction,confidence,scene_lighting,scene_weather,dwell_frames,track_id"];
       for (const r of deduped) {
         lines.push([
-          r.captured_at || "",
-          r.vehicle_class || "",
-          r.direction || "",
+          _csvSanitize(r.captured_at),
+          _csvSanitize(r.vehicle_class),
+          _csvSanitize(r.direction),
           r.confidence != null ? r.confidence : "",
-          r.scene_lighting || "",
-          r.scene_weather || "",
+          _csvSanitize(r.scene_lighting),
+          _csvSanitize(r.scene_weather),
           r.dwell_frames != null ? r.dwell_frames : "",
-          r.track_id || "",
+          _csvSanitize(r.track_id),
         ].join(","));
       }
       res.setHeader("Content-Type", "text/csv; charset=utf-8");

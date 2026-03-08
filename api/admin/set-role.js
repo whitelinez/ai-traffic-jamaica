@@ -3,6 +3,8 @@
  * - GET: list users (proxies to /admin/users)
  * - POST: set role (proxies to /admin/set-role)
  */
+import { verifyAdminJwt } from "../_lib/admin-auth.js";
+
 export default async function handler(req, res) {
   const method = req.method || "GET";
   if (!["GET", "POST"].includes(method)) {
@@ -12,12 +14,9 @@ export default async function handler(req, res) {
   const railwayUrl = process.env.RAILWAY_BACKEND_URL;
   if (!railwayUrl) return res.status(500).json({ error: "Server misconfiguration" });
 
-  const authHeader = req.headers["authorization"];
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Missing Bearer token" });
-  }
-  if (authHeader.slice(7).trim().split(".").length !== 3)
-    return res.status(401).json({ error: "Malformed token" });
+  const authHeader = req.headers["authorization"] || "";
+  const authCheck = await verifyAdminJwt(authHeader);
+  if (!authCheck.ok) return res.status(authCheck.status).json({ error: authCheck.error });
 
   try {
     let upstream;

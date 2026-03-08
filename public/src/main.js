@@ -221,10 +221,11 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
 
   // Handle OAuth redirect params — session injection + error display + URL cleanup
   {
-    const _oauthParams = new URLSearchParams(window.location.search);
+    // Custom Google callback injects tokens in the URL fragment (#_sb_at=...&_sb_rt=...)
+    // to keep them out of server logs and Referrer headers.
+    const _hashStr = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+    const _oauthParams = new URLSearchParams(_hashStr);
 
-    // Custom Google callback (/api/auth/google/callback) injects Supabase tokens
-    // as _sb_at / _sb_rt query params — pick them up and establish the session.
     const _sbAt = _oauthParams.get("_sb_at");
     const _sbRt = _oauthParams.get("_sb_rt");
     if (_sbAt && _sbRt) {
@@ -248,9 +249,9 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
 
     if (
       _sbAt ||
+      window.location.hash ||
       window.location.search.includes("code=") ||
-      window.location.search.includes("error=") ||
-      window.location.hash.includes("access_token")
+      window.location.search.includes("error=")
     ) {
       history.replaceState(null, "", window.location.pathname);
     }

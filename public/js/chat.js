@@ -501,7 +501,14 @@ const Chat = (() => {
     if (c) c.scrollTop = c.scrollHeight;
   }
 
+  let _lastSentAt = 0;
+  const _SEND_COOLDOWN_MS = 1500;
+
   async function send() {
+    const now = Date.now();
+    if (now - _lastSentAt < _SEND_COOLDOWN_MS) return;
+    _lastSentAt = now;
+
     const input = document.getElementById("chat-input");
     if (!input) return;
     const content = input.value.trim();

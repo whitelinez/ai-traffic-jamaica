@@ -36,10 +36,12 @@ test('login: wrong credentials shows auth error message', async ({ page }) => {
   await page.locator('#modal-email').fill('test@example.com');
   await page.locator('#modal-password, input[type="password"]').first().fill('wrongpassword123');
   await page.locator('#modal-submit-btn').click();
-  // Wait for async auth response
-  const errorEl = page.locator('#modal-auth-error, .auth-error').first();
-  await expect(errorEl).toBeVisible({ timeout: 15000 });
-  const errorText = await errorEl.textContent();
+  // Wait for Supabase auth response and error text to be set
+  await page.waitForFunction(
+    () => (document.querySelector('#modal-auth-error')?.textContent?.trim().length ?? 0) > 0,
+    { timeout: 15000 }
+  );
+  const errorText = await page.locator('#modal-auth-error').textContent();
   expect((errorText || '').trim().length).toBeGreaterThan(0);
   console.log(`Auth error: "${(errorText || '').trim()}"`);
 });

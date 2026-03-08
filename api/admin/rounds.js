@@ -2,6 +2,8 @@
  * /api/admin/rounds
  * Proxy admin round/session operations to Railway backend.
  */
+import { verifyAdminJwt } from "../_lib/admin-auth.js";
+
 export default async function handler(req, res) {
   const method = req.method || "GET";
   if (!["GET", "POST", "PATCH"].includes(method)) {
@@ -11,12 +13,9 @@ export default async function handler(req, res) {
   const railwayUrl = process.env.RAILWAY_BACKEND_URL;
   if (!railwayUrl) return res.status(500).json({ error: "Server misconfiguration" });
 
-  const authHeader = req.headers["authorization"];
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Missing Bearer token" });
-  }
-  if (authHeader.slice(7).trim().split(".").length !== 3)
-    return res.status(401).json({ error: "Malformed token" });
+  const authHeader = req.headers["authorization"] || "";
+  const authCheck = await verifyAdminJwt(authHeader);
+  if (!authCheck.ok) return res.status(authCheck.status).json({ error: authCheck.error });
 
   try {
     const mode = String(req.query?.mode || "");
@@ -38,11 +37,13 @@ export default async function handler(req, res) {
       }
       url = `${railwayUrl}/admin/round-sessions/${encodeURIComponent(sessionId)}/stop`;
     } else {
+      // Only forward known-safe parameters to Railway to prevent parameter injection.
+      const ALLOWED_PARAMS = new Set(["status", "limit", "offset", "round_id", "camera_id"]);
       const params = new URLSearchParams();
       for (const [k, v] of Object.entries(req.query || {})) {
-        if (k === "mode" || typeof v === "undefined") continue;
-        if (Array.isArray(v)) v.forEach((x) => params.append(k, String(x)));
-        else params.set(k, String(v));
+        if (!ALLOWED_PARAMS.has(k)) continue;
+        const safeV = Array.isArray(v) ? v[0] : v;
+        params.set(k, String(safeV).slice(0, 128));
       }
       const query = params.toString();
       url = `${railwayUrl}/admin/rounds${query ? `?${query}` : ""}`;
