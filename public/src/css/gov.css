@@ -3027,13 +3027,16 @@
     font-family: "Rajdhani", "Archivo", sans-serif;
     font-weight: 700;
   }
-  /* Submit button — full width, tall */
+  /* Submit button — sticky to bottom of scrolling panel so it's always visible */
   #bp-submit {
+    position: sticky;
+    bottom: 0;
     height: 50px;
     font-size: 15px;
     font-weight: 800;
     border-radius: 12px;
     letter-spacing: 0.06em;
+    z-index: 2;
   }
   #bp-submit:active { transform: scale(0.98); }
   /* Prize hint — more compact */
