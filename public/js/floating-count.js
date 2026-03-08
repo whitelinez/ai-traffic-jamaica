@@ -71,10 +71,20 @@ const FloatingCount = (() => {
       _guessTarget   = detail.exact_count ?? null;
       _guessBaseline = _lastTotal;
       _enterGuessMode();
+      // Hide dev banner during active guess so it doesn't obscure X/Y progress
+      const banner = document.getElementById("dev-banner");
+      if (banner) banner.style.display = "none";
     });
 
     // Return to normal mode when result comes back.
-    window.addEventListener("bet:resolved", _exitGuessMode);
+    window.addEventListener("bet:resolved", () => {
+      _exitGuessMode();
+      // Restore dev banner unless user already dismissed it
+      if (localStorage.getItem("wlz.dev-banner.dismissed") !== "1") {
+        const banner = document.getElementById("dev-banner");
+        if (banner) banner.style.display = "";
+      }
+    });
   }
 
   // ── Mode switches ─────────────────────────────────────────────
