@@ -209,12 +209,25 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
     }
   }
 
-  // Handle OAuth redirect params — show error if present, then clean URL
+  // Handle OAuth redirect params — session injection + error display + URL cleanup
   {
     const _oauthParams = new URLSearchParams(window.location.search);
+
+    // Custom Google callback (/api/auth/google/callback) injects Supabase tokens
+    // as _sb_at / _sb_rt query params — pick them up and establish the session.
+    const _sbAt = _oauthParams.get("_sb_at");
+    const _sbRt = _oauthParams.get("_sb_rt");
+    if (_sbAt && _sbRt) {
+      try {
+        await sb.auth.setSession({ access_token: _sbAt, refresh_token: _sbRt });
+        window.dispatchEvent(new CustomEvent("auth:signed_in"));
+      } catch (e) {
+        console.error("[Auth] setSession failed:", e);
+      }
+    }
+
     const _oauthError = _oauthParams.get("error_description") || _oauthParams.get("error");
     if (_oauthError) {
-      // Show the raw OAuth error so we can diagnose what Google/Supabase returned
       console.error("[Auth] OAuth callback error:", _oauthError);
       const _errBanner = document.createElement("div");
       _errBanner.style.cssText = "position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#ef4444;color:#fff;padding:10px 18px;border-radius:6px;z-index:9999;font-size:13px;max-width:90vw;text-align:center";
@@ -222,7 +235,9 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
       document.body.appendChild(_errBanner);
       setTimeout(() => _errBanner.remove(), 8000);
     }
+
     if (
+      _sbAt ||
       window.location.search.includes("code=") ||
       window.location.search.includes("error=") ||
       window.location.hash.includes("access_token")

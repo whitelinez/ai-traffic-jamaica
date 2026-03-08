@@ -54,8 +54,19 @@ async function signInAnon() {
 }
 
 async function signInWithGoogle(redirectTo = window.location.origin + '/') {
-  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
-  if (error) throw error;
+  // Build the Google OAuth URL directly so Google shows "aitrafficja.com" on
+  // the consent screen instead of the Supabase project URL.
+  // The code is exchanged server-side in /api/auth/google/callback.
+  const params = new URLSearchParams({
+    client_id:    '247854268363-bmitffj15pbmkvok5735ndikn1kcm3ov.apps.googleusercontent.com',
+    redirect_uri: 'https://aitrafficja.com/api/auth/google/callback',
+    response_type: 'code',
+    scope:        'openid email profile',
+    access_type:  'offline',
+    prompt:       'select_account',
+    state:        encodeURIComponent(redirectTo),
+  });
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 
 function isAnonymous(session) { return !!session?.user?.is_anonymous; }
