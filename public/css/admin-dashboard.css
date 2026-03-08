@@ -2707,3 +2707,190 @@ details[open] .zone-advanced-toggle::before { transform: rotate(90deg); }
   margin-top: 8px;
 }
 .zone-tool-btn { font-size: 0.72rem !important; padding: 4px 9px !important; }
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE OPTIMIZATION + SCROLL FIX
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Scroll safety ─────────────────────────────────────────────
+   The main-site CSS (gov.css landscape rule) sets overflow:hidden
+   on body.dark. Override it unconditionally for admin pages.    */
+html:has(body.admin-page),
+body.admin-page {
+  overflow-y: auto !important;
+  height: auto !important;
+}
+
+/* ── Touch targets (900px and below, sidebar is hidden) ──────── */
+@media (max-width: 900px) {
+  .btn-primary,
+  .btn-secondary {
+    min-height: 40px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .topbar-hamburger {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* Panel heading: allow description to wrap below title */
+  .panel-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding-bottom: 8px;
+  }
+
+  /* Camera switch row: stack on mobile */
+  .dash-cam-switch > div {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .dash-cam-switch .field {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  .dash-cam-switch .btn-primary { width: 100%; }
+
+  /* Stream canvas in detection panel: full height on mobile */
+  .stream-canvas-wrapper {
+    min-height: clamp(220px, 38vw, 360px);
+  }
+
+  /* Zone controls: full width below canvas */
+  .zone-controls-dock { width: 100%; }
+
+  /* Rounds & bets: make tabs scroll horizontally */
+  .main-actions-grid { grid-template-columns: 1fr; }
+  .main-actions-grid .btn-primary,
+  .main-actions-grid .btn-secondary { width: 100%; }
+
+  /* Users: stack the role form */
+  .user-mgmt-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .user-mgmt-row .btn-primary { width: 100%; }
+
+  /* Audience toolbar: stack */
+  .audience-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .audience-toolbar .field { max-width: 100%; }
+  .audience-toolbar .btn-secondary { width: 100%; }
+
+  /* Model hero: allow content to stack */
+  .mp-hero { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .mp-hero-right { width: 100%; }
+  .mp-hero-right .btn-primary,
+  .mp-hero-right .btn-secondary { width: 100%; }
+
+  /* Profiles layout: already collapses to 1fr, ensure fields full-width */
+  .profiles-layout .field { width: 100%; }
+
+  /* Health view: services grid 1 col */
+  .hv-services { grid-template-columns: 1fr 1fr !important; }
+
+  /* Sidebar footer: horizontal layout on mobile drawer */
+  .sidebar-footer { flex-direction: row; gap: 8px; }
+  .sidebar-action-link, .sidebar-logout-btn { flex: 1; text-align: center; justify-content: center; }
+}
+
+/* ── 640px and below — compact phones ─────────────────────────── */
+@media (max-width: 640px) {
+  /* Card box: tighter padding */
+  .card-box { padding: 10px; }
+  .card-box h3 { margin-bottom: 8px; }
+
+  /* Primary KPIs: 2 per row, smaller values */
+  .overview-metrics-primary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .overview-metrics-primary .stat-card { min-height: 68px; }
+  .overview-metrics-primary .stat-val  { font-size: clamp(1.1rem, 5vw, 1.4rem); }
+
+  /* Secondary KPIs: 2 per row */
+  .overview-metrics-secondary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .overview-metrics-secondary .stat-val { font-size: clamp(0.9rem, 4vw, 1.1rem); }
+
+  /* Audience KPI grid: 2 per row */
+  .audience-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+  /* ML KPI grid: 2 per row */
+  .ml-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+
+  /* Detection status: 2 per row */
+  .detection-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+
+  /* Count tuning grid: single col on 640 */
+  .count-tuning-grid { grid-template-columns: 1fr; }
+
+  /* Rounds grid cards: inner data lists not too tall */
+  .data-list        { max-height: 260px; }
+  .data-list.tall   { max-height: 360px; }
+
+  /* Make round-row more compact: allow text to wrap, remove strict widths */
+  .round-row-meta { font-size: 10px; }
+
+  /* Field labels: tighten */
+  .field label { font-size: 9px; margin-bottom: 3px; }
+  .field input,
+  .field select,
+  .field textarea { font-size: 12px; padding: 6px 8px; }
+
+  /* Inline flex fields: stack */
+  .field-row { flex-direction: column; gap: 6px; }
+
+  /* Section page title: tighter */
+  .panel-head h2 { font-size: 11px; }
+  .panel-head p  { font-size: 10px; }
+
+  /* Topbar title: compact */
+  .topbar-title { font-size: 10px; letter-spacing: 0.06em; }
+
+  /* Admin nav btn inside open sidebar: bigger tap target */
+  .admin-nav-btn { min-height: 42px; }
+
+  /* Stats in health view: single row */
+  .hv-stats    { grid-template-columns: repeat(2, 1fr); }
+  .hv-services { grid-template-columns: 1fr 1fr; }
+  .hv-stat-big { font-size: 18px; }
+
+  /* Profile forms: stack range + label */
+  .night-live-grid { grid-template-columns: 1fr; }
+
+  /* Banners: card stack */
+  .abn-grid { grid-template-columns: 1fr !important; }
+
+  /* Mapping: ensure single col */
+  .mapping-layout { grid-template-columns: 1fr; }
+}
+
+/* ── 420px and below — very small phones ──────────────────────── */
+@media (max-width: 420px) {
+  .admin-main { padding: 0 8px 20px; }
+  .admin-topbar { padding: 8px; margin: 0 -8px; width: calc(100% + 16px); }
+
+  .overview-metrics-primary .stat-val { font-size: 1rem; }
+  .stat-label { font-size: 8px; }
+
+  /* Pill controls: wrap */
+  .zone-toggle-group { flex-wrap: wrap; }
+  .zone-toggle { flex: 1 1 40%; min-height: 36px; font-size: 0.72rem; }
+
+  /* Button text: no truncation */
+  .btn-primary, .btn-secondary { white-space: normal; text-align: center; }
+
+  /* Data list: shorter on very small screens */
+  .data-list      { max-height: 200px; }
+  .data-list.tall { max-height: 300px; }
+}
