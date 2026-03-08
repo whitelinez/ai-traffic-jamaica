@@ -1646,6 +1646,16 @@ function _connectUserWs(session) {
     } catch {}
   }
 
+  // ── Round-open flash cue: pulse the PLAY tab when a new round starts ─────
+  window.addEventListener("round:new", () => {
+    const playBtn = document.querySelector('.tab-btn[data-tab="markets"]');
+    if (!playBtn) return;
+    playBtn.classList.remove("tab-round-pulse"); // reset if already pulsing
+    void playBtn.offsetWidth; // force reflow to restart animation
+    playBtn.classList.add("tab-round-pulse");
+    playBtn.addEventListener("animationend", () => playBtn.classList.remove("tab-round-pulse"), { once: true });
+  });
+
   // ── Open / Close ─────────────────────────────────────────────────────────
   openBtn?.addEventListener("click", openGovAnalytics);
   el("header-analytics-cta")?.addEventListener("click", openGovAnalytics);
@@ -2091,9 +2101,12 @@ function _connectUserWs(session) {
       txt("gov-kpi-peak",   peakLabel);
       txt("gov-trend-label", `— ${granLabel} view`);
 
-      // Global lifetime total
+      // Global lifetime total — also update header ticker
       const g = summary.global;
-      if (g) txt("gov-sum-global", Number(g.total||0).toLocaleString() + " total");
+      if (g) {
+        txt("gov-sum-global", Number(g.total||0).toLocaleString() + " total");
+        _updateHeaderTicker(g.total);
+      }
 
       // Recording since notice
       _renderRecordingNotice(summary.first_date);
@@ -2602,6 +2615,21 @@ function _connectUserWs(session) {
   }
 
   // ── Agency metrics from analytics data ────────────────────────────────────
+  // ── Header ticker — public live vehicles count ─────────────────────────────
+  let _tickerVal = 0;
+  function _updateHeaderTicker(n) {
+    const num = Number(n) || 0;
+    if (num <= 0) return;
+    _tickerVal = num;
+    const tickerEl = el("header-ticker-val");
+    if (tickerEl) tickerEl.textContent = num.toLocaleString();
+  }
+  // Wire to WS count:update so ticker reflects live session count when no DB total yet
+  window.addEventListener("count:update", (e) => {
+    const wsTotal = e.detail?.total_in ?? e.detail?.count_in ?? 0;
+    if (!_tickerVal && wsTotal > 0) _updateHeaderTicker(wsTotal);
+  });
+
   function _populateAgencyMetrics(summary) {
     if (!summary) return;
     const ct       = summary.class_totals || {};

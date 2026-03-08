@@ -332,6 +332,8 @@ export const Markets = (() => {
       if (isNewRound) {
         container.classList.add("mkts-round-hidden");
         window.dispatchEvent(new CustomEvent('banners:show'));
+        // Pulse the PLAY tab so users notice a round is available
+        window.dispatchEvent(new CustomEvent('round:new', { detail: { round } }));
       }
     }
 
