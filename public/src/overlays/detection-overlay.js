@@ -320,6 +320,23 @@ import { contentToPixel, getContentBounds } from '../utils/coord-utils.js'; // e
     // BL
     ctx.moveTo(p1.x + tc, p2.y); ctx.lineTo(p1.x, p2.y); ctx.lineTo(p1.x, p2.y - tc);
     ctx.stroke();
+    // Label: cls + conf, same pulsing cyan, smaller font
+    const CLS_NAME_S = { car: 'Car', truck: 'Truck', bus: 'Bus', motorcycle: 'Moto' };
+    const clsS = CLS_NAME_S[String(det?.cls || '').toLowerCase()] || 'Vehicle';
+    const confS = det.conf != null ? ` ${Math.round(Number(det.conf) * 100)}%` : '';
+    const labelS = clsS + confS;
+    const fsS = isMobileClient ? 8 : 9;
+    ctx.font = `600 ${fsS}px "JetBrains Mono", monospace`;
+    const twS = ctx.measureText(labelS).width;
+    const pxS = 3, pyS = 1;
+    const txS = p1.x, tyS = p1.y - (fsS + pyS * 2);
+    const tyS2 = tyS >= 0 ? tyS : p1.y;
+    ctx.fillStyle = `rgba(0,212,255,${pulse})`;
+    ctx.fillRect(txS, tyS2, twS + pxS * 2, fsS + pyS * 2);
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(labelS, txS + pxS, tyS2 + pyS);
     ctx.restore();
   }
 
@@ -1016,7 +1033,7 @@ import { contentToPixel, getContentBounds } from '../utils/coord-utils.js'; // e
           lineWidth: 1.0,
           alpha: 0,
           fill: false,
-          showLabels: false,
+          showLabels: true,
         });
       }
     }
