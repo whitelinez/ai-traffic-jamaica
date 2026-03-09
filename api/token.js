@@ -40,9 +40,11 @@ export default async function handler(req) {
   }
 
   const secret     = process.env.WS_AUTH_SECRET;
-  const railwayUrl = process.env.RAILWAY_BACKEND_URL;
+  // WS_BACKEND_URL points directly to Railway — CF Worker can't proxy WebSockets
+  // in service-worker format. Falls back to RAILWAY_BACKEND_URL if not set.
+  const wsBase = process.env.WS_BACKEND_URL || process.env.RAILWAY_BACKEND_URL;
 
-  if (!secret || !railwayUrl) {
+  if (!secret || !wsBase) {
     return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -50,7 +52,7 @@ export default async function handler(req) {
   }
 
   const token  = await generateHmacToken(secret);
-  const wssUrl = railwayUrl.replace(/^https?:\/\//, "wss://") + "/ws/live";
+  const wssUrl = wsBase.replace(/^https?:\/\//, "wss://") + "/ws/live";
 
   return new Response(
     JSON.stringify({ token, wss_url: wssUrl, expires_in: TOKEN_TTL_SECONDS }),
