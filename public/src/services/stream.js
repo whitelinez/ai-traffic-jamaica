@@ -9,7 +9,7 @@ let _wssUrl = null;
 let _mediaRecoveryAttempts = 0;
 
 function emitStatus(status, detail = {}) {
-  window.dispatchEvent(new CustomEvent('stream:status', { detail: { status, ...detail } }));
+  window.dispatchEvent(new CustomEvent('stream:status', { detail: { status, alias: currentAlias, ...detail } }));
 }
 
 function clearRetry() {

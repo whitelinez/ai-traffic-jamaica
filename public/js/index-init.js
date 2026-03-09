@@ -452,8 +452,11 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
     if (e.detail?.status === "down") {
       overlay?.classList.remove("hidden");
 
-      // Try next camera if multiple are configured
-      if (!_failoverPending && _streamCameras.length > 1) {
+      // Try next camera if multiple are configured.
+      // Skip failover when viewer is watching a non-AI YouTube camera — it has its
+      // own retry loop and a different alias; switching to an ipcam would override it.
+      const _isYtAlias = String(e.detail?.alias || "").startsWith("yt:");
+      if (!_failoverPending && !_isYtAlias && _streamCameras.length > 1) {
         _failoverPending = true;
         _streamCamIdx = (_streamCamIdx + 1) % _streamCameras.length;
         const next = _streamCameras[_streamCamIdx];
