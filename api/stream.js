@@ -103,8 +103,13 @@ export default async function handler(req) {
     if (!isLocal) {
       text = text.replace(
         /https?:\/\/[^/\s"']+\/(?:api\/stream|stream\/ts)\?p=([A-Za-z0-9+/=_-]+)/g,
-        (_, p) => {
-          try { return atob(p.replace(/-/g, "+").replace(/_/g, "/")); } catch { return _; }
+        (match, p) => {
+          try {
+            const decoded = atob(p.replace(/-/g, "+").replace(/_/g, "/"));
+            // Only serve direct for ipcamlive — CORS: * confirmed.
+            // YouTube (googlevideo.com) must stay proxied: no CORS + signed URLs.
+            return decoded.includes(".ipcamlive.com") ? decoded : match;
+          } catch { return match; }
         }
       );
     } else {
