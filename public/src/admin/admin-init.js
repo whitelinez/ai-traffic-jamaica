@@ -2670,30 +2670,32 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const { data: cams } = await sb
         .from("cameras")
-        .select("id, name, ipcam_alias, is_active")
+        .select("id, name, ipcam_alias, youtube_url, is_active")
         .order("area", { ascending: true })
         .order("created_at", { ascending: true });
       if (cams?.length) {
-        sel.innerHTML = cams.map(c =>
-          `<option value="${c.ipcam_alias}"${c.is_active ? " selected" : ""}>${c.name}${c.is_active ? " (active)" : ""}</option>`
-        ).join("");
+        sel.innerHTML = cams.map(c => {
+          const tag = c.youtube_url ? " [YT]" : "";
+          return `<option value="${c.id}"${c.is_active ? " selected" : ""}>${c.name}${tag}${c.is_active ? " (active)" : ""}</option>`;
+        }).join("");
       }
     } catch { /* non-fatal */ }
     btn.addEventListener("click", async () => {
-      const alias = sel.value;
-      if (!alias) return;
+      const camera_id = sel.value;
+      if (!camera_id) return;
       btn.disabled = true;
       if (msg) { msg.textContent = "Switching…"; msg.className = "line-status"; }
       try {
-        const token = await Auth?.getToken?.();
+        const token = await Auth.getJwt();
         const r = await fetch("/api/admin/camera-switch", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-          body: JSON.stringify({ alias }),
+          body: JSON.stringify({ camera_id }),
         });
         const d = await r.json();
         if (r.ok) {
-          if (msg) { msg.textContent = d.message || "Switched."; msg.className = "line-status success"; }
+          const warmUp = d.youtube_url ? " — YouTube stream warming up (~30s)" : "";
+          if (msg) { msg.textContent = (d.message || `Switched to ${d.name || "camera"}.`) + warmUp; msg.className = "line-status success"; }
         } else {
           if (msg) { msg.textContent = d.error || `Error ${r.status}`; msg.className = "line-status error"; }
         }

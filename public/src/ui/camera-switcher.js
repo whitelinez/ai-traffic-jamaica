@@ -26,7 +26,15 @@ export const CameraSwitcher = (() => {
   };
 
   function _ytVideoId(ytUrl) {
-    try { return new URL(ytUrl).searchParams.get('v'); } catch { return null; }
+    try {
+      const u = new URL(ytUrl);
+      // ?v=VIDEO_ID  (standard watch URL)
+      const v = u.searchParams.get('v');
+      if (v) return v;
+      // /live/VIDEO_ID  or  /shorts/VIDEO_ID  path formats
+      const m = u.pathname.match(/\/(?:live|shorts|embed|v)\/([^/?#]+)/);
+      return m ? m[1] : null;
+    } catch { return null; }
   }
 
   async function init() {
