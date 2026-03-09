@@ -70,6 +70,7 @@ export const AdminLine = (() => {
     canvas   = canvasEl;
     ctx      = canvas?.getContext?.("2d") || null;
     cameraId = camId;
+    _populateImportSelect(camId);
 
     if (!video || !canvas || !ctx) {
       console.warn("[AdminLine] init skipped: missing video/canvas/context");
@@ -99,6 +100,12 @@ export const AdminLine = (() => {
         applyCountSettingsToForm(COUNT_SETTINGS_NIGHT_PRESET);
         updateCountSettingsStatus("Preset B applied. Click Save Count Tuning.");
       });
+
+      // Zone import from another camera
+      document.getElementById("zone-import-select")?.addEventListener("change", e => {
+        document.getElementById("btn-zone-import").disabled = !e.target.value;
+      });
+      document.getElementById("btn-zone-import")?.addEventListener("click", importZonesFromCamera);
 
       // Zone toggle buttons
       document.getElementById("btn-zone-detect")?.addEventListener("click", () => setMode("detect"));
@@ -999,6 +1006,96 @@ export const AdminLine = (() => {
       localStorage.setItem(DETECTION_SETTINGS_STORAGE_KEY, JSON.stringify(next));
       window.dispatchEvent(new CustomEvent("detection:settings-update", { detail: next }));
     } catch {}
+  }
+
+  // ── Zone import: populate select with cameras that have zones ────────────
+  async function _populateImportSelect(excludeId) {
+    const sel = document.getElementById("zone-import-select");
+    if (!sel) return;
+    try {
+      const { data } = await sb
+        .from("cameras")
+        .select("id, name, ipcam_alias, youtube_url, count_line, detect_zone")
+        .order("name", { ascending: true });
+      sel.innerHTML = '<option value="">— select source camera —</option>';
+      (data || []).forEach(c => {
+        if (String(c.id) === String(excludeId)) return; // skip self
+        if (!c.count_line && !c.detect_zone) return;    // skip cameras with no zones
+        const tag  = c.youtube_url ? " [YT]" : c.ipcam_alias ? " [ipcam]" : "";
+        const opt  = document.createElement("option");
+        opt.value  = c.id;
+        opt.dataset.countLine  = JSON.stringify(c.count_line  || null);
+        opt.dataset.detectZone = JSON.stringify(c.detect_zone || null);
+        opt.textContent = (c.name || c.ipcam_alias || c.id) + tag;
+        sel.appendChild(opt);
+      });
+      document.getElementById("btn-zone-import").disabled = true;
+      document.getElementById("zone-import-status").textContent = "";
+    } catch (e) {
+      console.warn("[AdminLine] import select failed:", e);
+    }
+  }
+
+  // ── Zone import: apply source camera's zones into the current editor ─────
+  function importZonesFromCamera() {
+    const sel    = document.getElementById("zone-import-select");
+    const status = document.getElementById("zone-import-status");
+    const opt    = sel?.options[sel.selectedIndex];
+    if (!opt?.value) return;
+
+    try {
+      const srcCountLine  = JSON.parse(opt.dataset.countLine  || "null");
+      const srcDetectZone = JSON.parse(opt.dataset.detectZone || "null");
+
+      let applied = [];
+
+      // Apply count band
+      if (srcCountLine?.x3 !== undefined) {
+        countPoints = [
+          { rx: srcCountLine.x1, ry: srcCountLine.y1 },
+          { rx: srcCountLine.x2, ry: srcCountLine.y2 },
+          { rx: srcCountLine.x3, ry: srcCountLine.y3 },
+          { rx: srcCountLine.x4, ry: srcCountLine.y4 },
+        ];
+        applied.push("count band");
+      } else if (srcCountLine?.x1 !== undefined) {
+        countPoints = [
+          { rx: srcCountLine.x1, ry: srcCountLine.y1 },
+          { rx: srcCountLine.x2, ry: srcCountLine.y2 },
+        ];
+        applied.push("count line");
+      }
+
+      // Apply detect zone
+      if (Array.isArray(srcDetectZone?.points) && srcDetectZone.points.length >= 3) {
+        detectPoints = srcDetectZone.points
+          .filter(p => p && typeof p.x === "number")
+          .map(p => ({ rx: p.x, ry: p.y }));
+        applied.push("detect filter");
+      } else if (srcDetectZone?.x3 !== undefined) {
+        detectPoints = [
+          { rx: srcDetectZone.x1, ry: srcDetectZone.y1 },
+          { rx: srcDetectZone.x2, ry: srcDetectZone.y2 },
+          { rx: srcDetectZone.x3, ry: srcDetectZone.y3 },
+          { rx: srcDetectZone.x4, ry: srcDetectZone.y4 },
+        ];
+        applied.push("detect filter");
+      }
+
+      if (applied.length === 0) {
+        status.textContent = "Source camera has no zones to import.";
+        status.style.color = "#f87171";
+        return;
+      }
+
+      document.getElementById("btn-save-line").disabled = false;
+      refresh();
+      status.textContent = `Loaded ${applied.join(" + ")} — review and click Save.`;
+      status.style.color = "#34d399";
+    } catch (e) {
+      console.warn("[AdminLine] importZonesFromCamera error:", e);
+      if (status) { status.textContent = "Import failed."; status.style.color = "#f87171"; }
+    }
   }
 
   return { init, clearActive, saveZones, refresh, saveCountSettingsOnly, loadZones: loadExistingZones };
