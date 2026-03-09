@@ -2721,11 +2721,22 @@
     max-width: 100vw;
   }
 
+  /* ── Header: fixed so it's always visible regardless of scroll/layout ── */
+  /* position:sticky breaks inside overflow:hidden on many mobile browsers */
+  .site-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+  }
+
   /* ── Main grid → flex column, full viewport height ── */
-  /* .site-header is outside .main-grid in DOM — subtract its height */
+  /* Offset by header-h since header is now fixed (out of flow) */
   .main-grid {
     display: flex;
     flex-direction: column;
+    margin-top: var(--header-h);
     height: calc(100dvh - var(--header-h));
     height: calc(100vh - var(--header-h)); /* fallback */
     overflow: hidden;
@@ -3236,14 +3247,15 @@
 
   .main-grid {
     flex-direction: row;
-    height: 100dvh;
-    height: 100vh;
+    margin-top: var(--header-h); /* fixed header is out of flow */
+    height: calc(100dvh - var(--header-h));
+    height: calc(100vh  - var(--header-h));
   }
 
   .stream-panel {
     flex: 1 1 auto;
-    height: 100dvh;
-    height: 100vh;
+    height: calc(100dvh - var(--header-h));
+    height: calc(100vh  - var(--header-h));
     overflow: hidden;
   }
 
@@ -3251,8 +3263,8 @@
 
   .sidebar {
     flex: 0 0 260px;
-    height: 100dvh;
-    height: 100vh;
+    height: calc(100dvh - var(--header-h));
+    height: calc(100vh  - var(--header-h));
     border-top: none;
     border-left: 1px solid var(--border);
     overflow: hidden;

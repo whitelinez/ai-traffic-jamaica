@@ -1128,8 +1128,15 @@ function _connectUserWs(session) {
   // ── Visual viewport — keyboard detection for chat ────────────────────────
   if ("visualViewport" in window) {
     window.visualViewport.addEventListener("resize", () => {
-      const keyboardOpen = window.visualViewport.height < window.innerHeight * 0.75;
+      const vvh = window.visualViewport.height;
+      const keyboardOpen = vvh < window.innerHeight * 0.75;
       document.querySelector("#tab-chat")?.classList.toggle("keyboard-open", keyboardOpen);
+      // Constrain sidebar to visual viewport height so keyboard doesn't bury stream
+      if (isMobile() && sidebar) {
+        const headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--header-h")) || 56;
+        const maxH = keyboardOpen ? Math.max(vvh - headerH, 120) : null;
+        sidebar.style.maxHeight = maxH !== null ? `${maxH}px` : "";
+      }
       // Scroll chat to bottom when keyboard opens
       if (keyboardOpen) {
         const msgs = el("chat-messages");
