@@ -556,6 +556,7 @@
 .ml-hud { overflow: hidden; }
 @media (max-width: 480px) {
   .ml-hud { right: 6px; }
+  .ml-hud-head { display: flex; flex-direction: column; gap: 2px; }
 }
 
 /* ── Count widget mobile — prevent number cut-off ─────────────────────────── */
