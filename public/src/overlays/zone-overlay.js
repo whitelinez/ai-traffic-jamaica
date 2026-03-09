@@ -22,6 +22,11 @@ import { DetectionOverlay } from './detection-overlay.js';
   let isFlashing = false;
   let _hoverCountLine = false;   // true when mouse is over the count zone polygon
 
+  // ── Animation state ─────────────────────────────────────────────────────────
+  let _animRafId = null;
+  const RING_DURATION_MS = 900;
+  let _pulseRings = [];   // [{x, y, startMs}] — pre-count ripple rings
+
   function hexToPixi(hex) {
     const raw = String(hex || "").replace("#", "");
     const safe = raw.length === 3
@@ -218,8 +223,10 @@ import { DetectionOverlay } from './detection-overlay.js';
       const crossings = detail.new_crossings ?? 0;
       confirmedTotal = Number(detail.confirmed_crossings_total ?? confirmedTotal ?? 0);
       latestDetections = Array.isArray(detail.detections) ? detail.detections : [];
-      if (crossings > 0) flash();
-      else draw();
+      if (crossings > 0) {
+        flash();
+        firePulseRings(latestDetections);
+      } else draw();
     });
   }
 
@@ -246,8 +253,8 @@ import { DetectionOverlay } from './detection-overlay.js';
       countLine  = cam?.count_line  ?? null;
       detectZone = cam?.detect_zone ?? null;
       landmarks  = Array.isArray(cam?.landmarks) ? cam.landmarks : [];
-      // Share detect zone with DetectionOverlay so it can clip outside-scan boxes
       DetectionOverlay.setDetectZone(detectZone);
+      _startAnimLoop();  // start scan particle loop once zones are loaded
       const detOverlay = cam?.feed_appearance?.detection_overlay || {};
       overlaySettings = {
         ...overlaySettings,
@@ -313,6 +320,33 @@ import { DetectionOverlay } from './detection-overlay.js';
     }, 600);
   }
 
+  function _startAnimLoop() {
+    if (_animRafId) return;
+    function tick() {
+      draw();
+      const now = Date.now();
+      // Keep looping while rings are alive OR scan particle needs redraws
+      const hasRings = _pulseRings.some(r => now - r.startMs < RING_DURATION_MS);
+      if (hasRings || countLine) {
+        _animRafId = requestAnimationFrame(tick);
+      } else {
+        _animRafId = null;
+      }
+    }
+    _animRafId = requestAnimationFrame(tick);
+  }
+
+  function firePulseRings(detections) {
+    const now = Date.now();
+    const inZone = (detections || []).filter(d => d?.in_detect_zone !== false);
+    inZone.slice(0, 4).forEach(d => {
+      _pulseRings.push({ x: (d.x1 + d.x2) / 2, y: (d.y1 + d.y2) / 2, startMs: now });
+    });
+    // Prune dead rings
+    _pulseRings = _pulseRings.filter(r => now - r.startMs < RING_DURATION_MS + 200);
+    _startAnimLoop();
+  }
+
   function draw() {
     if (pixiEnabled && pixiGraphics) {
       drawPixi();
@@ -328,6 +362,7 @@ import { DetectionOverlay } from './detection-overlay.js';
     if (detectZone) _drawDetectZoneCanvas(detectZone, pt);
     const _effectiveLine = countLine || { x1: 0.0, y1: 0.55, x2: 1.0, y2: 0.55 };
     _drawCountLineCanvas(_effectiveLine, pt);
+    if (_pulseRings.length) _drawPulseRings(bounds);
 
     _drawLandmarks(bounds);
   }
@@ -496,10 +531,14 @@ import { DetectionOverlay } from './detection-overlay.js';
     ctx.closePath();
     ctx.strokeStyle = '#00D4FF';
     ctx.lineWidth = 1.5;
-    ctx.globalAlpha = 0.7;
+    ctx.globalAlpha = 0.65;
+    // Animated flowing dashes — offset shifts over time for "active scan" feel
+    const dashOffset = (Date.now() / 40) % 20;
     ctx.setLineDash([6, 4]);
+    ctx.lineDashOffset = -dashOffset;
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
     // SCAN label above the topmost vertex
     const top = poly.reduce((t, p) => p.y < t.y ? p : t, poly[0]);
     ctx.globalAlpha = 1;
@@ -511,23 +550,69 @@ import { DetectionOverlay } from './detection-overlay.js';
     ctx.restore();
   }
 
+  function _drawPulseRings(bounds) {
+    // Expanding concentric rings at pre-counted vehicle positions
+    const now = Date.now();
+    _pulseRings.forEach(ring => {
+      const age = now - ring.startMs;
+      if (age > RING_DURATION_MS) return;
+      const t = age / RING_DURATION_MS;            // 0→1
+      const alpha = (1 - t) * 0.7;
+      const px = bounds.x + ring.x * bounds.w;
+      const py = bounds.y + ring.y * bounds.h;
+      // Two rings: inner fast, outer slow
+      [0.5, 1.0].forEach((scale, idx) => {
+        const r = (30 + 60 * t * scale);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0,212,255,${alpha * (idx === 0 ? 0.9 : 0.5)})`;
+        ctx.lineWidth = idx === 0 ? 1.5 : 1;
+        ctx.shadowColor = '#00D4FF';
+        ctx.shadowBlur = 6;
+        ctx.stroke();
+        ctx.restore();
+      });
+    });
+    // Prune dead rings (keep only active ones)
+    _pulseRings = _pulseRings.filter(r => now - r.startMs < RING_DURATION_MS);
+  }
+
   function _drawCountLineCanvas(zone, pt) {
     if (!zone || zone.x1 === undefined) return;
     const p1 = pt(zone.x1, zone.y1);
     const p2 = pt(zone.x2, zone.y2);
     const flash = isFlashing;
-    const lineColor = flash ? '#00FF88' : '#FFB800';
+    const lineColor = flash ? '#00FF88' : '#FFD600';
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const nx = -dy / len, ny = dx / len;  // unit perpendicular
 
-    // Glow halo pass
+    // Wide soft glow halo
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y);
     ctx.lineTo(p2.x, p2.y);
     ctx.strokeStyle = lineColor;
-    ctx.lineWidth = flash ? 8 : 5;
-    ctx.globalAlpha = 0.20;
+    ctx.lineWidth = flash ? 14 : 10;
+    ctx.globalAlpha = 0.12;
     ctx.shadowColor = lineColor;
-    ctx.shadowBlur = flash ? 20 : 12;
+    ctx.shadowBlur = flash ? 28 : 18;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    // Glow halo pass (tighter)
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = flash ? 6 : 4;
+    ctx.globalAlpha = 0.22;
+    ctx.shadowColor = lineColor;
+    ctx.shadowBlur = flash ? 16 : 10;
+    ctx.lineCap = 'round';
     ctx.stroke();
     ctx.restore();
 
@@ -537,21 +622,67 @@ import { DetectionOverlay } from './detection-overlay.js';
     ctx.moveTo(p1.x, p1.y);
     ctx.lineTo(p2.x, p2.y);
     ctx.strokeStyle = lineColor;
-    ctx.lineWidth = flash ? 3 : 2;
+    ctx.lineWidth = flash ? 2.5 : 1.5;
+    ctx.globalAlpha = 1;
     ctx.shadowColor = lineColor;
-    ctx.shadowBlur = flash ? 12 : 6;
+    ctx.shadowBlur = flash ? 10 : 5;
+    ctx.lineCap = 'round';
     ctx.stroke();
     ctx.restore();
 
-    // Rounded end caps
+    // Perpendicular tick marks — visually show the pixel-trigger zone
+    const tickSpacing = 24;
+    const nTicks = Math.floor(len / tickSpacing);
+    const tickLen = flash ? 7 : 5;
+    ctx.save();
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = flash ? 0.55 : 0.30;
+    ctx.lineCap = 'round';
+    for (let i = 1; i < nTicks; i++) {
+      const t = i / nTicks;
+      const tx = p1.x + dx * t, ty = p1.y + dy * t;
+      ctx.beginPath();
+      ctx.moveTo(tx + nx * tickLen, ty + ny * tickLen);
+      ctx.lineTo(tx - nx * tickLen, ty - ny * tickLen);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Scan particle — bright dot bouncing along the line
+    if (!flash) {
+      const period = 2400;
+      const tRaw = (Date.now() % (period * 2)) / period;
+      const tBounce = tRaw <= 1 ? tRaw : 2 - tRaw;
+      const spx = p1.x + dx * tBounce, spy = p1.y + dy * tBounce;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(spx, spy, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowColor = lineColor;
+      ctx.shadowBlur = 10;
+      ctx.globalAlpha = 0.85;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // End caps — filled circle + short perpendicular wings
     [p1, p2].forEach(p => {
       ctx.save();
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, flash ? 5 : 4, 0, Math.PI * 2);
       ctx.fillStyle = lineColor;
       ctx.shadowColor = lineColor;
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = flash ? 14 : 8;
       ctx.fill();
+      // Wing lines perpendicular to the count line
+      ctx.beginPath();
+      ctx.moveTo(p.x + nx * 8, p.y + ny * 8);
+      ctx.lineTo(p.x - nx * 8, p.y - ny * 8);
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = flash ? 2 : 1.5;
+      ctx.globalAlpha = 0.6;
+      ctx.stroke();
       ctx.restore();
     });
 
