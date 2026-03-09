@@ -21,18 +21,12 @@ export async function verifyAdminJwt(authHeader) {
     const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: { apikey: serviceKey, Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) {
-      console.error("[admin-auth] Supabase /auth/v1/user status:", res.status, "url:", supabaseUrl.slice(0,50));
-      return { ok: false, status: 401, error: "Invalid or expired token" };
-    }
+    if (!res.ok) return { ok: false, status: 401, error: "Invalid or expired token" };
     const user = await res.json();
-    const role = user?.app_metadata?.role;
-    console.error("[admin-auth] uid:", user?.id?.slice(0,8), "role:", role, "email:", user?.email);
-    if (role !== "admin")
-      return { ok: false, status: 403, error: `Admin role required (got role="${role}", email="${user?.email}", uid="${user?.id?.slice(0,8)}")` };
+    if (user?.app_metadata?.role !== "admin")
+      return { ok: false, status: 403, error: "Admin role required" };
     return { ok: true };
-  } catch (e) {
-    console.error("[admin-auth] exception:", e?.message);
+  } catch {
     return { ok: false, status: 401, error: "Token verification failed" };
   }
 }
