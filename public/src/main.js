@@ -1674,6 +1674,14 @@ function _connectUserWs(session) {
   closeBtn?.addEventListener("click", closeGov);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && _open) closeGov(); });
 
+  // ── Reset analytics camera when user switches cameras ─────────────────────
+  window.addEventListener("camera:switched", () => {
+    _camId   = null;
+    _camName = null;
+    // If overlay is open, reload analytics for the new active camera
+    if (_open) openGovAnalytics();
+  });
+
   // ── Restore overlay state after page refresh ──────────────────────────────
   try {
     const savedTab = localStorage.getItem("wl_gov_open");
