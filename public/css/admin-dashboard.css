@@ -567,44 +567,6 @@
 }
 .appearance-controls { border-color: rgba(15,185,177,0.26); }
 
-/* ── Zone import box ─────────────────────────────────────────────────────── */
-.zone-import-box {
-  background: var(--as2);
-  border: 1px solid var(--abr);
-  border-radius: var(--r-md);
-  padding: 10px;
-}
-.zone-import-box h4 {
-  margin: 0 0 4px;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--am);
-  font-weight: 700;
-}
-.zone-import-hint {
-  margin: 0 0 8px;
-  font-size: 0.74rem;
-  color: var(--am);
-  opacity: 0.75;
-}
-.zone-import-row {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-.zone-import-select {
-  flex: 1;
-  min-width: 0;
-  background: var(--as3);
-  border: 1px solid var(--abr);
-  border-radius: var(--r-sm);
-  color: var(--at);
-  font-size: 0.78rem;
-  padding: 4px 6px;
-  height: 30px;
-}
-.zone-import-select:focus { outline: 1px solid var(--ac); }
 
 .count-tuning-grid {
   display: grid;
