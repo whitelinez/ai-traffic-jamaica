@@ -102,7 +102,7 @@ export default async function handler(req) {
     let text = await upstream.text();
     if (!isLocal) {
       text = text.replace(
-        /https?:\/\/[^/\s"']+\/stream\/ts\?p=([A-Za-z0-9+/=_-]+)/g,
+        /https?:\/\/[^/\s"']+\/(?:api\/stream|stream\/ts)\?p=([A-Za-z0-9+/=_-]+)/g,
         (_, p) => {
           try { return atob(p.replace(/-/g, "+").replace(/_/g, "/")); } catch { return _; }
         }
