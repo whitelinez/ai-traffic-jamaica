@@ -323,8 +323,9 @@ import { contentToPixel, getContentBounds } from '../utils/coord-utils.js'; // e
     // Label: cls + conf, same pulsing cyan, smaller font
     const CLS_NAME_S = { car: 'Car', truck: 'Truck', bus: 'Bus', motorcycle: 'Moto' };
     const clsS = CLS_NAME_S[String(det?.cls || '').toLowerCase()] || 'Vehicle';
+    const colorSS = det.color && det.color !== 'unknown' ? ` · ${det.color}` : '';
     const confS = det.conf != null ? ` ${Math.round(Number(det.conf) * 100)}%` : '';
-    const labelS = clsS + confS;
+    const labelS = clsS + colorSS + confS;
     const fsS = isMobileClient ? 8 : 9;
     ctx.font = `600 ${fsS}px "JetBrains Mono", monospace`;
     const twS = ctx.measureText(labelS).width;
@@ -359,11 +360,12 @@ import { contentToPixel, getContentBounds } from '../utils/coord-utils.js'; // e
     ctx.setLineDash([]);
     drawCornerBox(p1.x, p1.y, bw, bh, color, lw);
     ctx.shadowBlur = 0;
-    // Label: "Car 73%"
+    // Label: "Car · blue 73%"
     const CLS_NAME = { car: 'Car', truck: 'Truck', bus: 'Bus', motorcycle: 'Moto' };
     const clsStr = CLS_NAME[String(det?.cls || '').toLowerCase()] || 'Vehicle';
+    const colorStr = det.color && det.color !== 'unknown' ? ` · ${det.color}` : '';
     const confStr = det.conf != null ? ` ${Math.round(Number(det.conf) * 100)}%` : '';
-    const label = clsStr + confStr;
+    const label = clsStr + colorStr + confStr;
     const fs = isMobileClient ? 9 : 10;
     ctx.font = `700 ${fs}px "JetBrains Mono", monospace`;
     const tw = ctx.measureText(label).width;
