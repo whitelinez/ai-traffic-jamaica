@@ -15,7 +15,10 @@ export const CameraSwitcher = (() => {
   let _modal    = null;
   let _previewsLoaded = false;
 
-  const _AI_SHOW = ['live-video', 'detection-canvas', 'zone-canvas', 'fps-overlay'];
+  // Elements shown only when AI cam is active (detection overlays)
+  const _AI_ONLY = ['detection-canvas', 'zone-canvas', 'fps-overlay'];
+  // Elements shown for any HLS stream (AI cam + YouTube cameras)
+  const _HLS_SHOW = ['live-video'];
 
   const _CATEGORY_LABELS = {
     trafficwatcha: 'TrafficWatcha',
@@ -305,10 +308,19 @@ export const CameraSwitcher = (() => {
     if (!cam) return;
 
     const iframe = document.getElementById('camera-iframe');
-    const isAI = cam.is_active;
-    const isYT = !!cam.youtube_url;
+    const isAI  = cam.is_active;
+    const isYT  = !!cam.youtube_url;
+    // YouTube cameras play via HLS.js (yt-dlp on backend); ipcam non-AI use iframe
+    const useHls = isAI || isYT;
 
-    _AI_SHOW.forEach(id => {
+    // Show live-video for AI + YouTube cameras; hide for ipcam non-AI (uses iframe)
+    _HLS_SHOW.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = useHls ? '' : 'none';
+    });
+
+    // Detection overlays only for the AI cam
+    _AI_ONLY.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = isAI ? '' : 'none';
     });
@@ -318,21 +330,23 @@ export const CameraSwitcher = (() => {
       // For YouTube AI cam: alias is '' → Stream fetches /api/stream with no alias,
       // backend serves the yt-dlp HLS URL.
       Stream?.setAlias(cam.ipcam_alias || '');
+    } else if (isYT) {
+      // Non-AI YouTube camera: play via HLS.js.
+      // Pass yt:<camera_id> so backend can look up the pre-fetched YouTube HLS URL.
+      const ytAlias = `yt:${cam.id}`;
+      window.dispatchEvent(new CustomEvent('stream:switching', { detail: { alias: ytAlias } }));
+      Stream?.setAlias(ytAlias);
     }
 
     // Remove any existing YouTube watch overlay
     document.getElementById('yt-watch-overlay')?.remove();
 
     if (iframe) {
-      if (isAI) {
+      if (useHls) {
         iframe.src = '';
         iframe.style.display = 'none';
-      } else if (isYT) {
-        // Embedding disabled — show a watch-on-YouTube overlay instead
-        iframe.src = '';
-        iframe.style.display = 'none';
-        _showYtWatchOverlay(cam);
       } else {
+        // ipcam non-AI camera — use ipcamlive embed iframe
         const host = cam.player_host || 'g3';
         iframe.src = `https://${host}.ipcamlive.com/player/player.php?alias=${cam.ipcam_alias}&autoplay=1`;
         iframe.style.display = 'block';

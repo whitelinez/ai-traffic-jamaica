@@ -79,7 +79,8 @@ export default async function handler(req) {
 
   const token    = await generateHmacToken(secret);
   const aliasRaw = (url.searchParams.get("alias") || "").trim();
-  const alias    = /^[A-Za-z0-9_-]+$/.test(aliasRaw) ? aliasRaw : "";
+  // Allow ipcam aliases (alphanumeric/_/-) and YouTube cam refs (yt:<uuid>)
+  const alias    = /^[A-Za-z0-9_:-]+$/.test(aliasRaw) ? aliasRaw : "";
   const manifestUrl =
     `${backendBase}/stream/live.m3u8?token=${encodeURIComponent(token)}`
     + (alias ? `&alias=${encodeURIComponent(alias)}` : "");
