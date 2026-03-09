@@ -8,6 +8,7 @@ import { sb } from '../core/supabase.js';
 export const AdminModel = (() => {
   let _pollTimer = null;
   let _active = false;
+  let _cachedIntel = null;
 
   // ── Lighting / weather icons ──────────────────────────────────
   const LIGHTING_ICON = {
@@ -68,6 +69,7 @@ export const AdminModel = (() => {
       sb.from('turning_movements').select('id', { count: 'exact', head: true }).gte('captured_at', since24h),
     ]);
     // Class breakdown for 24h crossings — wrapped so a slow query can't abort the return
+    const TRAFFIC_CLASSES = new Set(['car', 'truck', 'bus', 'motorcycle']);
     const classCounts = {};
     try {
       const { data: clsData } = await sb
@@ -76,7 +78,8 @@ export const AdminModel = (() => {
         .gte('captured_at', since24h)
         .limit(2000);
       (clsData || []).forEach(r => {
-        classCounts[r.vehicle_class] = (classCounts[r.vehicle_class] || 0) + 1;
+        if (TRAFFIC_CLASSES.has(r.vehicle_class))
+          classCounts[r.vehicle_class] = (classCounts[r.vehicle_class] || 0) + 1;
       });
     } catch { /* non-critical */ }
     return {
@@ -136,10 +139,13 @@ export const AdminModel = (() => {
       return;
     }
 
-    // Fetch intel stats in background (non-blocking)
+    // Fetch intel stats in background (non-blocking); cache for crossings display
     _fetchIntelStats().then(stats => {
       intel = stats;
+      _cachedIntel = stats;
       _renderIntel(intel);
+      // Refresh crossings in detection card with 24h total
+      _set('mp-det-crossings', _fmtNum(stats.crossings_24h));
     }).catch(() => {});
 
     // ── Hero ──────────────────────────────────────────────────
@@ -195,7 +201,8 @@ export const AdminModel = (() => {
     const classCounts = det?.class_counts ?? {};
     const total = det?.detections_count ?? 0;
     const avgConf = det?.avg_confidence ?? null;
-    const crossings = det?.new_crossings ?? 0;
+    // Show 24h total crossings (from intel cache) rather than per-frame new_crossings
+    const crossings = _cachedIntel?.crossings_24h ?? null;
 
     const classOrder = ['car', 'truck', 'bus', 'motorcycle', 'person'];
     const maxCount = Math.max(1, ...Object.values(classCounts));
@@ -220,7 +227,7 @@ export const AdminModel = (() => {
 
     _set('mp-det-total', String(total));
     _set('mp-det-conf', avgConf != null ? `${(avgConf * 100).toFixed(1)}%` : '—');
-    _set('mp-det-crossings', String(crossings));
+    _set('mp-det-crossings', crossings != null ? _fmtNum(crossings) : '—');
 
     if (det?.captured_at) {
       const age = (Date.now() - new Date(det.captured_at)) / 1000;
@@ -276,16 +283,21 @@ export const AdminModel = (() => {
     _set('mp-turnings-24h',    _fmtNum(stats.turnings_24h));
 
     const clsColors = { car: '#00d4ff', truck: '#f59e0b', bus: '#a78bfa', motorcycle: '#34d399' };
+    const TRAFFIC_CLASSES = ['car', 'truck', 'bus', 'motorcycle'];
     const clsEl = document.getElementById('mp-intel-classes');
     if (clsEl && stats.class_counts_24h) {
-      const sorted = Object.entries(stats.class_counts_24h).sort((a, b) => b[1] - a[1]);
-      clsEl.innerHTML = sorted.map(([cls, cnt]) =>
-        `<span class="mp-intel-cls">
-          <span class="mp-intel-cls-dot" style="background:${clsColors[cls] || '#64748b'}"></span>
-          <span>${cls}</span>
-          <span class="mp-intel-cls-count" style="color:${clsColors[cls] || '#94a3b8'}">${_fmtNum(cnt)}</span>
-        </span>`
-      ).join('');
+      const sorted = Object.entries(stats.class_counts_24h)
+        .filter(([cls]) => TRAFFIC_CLASSES.includes(cls))
+        .sort((a, b) => b[1] - a[1]);
+      clsEl.innerHTML = sorted.length
+        ? sorted.map(([cls, cnt]) =>
+            `<span class="mp-intel-cls">
+              <span class="mp-intel-cls-dot" style="background:${clsColors[cls]}"></span>
+              <span>${cls}</span>
+              <span class="mp-intel-cls-count" style="color:${clsColors[cls]}">${_fmtNum(cnt)}</span>
+            </span>`
+          ).join('')
+        : '<span class="mp-muted">No data</span>';
     }
   }
 
