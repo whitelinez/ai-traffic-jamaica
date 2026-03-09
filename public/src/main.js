@@ -2499,11 +2499,13 @@ function _connectUserWs(session) {
     const canvas = el("gov-queue-canvas");
     if (!canvas || !window.Chart) return;
     if (_queueChart) { _queueChart.destroy(); _queueChart = null; }
+    const card = canvas.closest(".gov-chart-card");
     if (!series.length) {
-      _chartEmpty("gov-queue-canvas", "No queue data for this period — widen the date range to see historical data.");
+      if (card) card.style.display = "none";
       return;
     }
-    // Restore canvas in case it was hidden by a previous empty state
+    // Restore card and canvas in case it was hidden by a previous empty state
+    if (card) card.style.display = "";
     canvas.style.display = "";
     canvas.closest(".gov-chart-body")?.querySelector(".gov-chart-empty")?.remove();
     const labels = series.map(r => new Date(r.ts).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }));

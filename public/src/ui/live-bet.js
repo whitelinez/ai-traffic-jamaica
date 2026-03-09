@@ -284,13 +284,15 @@ export const LiveBet = (() => {
     window.removeEventListener("count:update", _onBpCountUpdate);
     document.getElementById("bp-active-bet")?.classList.add("hidden");
     document.body.classList.remove("bet-active"); // restore count widget on mobile
-    // Restore hidden form fields
-    document.querySelector("#bp-window-pills")?.closest(".bp-field")?.classList.remove("hidden");
-    document.querySelector("#bp-count")?.closest(".bp-field")?.classList.remove("hidden");
-    document.getElementById("bp-prize-hint")?.classList.remove("hidden");
-    document.getElementById("bp-title")?.classList.remove("hidden");
-    document.getElementById("bp-market-label")?.classList.remove("hidden");
-    if (showSubmit) document.getElementById("bp-submit")?.classList.remove("hidden");
+    // Only restore form fields when not transitioning to result panel
+    if (showSubmit) {
+      document.querySelector("#bp-window-pills")?.closest(".bp-field")?.classList.remove("hidden");
+      document.querySelector("#bp-count")?.closest(".bp-field")?.classList.remove("hidden");
+      document.getElementById("bp-prize-hint")?.classList.remove("hidden");
+      document.getElementById("bp-title")?.classList.remove("hidden");
+      document.getElementById("bp-market-label")?.classList.remove("hidden");
+      document.getElementById("bp-submit")?.classList.remove("hidden");
+    }
   }
 
   // ── Handle ws_account bet_resolved event ─────────────────────────
@@ -441,19 +443,24 @@ export const LiveBet = (() => {
   function _hideBpResult() {
     _resultPending = false;
     document.getElementById("bp-result")?.classList.add("hidden");
-    document.getElementById("bp-submit")?.classList.remove("hidden");
     document.getElementById("bpr-replay")?.classList.add("hidden");
     if (_replayChart) { _replayChart.destroy(); _replayChart = null; }
     _windowHistory = [];
     const tolRow = document.getElementById("bpr-tolerance-row");
     if (tolRow) tolRow.style.display = "none";
-    // Reset form so the panel feels fresh for the next guess
+    // Reset form and restore all fields so user can guess again
     const countEl = document.getElementById("bp-count");
     if (countEl) countEl.value = "5";
     const errEl = document.getElementById("bp-error");
     if (errEl) errEl.textContent = "";
     _setPill("bp-window-pills", "60");
     _windowSec = 60;
+    document.querySelector("#bp-window-pills")?.closest(".bp-field")?.classList.remove("hidden");
+    document.querySelector("#bp-count")?.closest(".bp-field")?.classList.remove("hidden");
+    document.getElementById("bp-prize-hint")?.classList.remove("hidden");
+    document.getElementById("bp-title")?.classList.remove("hidden");
+    document.getElementById("bp-market-label")?.classList.remove("hidden");
+    document.getElementById("bp-submit")?.classList.remove("hidden");
     document.getElementById("bet-panel")?.scrollTo?.(0, 0);
   }
 
