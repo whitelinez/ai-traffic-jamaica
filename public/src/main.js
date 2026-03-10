@@ -1310,6 +1310,48 @@ function _connectUserWs(session) {
     });
   }
 
+  // ── Admin: recording start date override ─────────────────────────────────
+  async function _initRecordingOverride() {
+    const session = await Auth.getSession();
+    const isAdmin = session?.user?.app_metadata?.role === "admin";
+    const section = el("gov-rec-admin-section");
+    if (!section) return;
+    if (!isAdmin) return; // stays hidden
+
+    section.classList.remove("hidden");
+
+    const dateInput  = el("gov-rec-admin-date");
+    const saveBtn    = el("gov-rec-admin-save");
+    const resetBtn   = el("gov-rec-admin-reset");
+    const statusEl   = el("gov-rec-admin-status");
+
+    // Pre-fill with current override or today as fallback
+    const current = localStorage.getItem(REC_OVERRIDE_KEY);
+    if (current && dateInput) dateInput.value = current;
+
+    function _setStatus(msg, ok) {
+      if (!statusEl) return;
+      statusEl.textContent = msg;
+      statusEl.className = "gov-rec-admin-status" + (ok === true ? " ok" : ok === false ? " err" : "");
+    }
+
+    saveBtn?.addEventListener("click", () => {
+      const val = dateInput?.value;
+      if (!val) { _setStatus("Pick a date first", false); return; }
+      localStorage.setItem(REC_OVERRIDE_KEY, val);
+      _setStatus("Saved", true);
+      // Re-render notice with override
+      _renderRecordingNotice(_analyticsData?.summary?.first_date || val);
+    });
+
+    resetBtn?.addEventListener("click", () => {
+      localStorage.removeItem(REC_OVERRIDE_KEY);
+      if (dateInput) dateInput.value = "";
+      _setStatus("Reset — using auto-detected date", true);
+      _renderRecordingNotice(_analyticsData?.summary?.first_date || null);
+    });
+  }
+
   // ── Analytics loading progress ────────────────────────────────────────────
   function _setProgress(pct, label) {
     const wrap = el("gov-an-progress");
@@ -1806,6 +1848,9 @@ function _connectUserWs(session) {
 
     // Admin confidence slider (no-op for non-admins)
     _initConfSlider();
+
+    // Admin recording override (no-op for non-admins)
+    _initRecordingOverride();
 
     // Start crossings refresh
     _loadGovCrossings();
@@ -2622,10 +2667,17 @@ function _connectUserWs(session) {
   }
 
   // ── Recording since notice ────────────────────────────────────────────────
+  const REC_OVERRIDE_KEY = "wl.recording_start";
+
   function _renderRecordingNotice(firstDate) {
     const el_ = el("gov-recording-notice");
     if (!el_) return;
-    if (!firstDate) { el_.classList.add("hidden"); return; }
+    // Admin override takes precedence over DB-derived date
+    const override = localStorage.getItem(REC_OVERRIDE_KEY);
+    const dateToUse = override || firstDate;
+    if (!dateToUse) { el_.classList.add("hidden"); return; }
+    // Alias for rest of function
+    firstDate = dateToUse;
 
     const start   = new Date(firstDate + "T00:00:00Z");
     const now     = new Date();

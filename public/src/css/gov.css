@@ -1347,6 +1347,43 @@
   color: #f59e0b; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25);
   border-radius: 4px; padding: 2px 7px; }
 
+/* Admin: recording start date override */
+.gov-rec-admin-section {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px;
+  margin: 0 16px 10px; padding: 8px 14px;
+  background: rgba(139,92,246,0.06); border-left: 3px solid rgba(139,92,246,0.5);
+  border-radius: 0 6px 6px 0;
+}
+.gov-rec-admin-section.hidden { display: none; }
+.gov-rec-admin-label {
+  font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; color: #9b59b6; flex-shrink: 0;
+}
+.gov-rec-admin-input {
+  font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500;
+  padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-primary);
+  cursor: pointer;
+}
+.gov-rec-admin-btn {
+  font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 4px; cursor: pointer;
+  background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.4);
+  color: #9b59b6; transition: background 0.15s;
+}
+.gov-rec-admin-btn:hover { background: rgba(139,92,246,0.22); }
+.gov-rec-admin-btn--muted {
+  background: rgba(100,116,139,0.08); border-color: rgba(100,116,139,0.25); color: #64748b;
+}
+.gov-rec-admin-btn--muted:hover { background: rgba(100,116,139,0.15); }
+.gov-rec-admin-status {
+  font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 500;
+  color: #64748b;
+}
+.gov-rec-admin-status.ok  { color: #16a34a; }
+.gov-rec-admin-status.err { color: #dc2626; }
+
 /* Analytics loading progress overlay */
 .gov-an-progress {
   position: sticky; top: 0; z-index: 20;
