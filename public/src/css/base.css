@@ -512,6 +512,25 @@ a:hover { text-decoration: underline; }
 /* Count HUD over video — hidden until a guess is active */
 .demo-count-hud { display: none; }
 .demo-count-hud.visible { display: flex; }
+
+/* Draw tripwire button — top-right corner of video */
+.demo-draw-btn {
+  position: absolute; top: 10px; right: 10px; z-index: 10;
+  display: flex; align-items: center; gap: 5px;
+  font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 5px 10px; border-radius: 4px; cursor: pointer;
+  background: rgba(0,0,0,0.6); border: 1px solid rgba(255,214,0,0.35); color: #ffd600;
+  backdrop-filter: blur(4px);
+  transition: background 0.15s, border-color 0.15s;
+}
+.demo-draw-btn:hover { background: rgba(255,214,0,0.12); border-color: rgba(255,214,0,0.7); }
+.demo-draw-btn.active {
+  background: rgba(255,214,0,0.18); border-color: #ffd600; color: #fff;
+  box-shadow: 0 0 10px rgba(255,214,0,0.4);
+}
+/* Crosshair cursor on video while in draw mode */
+.demo-video-wrap.draw-mode .demo-video { cursor: crosshair; }
 .demo-count-hud {
   position: absolute; top: 12px; left: 14px;
   display: flex; flex-direction: column; gap: 1px;

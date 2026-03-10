@@ -12,7 +12,7 @@
  * The #demo-overlay is fully self-contained — the live stream is untouched.
  */
 
-import { getContentBounds } from '../utils/coord-utils.js';
+import { getContentBounds, contentToPixel } from '../utils/coord-utils.js';
 import { Stream } from './stream.js';
 import { Counter } from './counter.js';
 
@@ -26,6 +26,14 @@ let _canvasEl    = null;
 let _ctx         = null;
 let _manifest    = null;
 let _latestDets  = [];      // detections from current event frame
+
+// Tripwire state
+let _tripLine    = null;    // {x1,y1,x2,y2} normalised content coords, or null
+let _drawMode    = false;
+let _drawStart   = null;    // {x,y} normalised, while dragging
+let _tripFlash   = false;
+let _tripFlashTimer = null;
+let _prevTotal   = 0;       // for detecting new crossings
 
 const DEMO_BTN_ID   = 'header-demo-btn';
 const DEMO_BADGE_ID = 'stream-demo-badge';
@@ -164,6 +172,7 @@ export async function activate() {
   _dpl.hide();
   _updateUI(true);
   _initSidebar();
+  _initTripwire();
 }
 
 export function deactivate() {
@@ -199,6 +208,7 @@ export function deactivate() {
   _latestDets = [];
   _manifest   = null;
   _teardownGuess();
+  _teardownTripwire();
 
   // Reset count HUD
   const val = document.getElementById('demo-count-val');
@@ -228,6 +238,7 @@ function _replayTick() {
   if (_lastVidTime > 0 && vt < _lastVidTime - 1.0) {
     _eventIdx   = 0;
     _latestDets = [];
+    _prevTotal  = 0;
     window.dispatchEvent(new CustomEvent('scene:reset'));
   }
   _lastVidTime = vt;
@@ -240,15 +251,19 @@ function _replayTick() {
     // Keep latest detections for canvas drawing
     if (ev.detections) _latestDets = ev.detections;
     // Update count HUD
-    const total = ev.total ?? ev.count_in ?? 0;
+    const total = Number(ev.total ?? ev.count_in ?? 0);
     const valEl = document.getElementById('demo-count-val');
-    if (valEl) valEl.textContent = Number(total).toLocaleString();
+    if (valEl) valEl.textContent = total.toLocaleString();
+    // Flash tripwire when count increases (new vehicle crossing)
+    if (_tripLine && total > _prevTotal) _tripFlashOn();
+    _prevTotal = Math.max(_prevTotal, total);
     _eventIdx++;
     dispatched++;
   }
 
-  // Redraw detection boxes on every frame (smooth visuals even between events)
+  // Redraw detection boxes + tripwire on every frame
   _drawDetections(_latestDets);
+  _drawTripwire();
 }
 
 // ── Detection canvas drawing ──────────────────────────────────────────────────
@@ -521,6 +536,148 @@ function _teardownGuess() {
   window.removeEventListener('count:update', _onGuessCountUpdate);
   window.removeEventListener('scene:reset',  _onGuessSceneReset);
   _resetGuess();
+}
+
+// ── Tripwire drawing ──────────────────────────────────────────────────────────
+
+function _initTripwire() {
+  const btn  = document.getElementById('demo-draw-btn');
+  const wrap = document.getElementById('demo-video-area');
+  if (!btn || !wrap) return;
+
+  btn.addEventListener('click', () => {
+    _drawMode = !_drawMode;
+    btn.classList.toggle('active', _drawMode);
+    wrap.classList.toggle('draw-mode', _drawMode);
+    if (!_drawMode) _drawStart = null;
+  });
+
+  // Use video element for pointer events (canvas is pointer-events:none)
+  _videoEl.addEventListener('mousedown',  _onTripDown);
+  _videoEl.addEventListener('mousemove',  _onTripMove);
+  _videoEl.addEventListener('mouseup',    _onTripUp);
+  _videoEl.addEventListener('touchstart', _onTripTouchStart, { passive: true });
+  _videoEl.addEventListener('touchend',   _onTripTouchEnd,   { passive: true });
+}
+
+function _videoCoords(e) {
+  const rect   = _videoEl.getBoundingClientRect();
+  const bounds = getContentBounds(_videoEl);
+  const cssX   = (e.clientX ?? e.touches?.[0]?.clientX ?? 0) - rect.left;
+  const cssY   = (e.clientY ?? e.touches?.[0]?.clientY ?? 0) - rect.top;
+  // Normalise to content (0-1) coords
+  const nx = (cssX - bounds.x) / bounds.w;
+  const ny = (cssY - bounds.y) / bounds.h;
+  return { x: Math.max(0, Math.min(1, nx)), y: Math.max(0, Math.min(1, ny)) };
+}
+
+function _onTripDown(e)  { if (!_drawMode) return; e.preventDefault(); _drawStart = _videoCoords(e); }
+function _onTripMove(e)  {
+  if (!_drawMode || !_drawStart) return;
+  // Live preview — store tentative end, redraw happens in RAF
+  _tripLine = { x1: _drawStart.x, y1: _drawStart.y, ..._videoCoords(e) };
+}
+function _onTripUp(e) {
+  if (!_drawMode || !_drawStart) return;
+  const end = _videoCoords(e);
+  _tripLine  = { x1: _drawStart.x, y1: _drawStart.y, x2: end.x, y2: end.y };
+  _drawStart = null;
+  _drawMode  = false;
+  document.getElementById('demo-draw-btn')?.classList.remove('active');
+  document.getElementById('demo-video-area')?.classList.remove('draw-mode');
+}
+function _onTripTouchStart(e) { _onTripDown(e.touches[0]  || e); }
+function _onTripTouchEnd(e)   { _onTripUp(e.changedTouches[0] || e); }
+
+function _tripFlashOn() {
+  _tripFlash = true;
+  clearTimeout(_tripFlashTimer);
+  _tripFlashTimer = setTimeout(() => { _tripFlash = false; }, 600);
+}
+
+function _drawTripwire() {
+  if (!_tripLine || !_ctx || !_videoEl) return;
+  const { x1, y1, x2, y2 } = _tripLine;
+  const bounds = getContentBounds(_videoEl);
+  const pt  = (rx, ry) => contentToPixel(rx, ry, bounds);
+  const p1  = pt(x1, y1);
+  const p2  = pt(x2, y2);
+  const dx  = p2.x - p1.x, dy = p2.y - p1.y;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  const nx  = -dy / len, ny = dx / len;
+  const fl  = _tripFlash;
+  const col = fl ? '#00FF88' : '#FFD600';
+
+  // Wide soft glow halo
+  _ctx.save();
+  _ctx.beginPath(); _ctx.moveTo(p1.x, p1.y); _ctx.lineTo(p2.x, p2.y);
+  _ctx.strokeStyle = col; _ctx.lineWidth = fl ? 14 : 10;
+  _ctx.globalAlpha = 0.12; _ctx.shadowColor = col; _ctx.shadowBlur = fl ? 28 : 18;
+  _ctx.lineCap = 'round'; _ctx.stroke(); _ctx.restore();
+
+  // Tight glow
+  _ctx.save();
+  _ctx.beginPath(); _ctx.moveTo(p1.x, p1.y); _ctx.lineTo(p2.x, p2.y);
+  _ctx.strokeStyle = col; _ctx.lineWidth = fl ? 6 : 4;
+  _ctx.globalAlpha = 0.22; _ctx.shadowColor = col; _ctx.shadowBlur = fl ? 16 : 10;
+  _ctx.lineCap = 'round'; _ctx.stroke(); _ctx.restore();
+
+  // Main line
+  _ctx.save();
+  _ctx.beginPath(); _ctx.moveTo(p1.x, p1.y); _ctx.lineTo(p2.x, p2.y);
+  _ctx.strokeStyle = col; _ctx.lineWidth = fl ? 2.5 : 1.5;
+  _ctx.globalAlpha = 1; _ctx.shadowColor = col; _ctx.shadowBlur = fl ? 10 : 5;
+  _ctx.lineCap = 'round'; _ctx.stroke(); _ctx.restore();
+
+  // Tick marks
+  const tickSpacing = 24, tickLen = fl ? 7 : 5;
+  const nTicks = Math.floor(len / tickSpacing);
+  _ctx.save(); _ctx.strokeStyle = col; _ctx.lineWidth = 1;
+  _ctx.globalAlpha = fl ? 0.55 : 0.30; _ctx.lineCap = 'round';
+  for (let i = 1; i < nTicks; i++) {
+    const t = i / nTicks;
+    const tx = p1.x + dx * t, ty = p1.y + dy * t;
+    _ctx.beginPath();
+    _ctx.moveTo(tx + nx * tickLen, ty + ny * tickLen);
+    _ctx.lineTo(tx - nx * tickLen, ty - ny * tickLen);
+    _ctx.stroke();
+  }
+  _ctx.restore();
+
+  // Scan particle
+  if (!fl) {
+    const period = 2400;
+    const tRaw   = (Date.now() % (period * 2)) / period;
+    const tB     = tRaw <= 1 ? tRaw : 2 - tRaw;
+    _ctx.save();
+    _ctx.beginPath(); _ctx.arc(p1.x + dx * tB, p1.y + dy * tB, 3, 0, Math.PI * 2);
+    _ctx.fillStyle = '#FFF'; _ctx.shadowColor = col; _ctx.shadowBlur = 10;
+    _ctx.globalAlpha = 0.85; _ctx.fill(); _ctx.restore();
+  }
+
+  // End caps
+  [p1, p2].forEach(p => {
+    _ctx.save();
+    _ctx.beginPath(); _ctx.arc(p.x, p.y, fl ? 5 : 4, 0, Math.PI * 2);
+    _ctx.fillStyle = col; _ctx.shadowColor = col; _ctx.shadowBlur = fl ? 14 : 8; _ctx.fill();
+    _ctx.beginPath();
+    _ctx.moveTo(p.x + nx * 8, p.y + ny * 8); _ctx.lineTo(p.x - nx * 8, p.y - ny * 8);
+    _ctx.strokeStyle = col; _ctx.lineWidth = fl ? 2 : 1.5; _ctx.globalAlpha = 0.6; _ctx.stroke();
+    _ctx.restore();
+  });
+}
+
+function _teardownTripwire() {
+  if (!_videoEl) return;
+  _videoEl.removeEventListener('mousedown',  _onTripDown);
+  _videoEl.removeEventListener('mousemove',  _onTripMove);
+  _videoEl.removeEventListener('mouseup',    _onTripUp);
+  _videoEl.removeEventListener('touchstart', _onTripTouchStart);
+  _videoEl.removeEventListener('touchend',   _onTripTouchEnd);
+  clearTimeout(_tripFlashTimer);
+  _tripLine = null; _drawMode = false; _drawStart = null; _tripFlash = false; _prevTotal = 0;
+  document.getElementById('demo-draw-btn')?.classList.remove('active');
+  document.getElementById('demo-video-area')?.classList.remove('draw-mode');
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────

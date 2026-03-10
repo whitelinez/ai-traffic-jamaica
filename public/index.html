@@ -922,10 +922,14 @@
         <div id="demo-video-area" class="demo-video-wrap hidden">
           <video id="demo-video" class="demo-video" muted playsinline loop></video>
           <canvas id="demo-canvas" class="demo-canvas"></canvas>
-          <div class="demo-count-hud">
+          <div class="demo-count-hud" id="demo-count-hud">
             <span class="demo-count-label">VEHICLES DETECTED</span>
             <span id="demo-count-val" class="demo-count-val">—</span>
           </div>
+          <button id="demo-draw-btn" class="demo-draw-btn" title="Draw tripwire">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M3 17l4-4 4 4 4-8 4 4"/></svg>
+            TRIPWIRE
+          </button>
         </div>
 
         <!-- Info bar -->
