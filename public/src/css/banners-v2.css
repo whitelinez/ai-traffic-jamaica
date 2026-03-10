@@ -1006,8 +1006,8 @@
   transform: scale(1.3);
   opacity: 1;
   animation: none;
-  filter: sepia(1) saturate(8) hue-rotate(310deg) brightness(1.3)
-          drop-shadow(0 0 12px rgba(239,68,68,0.8));
+  filter: sepia(1) saturate(8) hue-rotate(145deg) brightness(1.3)
+          drop-shadow(0 0 12px rgba(34,211,238,0.8));
   transition: transform 0.2s ease, filter 0.18s ease;
 }
 .logo:hover .logo-icon {
