@@ -852,6 +852,25 @@
     </div>
   </div>
 
+  <!-- ── Demo Mode Preloader ──────────────────────────────────────────────── -->
+  <div id="demo-preloader" class="demo-preloader hidden" aria-live="polite" role="status">
+    <div class="demo-pl-inner">
+      <div class="demo-pl-logo">
+        <span class="demo-pl-ring"></span>
+        <span class="demo-pl-ring"></span>
+        <span class="demo-pl-ring"></span>
+        <img src="/img/iconinframes.png" alt="" class="demo-pl-logoimg" aria-hidden="true" loading="lazy">
+      </div>
+      <div class="demo-pl-rec"><span class="demo-pl-rec-dot"></span>REC</div>
+      <div class="demo-pl-title">DEMO MODE</div>
+      <div class="demo-pl-sub" id="demo-pl-label">Initialising…</div>
+      <div class="demo-pl-pct" id="demo-pl-pct">0%</div>
+      <div class="demo-pl-bar-wrap">
+        <div class="demo-pl-bar" id="demo-pl-bar"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Demo Mode Overlay ────────────────────────────────────────────────── -->
   <div id="demo-overlay" class="demo-overlay hidden" role="dialog" aria-modal="true" aria-label="Demo Mode">
 
@@ -879,15 +898,32 @@
 
     <!-- Body -->
     <div class="demo-body">
-      <!-- Video + canvas -->
-      <div class="demo-video-wrap">
+      <!-- No recording state (shown when no demo recording exists) -->
+      <div id="demo-no-content" class="demo-no-content hidden">
+        <div class="demo-nc-icon">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.4"/>
+            <line x1="12" y1="2" x2="12" y2="5"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="2" y1="12" x2="5" y2="12"/>
+            <line x1="19" y1="12" x2="22" y2="12"/>
+          </svg>
+        </div>
+        <div class="demo-nc-title">NO DEMO RECORDING YET</div>
+        <div class="demo-nc-text">A demo clip will be available once the system has captured and processed live footage. The recording is scheduled — check back soon.</div>
+        <div class="demo-nc-badge"><span class="demo-nc-dot"></span>RECORDING SCHEDULED</div>
+      </div>
+
+      <!-- Video + canvas (hidden when no recording) -->
+      <div id="demo-video-area" class="demo-video-wrap hidden">
         <video id="demo-video" class="demo-video" muted playsinline loop></video>
         <canvas id="demo-canvas" class="demo-canvas"></canvas>
         <div class="demo-count-hud">
           <span class="demo-count-label">VEHICLES DETECTED</span>
           <span id="demo-count-val" class="demo-count-val">—</span>
         </div>
-      </div>
+      </div><!-- /demo-video-area -->
       <!-- Info bar -->
       <div class="demo-info-bar">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>

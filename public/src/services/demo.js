@@ -35,6 +35,31 @@ const CLS_COLORS = {
   motorcycle: '#FFD600',
 };
 
+// ── Preloader controller ──────────────────────────────────────────────────────
+const _dpl = {
+  el:    () => document.getElementById('demo-preloader'),
+  pct:   () => document.getElementById('demo-pl-pct'),
+  bar:   () => document.getElementById('demo-pl-bar'),
+  label: () => document.getElementById('demo-pl-label'),
+  show() {
+    const e = this.el(); if (!e) return;
+    e.classList.remove('hidden', 'fading');
+  },
+  set(pct, label) {
+    const p = pct + '%';
+    const pe = this.pct(); if (pe) pe.textContent = p;
+    const be = this.bar(); if (be) be.style.width  = p;
+    const le = this.label(); if (le && label) le.textContent = label;
+  },
+  hide() {
+    const e = this.el(); if (!e) return;
+    e.classList.add('fading');
+    setTimeout(() => e.classList.add('hidden'), 380);
+  },
+};
+
+function _wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export const Demo = { activate, deactivate, isActive: () => _active, getManifest: () => _manifest };
@@ -42,72 +67,97 @@ export const Demo = { activate, deactivate, isActive: () => _active, getManifest
 export async function activate() {
   if (_active) return;
 
+  // Show preloader immediately so user sees feedback right away
+  _dpl.show();
+  _dpl.set(0, 'Initialising…');
+  await _wait(250);
+
   // 1. Fetch manifest
-  let manifest;
+  _dpl.set(20, 'Checking demo archive…');
+  await _wait(300);
+  let manifest = null;
   try {
     const res = await fetch('/api/demo');
-    if (!res.ok) throw new Error(`manifest ${res.status}`);
-    manifest = await res.json();
+    if (res.ok) manifest = await res.json();
   } catch (e) {
     console.warn('[Demo] Failed to fetch manifest:', e);
-    _showToast('Demo not available yet — record first');
-    return;
   }
 
-  if (!manifest?.available) {
-    _showToast('No demo recording found yet');
-    return;
-  }
-  _manifest = manifest;
+  _dpl.set(45, 'Loading recording manifest…');
+  await _wait(350);
 
-  // 2. Load events JSON
-  try {
-    const res = await fetch(manifest.events_url);
-    if (!res.ok) throw new Error(`events ${res.status}`);
-    _events = await res.json();
-  } catch (e) {
-    console.warn('[Demo] Failed to load events:', e);
-    _showToast('Demo events unavailable');
-    return;
+  const hasRecording = Boolean(manifest?.available);
+
+  // 2. Load events JSON (only if recording available)
+  if (hasRecording) {
+    try {
+      _dpl.set(60, 'Fetching detection events…');
+      await _wait(250);
+      const res = await fetch(manifest.events_url);
+      if (!res.ok) throw new Error(`events ${res.status}`);
+      _events = await res.json();
+      _manifest = manifest;
+    } catch (e) {
+      console.warn('[Demo] Failed to load events:', e);
+      // treat as no recording
+      _events = [];
+      _manifest = null;
+    }
   }
 
-  // 3. Get overlay elements
+  _dpl.set(85, 'Preparing replay…');
+  await _wait(400);
+  _dpl.set(100, 'Opening demo…');
+  await _wait(320);
+
+  // 3. Open overlay
   const overlay = document.getElementById('demo-overlay');
-  _videoEl  = document.getElementById('demo-video');
-  _canvasEl = document.getElementById('demo-canvas');
-  if (!overlay || !_videoEl || !_canvasEl) return;
+  if (!overlay) { _dpl.hide(); return; }
 
-  // 4. Set up video
-  _videoEl.src         = manifest.video_url;
-  _videoEl.loop        = true;
-  _videoEl.muted       = true;
-  _videoEl.playsInline = true;
-  _videoEl.load();
-  _videoEl.play().catch(() => {});
+  _active = true;
 
-  // 5. Set up canvas
-  _ctx = _canvasEl.getContext('2d');
-  _syncCanvasSize();
-  window.addEventListener('resize', _syncCanvasSize);
-  if (window.ResizeObserver) {
-    new ResizeObserver(_syncCanvasSize).observe(_videoEl);
+  if (hasRecording && _events.length > 0) {
+    // Show video area, hide no-content
+    const videoArea = document.getElementById('demo-video-area');
+    const noContent = document.getElementById('demo-no-content');
+    if (videoArea) videoArea.classList.remove('hidden');
+    if (noContent) noContent.classList.add('hidden');
+
+    // Set up video
+    _videoEl  = document.getElementById('demo-video');
+    _canvasEl = document.getElementById('demo-canvas');
+    if (_videoEl && _canvasEl) {
+      _videoEl.src         = manifest.video_url;
+      _videoEl.loop        = true;
+      _videoEl.muted       = true;
+      _videoEl.playsInline = true;
+      _videoEl.load();
+      _videoEl.play().catch(() => {});
+
+      _ctx = _canvasEl.getContext('2d');
+      _syncCanvasSize();
+      window.addEventListener('resize', _syncCanvasSize);
+      if (window.ResizeObserver) new ResizeObserver(_syncCanvasSize).observe(_videoEl);
+      _videoEl.addEventListener('loadedmetadata', _syncCanvasSize);
+    }
+
+    // Reset replay state
+    _eventIdx    = 0;
+    _lastVidTime = -1;
+    _latestDets  = [];
+
+    window.dispatchEvent(new CustomEvent('scene:reset'));
+    _rafId = requestAnimationFrame(_replayTick);
+  } else {
+    // No recording — show no-content state
+    const videoArea = document.getElementById('demo-video-area');
+    const noContent = document.getElementById('demo-no-content');
+    if (videoArea) videoArea.classList.add('hidden');
+    if (noContent) noContent.classList.remove('hidden');
   }
-  _videoEl.addEventListener('loadedmetadata', _syncCanvasSize);
 
-  // 6. Reset replay state
-  _eventIdx    = 0;
-  _lastVidTime = -1;
-  _latestDets  = [];
-  _active      = true;
-
-  // 7. Open overlay, dispatch reset
   overlay.classList.remove('hidden');
-  window.dispatchEvent(new CustomEvent('scene:reset'));
-
-  // 8. Start replay loop
-  _rafId = requestAnimationFrame(_replayTick);
-
-  // 9. Update UI
+  _dpl.hide();
   _updateUI(true);
 }
 
@@ -117,9 +167,11 @@ export function deactivate() {
 
   if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
 
-  // Hide overlay, pause and clear video
+  // Hide overlay and reset content areas
   const overlay = document.getElementById('demo-overlay');
   if (overlay) overlay.classList.add('hidden');
+  document.getElementById('demo-video-area')?.classList.add('hidden');
+  document.getElementById('demo-no-content')?.classList.add('hidden');
 
   if (_videoEl) {
     _videoEl.pause();

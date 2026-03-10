@@ -242,6 +242,126 @@ a:hover { text-decoration: underline; }
   50%       { box-shadow: 0 0 0 6px rgba(255,184,0,0.2); }
 }
 
+/* ── Demo Mode Preloader ─────────────────────────────────────────────────── */
+.demo-preloader {
+  position: fixed; inset: 0; z-index: 10001;
+  background: rgba(4,4,8,0.98);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px);
+  transition: opacity 0.35s ease;
+}
+.demo-preloader.hidden { display: none !important; }
+.demo-preloader.fading { opacity: 0; pointer-events: none; }
+.demo-pl-inner {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; width: 280px; text-align: center;
+}
+/* Logo with expanding recording rings */
+.demo-pl-logo {
+  position: relative; width: 80px; height: 80px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.demo-pl-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1.5px solid rgba(239,68,68,0.55);
+  animation: demo-pl-ring-out 2.4s ease-out infinite;
+  pointer-events: none;
+}
+.demo-pl-ring:nth-child(2) { animation-delay: 0.8s; }
+.demo-pl-ring:nth-child(3) { animation-delay: 1.6s; }
+@keyframes demo-pl-ring-out {
+  0%   { transform: scale(1.0); opacity: 0.75; }
+  100% { transform: scale(2.9); opacity: 0; }
+}
+.demo-pl-logoimg {
+  position: relative; z-index: 4;
+  width: 72px; height: 72px; object-fit: contain; display: block;
+  animation: demo-pl-logoimg-breathe 2.6s ease-in-out infinite;
+}
+@keyframes demo-pl-logoimg-breathe {
+  0%, 100% {
+    filter: brightness(0.85) saturate(0.1) drop-shadow(0 0 8px rgba(239,68,68,0.4));
+    transform: scale(1);
+  }
+  50% {
+    filter: brightness(1.1) saturate(0.25) drop-shadow(0 0 20px rgba(239,68,68,0.85));
+    transform: scale(1.04);
+  }
+}
+/* REC indicator */
+.demo-pl-rec {
+  display: flex; align-items: center; gap: 7px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.2em;
+  color: #ef4444; text-transform: uppercase;
+}
+.demo-pl-rec-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #ef4444; flex-shrink: 0;
+  animation: demo-pl-rec-blink 1.1s ease-in-out infinite;
+}
+@keyframes demo-pl-rec-blink {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,0.0); }
+  50%       { opacity: 0.25; box-shadow: 0 0 10px 4px rgba(239,68,68,0.35); }
+}
+.demo-pl-title {
+  font-family: "Rajdhani", sans-serif; font-size: 15px; font-weight: 700;
+  letter-spacing: 0.22em; color: #fff; text-transform: uppercase; margin-top: 2px;
+}
+.demo-pl-sub {
+  font-family: "JetBrains Mono", monospace; font-size: 10px;
+  color: #64748b; letter-spacing: 0.06em; min-height: 16px;
+}
+.demo-pl-pct {
+  font-family: "JetBrains Mono", monospace; font-size: 2.2rem; font-weight: 700;
+  color: #ef4444; line-height: 1; margin: 2px 0;
+}
+.demo-pl-bar-wrap {
+  width: 100%; height: 2px; background: rgba(255,255,255,0.06);
+  border-radius: 2px; overflow: hidden;
+}
+.demo-pl-bar {
+  height: 100%; width: 0; border-radius: 2px;
+  background: #ef4444;
+  transition: width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* No recording state inside demo overlay */
+.demo-no-content {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 16px; max-width: 420px; text-align: center;
+  padding: 60px 20px;
+}
+.demo-no-content.hidden { display: none; }
+.demo-nc-icon {
+  color: rgba(239,68,68,0.35);
+  animation: demo-nc-icon-pulse 3s ease-in-out infinite;
+}
+@keyframes demo-nc-icon-pulse {
+  0%, 100% { color: rgba(239,68,68,0.3);  filter: drop-shadow(0 0 0px rgba(239,68,68,0)); }
+  50%       { color: rgba(239,68,68,0.55); filter: drop-shadow(0 0 12px rgba(239,68,68,0.3)); }
+}
+.demo-nc-title {
+  font-family: "Rajdhani", sans-serif; font-size: 18px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase; color: #e2e8f0;
+}
+.demo-nc-text {
+  font-family: "Inter", sans-serif; font-size: 13px; line-height: 1.6;
+  color: #64748b; max-width: 340px;
+}
+.demo-nc-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 5px 14px; border-radius: 4px;
+  background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); color: #ef4444;
+}
+.demo-nc-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #ef4444; flex-shrink: 0;
+  animation: demo-pl-rec-blink 1.1s ease-in-out infinite;
+}
+
 /* ── Demo Mode Overlay ───────────────────────────────────────────────────── */
 .demo-overlay {
   position: fixed; inset: 0; z-index: 900;
