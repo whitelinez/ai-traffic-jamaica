@@ -12,7 +12,7 @@
  * The #demo-overlay is fully self-contained — the live stream is untouched.
  */
 
-import { getContentBounds, contentToPixel } from '../utils/coord-utils.js';
+import { getContentBoundsContain, contentToPixel } from '../utils/coord-utils.js';
 import { Stream } from './stream.js';
 import { Counter } from './counter.js';
 import { DetectionOverlay } from '../overlays/detection-overlay.js';
@@ -293,7 +293,7 @@ function _drawDetections(dets) {
 
   if (!dets || !dets.length) return;
 
-  const bounds = getContentBounds(_videoEl);
+  const bounds = getContentBoundsContain(_videoEl);
 
   for (const det of dets) {
     const x1 = det.x1 * bounds.w + bounds.x;
@@ -566,7 +566,7 @@ function _initTripwire() {
 
 function _videoCoords(e) {
   const rect   = _videoEl.getBoundingClientRect();
-  const bounds = getContentBounds(_videoEl);
+  const bounds = getContentBoundsContain(_videoEl);
   const cssX   = (e.clientX ?? e.touches?.[0]?.clientX ?? 0) - rect.left;
   const cssY   = (e.clientY ?? e.touches?.[0]?.clientY ?? 0) - rect.top;
   // Normalise to content (0-1) coords
@@ -602,7 +602,7 @@ function _tripFlashOn() {
 function _drawTripwire() {
   if (!_tripLine || !_ctx || !_videoEl) return;
   const { x1, y1, x2, y2 } = _tripLine;
-  const bounds = getContentBounds(_videoEl);
+  const bounds = getContentBoundsContain(_videoEl);
   const pt  = (rx, ry) => contentToPixel(rx, ry, bounds);
   const p1  = pt(x1, y1);
   const p2  = pt(x2, y2);

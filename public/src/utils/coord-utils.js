@@ -15,6 +15,19 @@ export function getContentBounds(videoEl) {
   return { x: (cw - rw) / 2, y: (ch - rh) / 2, w: rw, h: rh };
 }
 
+/** Same as getContentBounds but for object-fit:contain (scale-to-fit, letterbox/pillarbox). */
+export function getContentBoundsContain(videoEl) {
+  const vw = videoEl.videoWidth;
+  const vh = videoEl.videoHeight;
+  const cw = videoEl.clientWidth;
+  const ch = videoEl.clientHeight;
+  if (!vw || !vh) return { x: 0, y: 0, w: cw, h: ch };
+  const scale = Math.min(cw / vw, ch / vh);
+  const rw = vw * scale;
+  const rh = vh * scale;
+  return { x: (cw - rw) / 2, y: (ch - rh) / 2, w: rw, h: rh };
+}
+
 export function pixelToContent(canvasX, canvasY, bounds) {
   return {
     x: Math.min(1, Math.max(0, (canvasX - bounds.x) / bounds.w)),
