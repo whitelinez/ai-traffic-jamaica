@@ -1196,6 +1196,7 @@ function _connectUserWs(session) {
   let _camName      = null;
   let _lastPayload  = null;   // most recent count:update payload
   let _analyticsData      = null;  // most recent analytics API response
+  const _analyticsStale   = {};   // stale-while-revalidate cache keyed by camera_id
   let _govAnalyticsZones  = [];    // camera_zones for current camera (entry/exit/speed/etc)
   let _govExitTotal       = null;  // total exit completions from turnings matrix (Traffic Intelligence)
   // Custom calendar state
@@ -1963,6 +1964,56 @@ function _connectUserWs(session) {
     }).join("");
   }
 
+  // ── Render analytics data into KPI cards, bars, summary strip ────────────
+  function _renderAnalyticsData(json) {
+    const rows    = json.rows    || [];
+    const summary = json.summary || {};
+    const totalPeriod = summary.period_total ?? rows.reduce((a, r) => a + (r.total || 0), 0);
+    const totalIn     = summary.count_in  ?? rows.reduce((a, r) => a + (r.in  || 0), 0);
+    const totalOut    = summary.count_out ?? rows.reduce((a, r) => a + (r.out || 0), 0);
+
+    txt("gov-kpi-total",  Number(totalPeriod).toLocaleString());
+    txt("gov-hdr-total",  Number(totalPeriod).toLocaleString());
+    txt("gov-kpi-in",     Number(totalIn || totalPeriod).toLocaleString()); // inbound from entry zones
+    txt("gov-inbound",    Number(totalIn || totalPeriod).toLocaleString());
+    // gov-kpi-out sourced from turning_movements in _loadZoneAnalytics
+    _dbKpisLoaded = true;
+
+    const ct = summary.class_totals || {};
+    const grandTotal = Object.values(ct).reduce((a, b) => a + b, 0) || 1;
+    const barIds = { car:"gov-bar-car", truck:"gov-bar-truck", bus:"gov-bar-bus", motorcycle:"gov-bar-moto" };
+    const valIds = { car:"gov-cars",    truck:"gov-trucks",    bus:"gov-buses",   motorcycle:"gov-motos" };
+    const pctIds = { car:"gov-pct-car", truck:"gov-pct-truck", bus:"gov-pct-bus", motorcycle:"gov-pct-moto" };
+    for (const cls of ["car","truck","bus","motorcycle"]) {
+      const count = ct[cls] || 0;
+      const pct   = Math.round((count / grandTotal) * 100);
+      const barEl = el(barIds[cls]);
+      if (barEl) barEl.style.width = pct + "%";
+      txt(valIds[cls], count.toLocaleString());
+      txt(pctIds[cls], pct + "%");
+    }
+
+    const peakLabel = _formatPeriodLabel(summary.peak_period, summary.granularity || _govGranularity);
+    const peakVal   = summary.peak_value || 0;
+    const heavyPct  = summary.class_pct
+      ? Math.round(((summary.class_pct.truck||0) + (summary.class_pct.bus||0))) + "%"
+      : "—";
+    const granLabel = _govGranularity === "week" ? "weekly" : _govGranularity === "day" ? "daily" : "hourly";
+    txt("gov-sum-total",  Number(totalPeriod).toLocaleString());
+    txt("gov-sum-peak",   `${peakLabel} (${peakVal})`);
+    txt("gov-sum-heavy",  heavyPct);
+    txt("gov-sum-queue",  summary.avg_queue_depth != null ? summary.avg_queue_depth.toFixed(1) : "—");
+    txt("gov-sum-speed",  summary.avg_speed_kmh   != null ? `${summary.avg_speed_kmh} km/h` : "—");
+    txt("gov-kpi-peak",   peakLabel);
+    txt("gov-trend-label", `— ${granLabel} view`);
+
+    const g = summary.global;
+    if (g) txt("gov-sum-global", Number(g.total||0).toLocaleString() + " total");
+
+    _renderRecordingNotice(summary.first_date);
+    _populateAgencyMetrics(summary);
+  }
+
   // ── Analytics charts ──────────────────────────────────────────────────────
   async function _initAllCharts(hours) {
     if (!window.Chart) return;
@@ -1976,6 +2027,11 @@ function _connectUserWs(session) {
     } else {
       url = `/api/analytics/traffic?hours=${hours || _govHours}&granularity=${_govGranularity}${_camId?`&camera_id=${_camId}`:""}`;
     }
+    // Show stale data for this camera immediately so the panel isn't blank while loading
+    if (_camId && _analyticsStale[_camId]) {
+      _renderAnalyticsData(_analyticsStale[_camId]);
+    }
+
     try {
       let json = window.AppCache?.get("analytics:" + url);
       if (!json) {
@@ -1985,62 +2041,12 @@ function _connectUserWs(session) {
       }
       if (!json) { _setAnalyticsLoading(false); _setProgress(100); return; }
       _analyticsData = json;
-      const rows    = json.rows || [];
-      const summary = json.summary || {};
-
-      // ── Update KPI cards with DB-backed data ──────────────────────────────
-      const totalPeriod = summary.period_total ?? rows.reduce((a, r) => a + (r.total || 0), 0);
-      const totalIn  = rows.reduce((a, r) => a + (r.in  || 0), 0);
-      const totalOut = rows.reduce((a, r) => a + (r.out || 0), 0);
-      txt("gov-kpi-total",  Number(totalPeriod).toLocaleString());
-      txt("gov-hdr-total",  Number(totalPeriod).toLocaleString());
-      txt("gov-kpi-in",    Number(totalPeriod).toLocaleString()); // inbound = all entry-zone crossings
-      txt("gov-inbound",   Number(totalPeriod).toLocaleString()); // sidebar zone crossings
-      // gov-kpi-out (outbound) is sourced from turning_movements total in _loadZoneAnalytics
-      _dbKpisLoaded = true;  // stop WS from overwriting total/hdr with session counter
-
-      // ── Update class breakdown bars from DB class totals ──────────────────
-      const ct = summary.class_totals || {};
-      const grandTotal = Object.values(ct).reduce((a, b) => a + b, 0) || 1;
-      const barIds = { car:"gov-bar-car", truck:"gov-bar-truck", bus:"gov-bar-bus", motorcycle:"gov-bar-moto" };
-      const valIds = { car:"gov-cars", truck:"gov-trucks", bus:"gov-buses", motorcycle:"gov-motos" };
-      const pctIds = { car:"gov-pct-car", truck:"gov-pct-truck", bus:"gov-pct-bus", motorcycle:"gov-pct-moto" };
-      for (const cls of ["car","truck","bus","motorcycle"]) {
-        const count = ct[cls] || 0;
-        const pct   = Math.round((count / grandTotal) * 100);
-        const barEl = el(barIds[cls]);
-        if (barEl) barEl.style.width = pct + "%";
-        txt(valIds[cls], count.toLocaleString());
-        txt(pctIds[cls], pct + "%");
-      }
-
-      // ── Summary strip ─────────────────────────────────────────────────────
-      const peakLabel   = _formatPeriodLabel(summary.peak_period, summary.granularity || _govGranularity);
-      const peakVal     = summary.peak_value || 0;
-      const heavyPct    = summary.class_pct
-        ? Math.round(((summary.class_pct.truck||0) + (summary.class_pct.bus||0))) + "%"
-        : "—";
-      const granLabel = _govGranularity === "week" ? "weekly" : _govGranularity === "day" ? "daily" : "hourly";
-      txt("gov-sum-total",  Number(totalPeriod).toLocaleString());
-      txt("gov-sum-peak",   `${peakLabel} (${peakVal})`);
-      txt("gov-sum-heavy",  heavyPct);
-      txt("gov-sum-queue",  summary.avg_queue_depth != null ? summary.avg_queue_depth.toFixed(1) : "—");
-      txt("gov-sum-speed",  summary.avg_speed_kmh   != null ? `${summary.avg_speed_kmh} km/h` : "—");
-      txt("gov-kpi-peak",   peakLabel);
-      txt("gov-trend-label", `— ${granLabel} view`);
-
-      // Global lifetime total
-      const g = summary.global;
-      if (g) txt("gov-sum-global", Number(g.total||0).toLocaleString() + " total");
-
-      // Recording since notice
-      _renderRecordingNotice(summary.first_date);
-
-      _populateAgencyMetrics(summary);
+      if (_camId) _analyticsStale[_camId] = json; // persist for stale-while-revalidate
+      _renderAnalyticsData(json);
       _setProgress(60, "Rendering charts…");
-      _buildTrendChart(rows);
-      _buildClsChart(summary);
-      _buildPeakChart(rows);
+      _buildTrendChart(json.rows || []);
+      _buildClsChart(json.summary || {});
+      _buildPeakChart(json.rows || []);
       _setAnalyticsLoading(false);
 
       // Zone analytics (queue + turnings + speed) — progress continues inside
@@ -2224,8 +2230,8 @@ function _connectUserWs(session) {
       // Those KPIs stay sourced from vehicle_crossings via _initAllCharts().
       const tm = data;
 
-      // Queue depth
-      if (tm.queue_summary?.avg != null) {
+      // Queue depth — only show value when a real queue formed (avg > 0)
+      if (tm.queue_summary?.avg != null && tm.queue_summary.avg > 0) {
         txt("gov-sum-queue", Number(tm.queue_summary.avg).toFixed(1));
       }
 
@@ -2512,28 +2518,46 @@ function _connectUserWs(session) {
   }
 
   // ── Agency metrics from analytics data ────────────────────────────────────
+  // Each agency gets data relevant to their mandate — not the same numbers.
   function _populateAgencyMetrics(summary) {
     if (!summary) return;
-    const ct       = summary.class_totals || {};
-    const total    = summary.period_total || summary.today_total || 0;
-    const heavy    = (ct.truck||0) + (ct.bus||0);
-    const heavyPct = total > 0 ? Math.round((heavy / total) * 100) : 0;
+    const ct        = summary.class_totals || {};
+    const total     = summary.period_total || summary.today_total || 0;
+    const trucks    = ct.truck  || 0;
+    const buses     = ct.bus    || 0;
+    const cars      = ct.car    || 0;
+    const motos     = ct.motorcycle || 0;
+    const heavy     = trucks + buses;
+    const passenger = cars + motos;
+    const heavyPct  = total > 0 ? Math.round((heavy / total) * 100) : 0;
+    const busPct    = total > 0 ? Math.round((buses  / total) * 100) : 0;
 
-    txt("gov-nwa-metric",     heavy.toLocaleString());
-    txt("gov-nwa-sub",        total > 0 ? `${heavyPct}% of period traffic` : "—");
-    txt("gov-taj-metric",     heavy.toLocaleString());
-    txt("gov-taj-sub",        `${(ct.truck||0).toLocaleString()} trucks · ${(ct.bus||0).toLocaleString()} buses`);
-    txt("gov-jutc-metric",    (ct.bus||0).toLocaleString());
-    txt("gov-jutc-sub",       "detected at monitored junction");
-    txt("gov-tourism-metric", Number(total).toLocaleString());
-    txt("gov-tourism-sub",    "verified passes in period");
-    txt("gov-ins-metric",     heavy.toLocaleString());
-    txt("gov-ins-sub",        total > 0 ? `${heavyPct}% high-load vehicles` : "monitoring active");
-    txt("gov-ooh-metric",     Number(total).toLocaleString());
-    txt("gov-ooh-sub",        `= ${Number(total).toLocaleString()} guaranteed impressions`);
+    // NWA — road load: heavy vehicles are the pavement stress concern
+    txt("gov-nwa-metric", heavy.toLocaleString());
+    txt("gov-nwa-sub",    total > 0 ? `${heavyPct}% heavy vehicle load` : "—");
 
-    txt("gov-ag-total",       Number(total).toLocaleString());
-    txt("gov-ag-live-total",  Number(total).toLocaleString());
+    // TAJ — commercial/taxable: trucks + buses (revenue-generating classes)
+    txt("gov-taj-metric", heavy.toLocaleString());
+    txt("gov-taj-sub",    `${trucks.toLocaleString()} trucks · ${buses.toLocaleString()} buses`);
+
+    // JUTC — transit utilization: buses only
+    txt("gov-jutc-metric", buses.toLocaleString());
+    txt("gov-jutc-sub",    total > 0 ? `${busPct}% of total volume` : "detected at junction");
+
+    // Tourism — passenger vehicles: cars + motorcycles
+    txt("gov-tourism-metric", passenger.toLocaleString());
+    txt("gov-tourism-sub",    `${cars.toLocaleString()} cars · ${motos.toLocaleString()} motorcycles`);
+
+    // INS — risk exposure: heavy vehicles as collision risk index
+    txt("gov-ins-metric", heavy.toLocaleString());
+    txt("gov-ins-sub",    total > 0 ? `${heavyPct}% risk index (heavy %)` : "monitoring active");
+
+    // OOH — total impressions: all passing vehicles see the billboard
+    txt("gov-ooh-metric", Number(total).toLocaleString());
+    txt("gov-ooh-sub",    `${Number(total).toLocaleString()} guaranteed impressions`);
+
+    txt("gov-ag-total",      Number(total).toLocaleString());
+    txt("gov-ag-live-total", Number(total).toLocaleString());
   }
 
   // ── AI detection telemetry ─────────────────────────────────────────────────

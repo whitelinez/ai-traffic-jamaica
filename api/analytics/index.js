@@ -250,7 +250,7 @@ async function _hourlyFallback(SUPABASE_URL, headers, camera_id, fromISO, toISO,
     + `?select=captured_at,vehicle_class,direction,zone_source,track_id`
     + `&captured_at=gte.${encodeURIComponent(fromISO)}`
     + `&captured_at=lte.${encodeURIComponent(toISO)}`
-    + `&zone_source=in.(entry,game)`;
+    + `&zone_source=eq.entry`;  // entry only — game zone double-counts the same vehicles
   if (camera_id) url += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
   const r = await fetch(url, { headers });
   if (!r.ok) return [];
@@ -337,7 +337,7 @@ async function _globalTotals(SUPABASE_URL, headers, camera_id) {
 
     // Add today's live crossings (not yet in traffic_daily — aggregated at midnight)
     const todayMidnight = new Date().toISOString().slice(0, 10) + "T00:00:00Z";
-    let liveUrl = `${SUPABASE_URL}/rest/v1/vehicle_crossings?select=id&zone_source=in.(entry,game)&captured_at=gte.${encodeURIComponent(todayMidnight)}&limit=1`;
+    let liveUrl = `${SUPABASE_URL}/rest/v1/vehicle_crossings?select=id&zone_source=eq.entry&captured_at=gte.${encodeURIComponent(todayMidnight)}&limit=1`;
     if (camera_id) liveUrl += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
     const lr = await fetch(liveUrl, { headers: { ...headers, Prefer: "count=exact" } });
     let liveCount = 0;
@@ -665,8 +665,36 @@ async function handleExport(req, res) {
       seenTracks.add(r.track_id); return true;
     });
 
-    if (deduped.length === 0)
-      return res.status(204).end();            // No content — triggers "no data" UI state
+    if (deduped.length === 0) {
+      // Fallback: generate daily summary CSV from traffic_daily (permanent aggregated store)
+      // This covers dates older than 7 days where vehicle_crossings has been pruned.
+      let dailyUrl = `${SUPABASE_URL}/rest/v1/traffic_daily`
+        + `?select=date,total_crossings,count_in,count_out,cameras(name)`
+        + `&date=gte.${encodeURIComponent(fromDate.slice(0, 10))}`
+        + `&date=lte.${encodeURIComponent(toDate.slice(0, 10))}`
+        + `&order=date.asc`;
+      if (camera_id) dailyUrl += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
+      const dailyRes = await fetch(dailyUrl, { headers });
+      const dailyRows = dailyRes.ok ? await dailyRes.json() : [];
+      if (dailyRows.length === 0)
+        return res.status(204).end();  // truly no data
+
+      const csvLines = ["date,camera,total,inbound,outbound"];
+      for (const r of dailyRows) {
+        csvLines.push([
+          _csvSanitize(r.date),
+          _csvSanitize((r.cameras?.name || "").replace(/,/g, ";")),
+          r.total_crossings ?? "",
+          r.count_in  ?? "",
+          r.count_out ?? "",
+        ].join(","));
+      }
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="traffic-${dateStr}.csv"`);
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("X-Total-Rows", String(dailyRows.length));
+      return res.status(200).send(csvLines.join("\n"));
+    }
 
     const csvLines = ["timestamp,camera,vehicle_class,direction,confidence,scene_lighting,scene_weather,dwell_frames,track_id"];
     for (const r of deduped) {
