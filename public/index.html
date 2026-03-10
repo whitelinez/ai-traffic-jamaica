@@ -887,7 +887,6 @@
           <div class="gov-title">DEMO MODE</div>
           <div class="gov-subtitle">Pre-recorded footage · AI detection replay</div>
         </div>
-        <span class="demo-hdr-badge">● DEMO</span>
       </div>
       <div class="gov-hdr-right">
         <button id="btn-close-demo" class="gov-close-btn" aria-label="Exit Demo Mode">
@@ -899,38 +898,131 @@
 
     <!-- Body -->
     <div class="demo-body">
-      <!-- No recording state (shown when no demo recording exists) -->
-      <div id="demo-no-content" class="demo-no-content hidden">
-        <div class="demo-nc-icon">
-          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10"/>
-            <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.4"/>
-            <line x1="12" y1="2" x2="12" y2="5"/>
-            <line x1="12" y1="19" x2="12" y2="22"/>
-            <line x1="2" y1="12" x2="5" y2="12"/>
-            <line x1="19" y1="12" x2="22" y2="12"/>
-          </svg>
-        </div>
-        <div class="demo-nc-title">NO DEMO RECORDING YET</div>
-        <div class="demo-nc-text">A demo clip will be available once the system has captured and processed live footage. The recording is scheduled — check back soon.</div>
-        <div class="demo-nc-badge"><span class="demo-nc-dot"></span>RECORDING SCHEDULED</div>
-      </div>
 
-      <!-- Video + canvas (hidden when no recording) -->
-      <div id="demo-video-area" class="demo-video-wrap hidden">
-        <video id="demo-video" class="demo-video" muted playsinline loop></video>
-        <canvas id="demo-canvas" class="demo-canvas"></canvas>
-        <div class="demo-count-hud">
-          <span class="demo-count-label">VEHICLES DETECTED</span>
-          <span id="demo-count-val" class="demo-count-val">—</span>
+      <!-- Left: video + info -->
+      <div class="demo-main">
+        <!-- No recording state -->
+        <div id="demo-no-content" class="demo-no-content hidden">
+          <div class="demo-nc-icon">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.4"/>
+              <line x1="12" y1="2" x2="12" y2="5"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
+              <line x1="2" y1="12" x2="5" y2="12"/>
+              <line x1="19" y1="12" x2="22" y2="12"/>
+            </svg>
+          </div>
+          <div class="demo-nc-title">NO DEMO RECORDING YET</div>
+          <div class="demo-nc-text">A demo clip will be available once the system has captured and processed live footage. The recording is scheduled — check back soon.</div>
+          <div class="demo-nc-badge"><span class="demo-nc-dot"></span>RECORDING SCHEDULED</div>
         </div>
-      </div><!-- /demo-video-area -->
-      <!-- Info bar -->
-      <div class="demo-info-bar">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
-        <span>Pre-recorded live footage with frame-synced YOLO detections replayed in real-time — exactly what the AI sees at the intersection.</span>
-      </div>
-    </div>
+
+        <!-- Video + canvas -->
+        <div id="demo-video-area" class="demo-video-wrap hidden">
+          <video id="demo-video" class="demo-video" muted playsinline loop></video>
+          <canvas id="demo-canvas" class="demo-canvas"></canvas>
+          <div class="demo-count-hud">
+            <span class="demo-count-label">VEHICLES DETECTED</span>
+            <span id="demo-count-val" class="demo-count-val">—</span>
+          </div>
+        </div>
+
+        <!-- Info bar -->
+        <div class="demo-info-bar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+          <span>Pre-recorded live footage with frame-synced YOLO detections replayed in real-time — exactly what the AI sees at the intersection.</span>
+        </div>
+      </div><!-- /demo-main -->
+
+      <!-- Right: guess sidebar -->
+      <div class="demo-sidebar">
+
+        <!-- Form (default state) -->
+        <div id="demo-guess-form">
+          <p class="demo-guess-title">MAKE YOUR PREDICTION</p>
+          <p class="demo-guess-sub">Predict how many vehicles cross the zone in the window</p>
+
+          <div class="bp-field">
+            <label>Observation Window</label>
+            <div class="bp-pills" id="demo-window-pills">
+              <button class="pill active" data-val="60">1 MIN</button>
+              <button class="pill" data-val="180">3 MIN</button>
+              <button class="pill" data-val="300">5 MIN</button>
+            </div>
+          </div>
+
+          <div class="bp-field">
+            <label for="demo-guess-input">Your Prediction</label>
+            <p class="bp-field-hint">How many vehicles will cross?</p>
+            <div class="bp-count-row">
+              <button class="btn-count-adj" id="demo-count-minus">−</button>
+              <input id="demo-guess-input" type="number" min="0" max="99999" value="5" />
+              <button class="btn-count-adj" id="demo-count-plus">+</button>
+            </div>
+          </div>
+
+          <div class="bp-prize-hint">
+            <span class="bp-ph-row"><span class="bp-ph-badge bp-ph-exact">EXACT</span> Perfect match → Max pts</span>
+            <span class="bp-ph-row"><span class="bp-ph-badge bp-ph-close">CLOSE</span> Within ±40% → Partial pts</span>
+            <span class="bp-ph-row"><span class="bp-ph-badge bp-ph-miss">MISS</span> Too far off → 0 pts</span>
+          </div>
+
+          <button id="demo-guess-submit" class="btn-primary btn-full">Submit Prediction</button>
+          <p class="demo-guess-note">Demo mode — no account needed</p>
+        </div>
+
+        <!-- Active window state -->
+        <div id="demo-active" class="demo-active hidden">
+          <div class="bpa-header">
+            <span class="bpa-dot"></span>
+            <span class="bpa-label">WINDOW ACTIVE</span>
+            <span id="demo-window-tag" class="bpa-window-tag">1 MIN</span>
+          </div>
+          <div class="bpa-receipt">
+            <div class="bpa-receipt-row">
+              <span>Your guess</span>
+              <strong id="demo-receipt-guess">—</strong>
+            </div>
+            <div class="bpa-receipt-row">
+              <span>Window closes in</span>
+              <strong id="demo-countdown" class="bpa-countdown">--:--</strong>
+            </div>
+          </div>
+          <div class="bpa-live-count-wrap">
+            <div class="bpa-live-header">
+              <div class="bpa-live-label">WINDOW COUNT</div>
+              <div id="demo-live-count" class="bpa-live-val">0</div>
+            </div>
+            <div class="bpa-prog-track">
+              <div id="demo-prog-fill" class="bpa-prog-fill"></div>
+            </div>
+          </div>
+          <p class="bpa-hint">Counting AI-detected vehicles in real-time</p>
+        </div>
+
+        <!-- Result state -->
+        <div id="demo-result" class="bp-result hidden">
+          <div class="bpr-status-row">
+            <span id="demo-res-badge" class="bpr-badge bpr-badge-miss">MISS</span>
+            <span id="demo-res-pts" class="bpr-pts bpr-pts-miss">No pts</span>
+          </div>
+          <div class="bpa-receipt">
+            <div class="bpa-receipt-row">
+              <span>Your guess</span>
+              <strong id="demo-res-guess">—</strong>
+            </div>
+            <div class="bpa-receipt-row">
+              <span>Actual count</span>
+              <strong id="demo-res-actual">—</strong>
+            </div>
+          </div>
+          <button id="demo-guess-again" class="btn-primary btn-full" style="margin-top:14px">Try Again</button>
+        </div>
+
+      </div><!-- /demo-sidebar -->
+
+    </div><!-- /demo-body -->
 
   </div>
 

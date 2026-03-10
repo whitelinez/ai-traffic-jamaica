@@ -159,6 +159,7 @@ export async function activate() {
   overlay.classList.remove('hidden');
   _dpl.hide();
   _updateUI(true);
+  _initSidebar();
 }
 
 export function deactivate() {
@@ -193,6 +194,7 @@ export function deactivate() {
   _eventIdx   = 0;
   _latestDets = [];
   _manifest   = null;
+  _teardownGuess();
 
   // Reset count HUD
   const val = document.getElementById('demo-count-val');
@@ -326,6 +328,193 @@ function _hexFill(hex, alpha) {
   const n    = parseInt(raw, 16);
   const r    = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
   _ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ── Demo sidebar guess logic ──────────────────────────────────────────────────
+
+let _guessState = {
+  selectedSecs:  60,
+  selectedLabel: '1 MIN',
+  guessVal:       5,
+  active:         false,
+  startCount:     0,   // cumulative total at guess submission
+  latestCount:    0,   // tracks latest count:update total
+  countAtReset:   0,   // cumulative offset across video loops
+  loopTotal:      0,   // total from last complete loop (for wrap-around)
+  timerId:        null,
+  secsLeft:       0,
+};
+
+function _initSidebar() {
+  const pills = document.getElementById('demo-window-pills');
+  if (!pills) return;
+
+  // Pill selection
+  pills.addEventListener('click', e => {
+    const pill = e.target.closest('.pill');
+    if (!pill || _guessState.active) return;
+    pills.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    _guessState.selectedSecs  = parseInt(pill.dataset.val, 10) || 60;
+    _guessState.selectedLabel = pill.textContent.trim();
+  });
+
+  // Count −/+
+  document.getElementById('demo-count-minus')?.addEventListener('click', () => {
+    if (_guessState.active) return;
+    const inp = document.getElementById('demo-guess-input');
+    if (!inp) return;
+    const v = Math.max(0, parseInt(inp.value, 10) - 1);
+    inp.value = v;
+    _guessState.guessVal = v;
+  });
+  document.getElementById('demo-count-plus')?.addEventListener('click', () => {
+    if (_guessState.active) return;
+    const inp = document.getElementById('demo-guess-input');
+    if (!inp) return;
+    const v = Math.min(99999, parseInt(inp.value, 10) + 1);
+    inp.value = v;
+    _guessState.guessVal = v;
+  });
+  document.getElementById('demo-guess-input')?.addEventListener('input', e => {
+    _guessState.guessVal = Math.max(0, parseInt(e.target.value, 10) || 0);
+  });
+
+  // Submit
+  document.getElementById('demo-guess-submit')?.addEventListener('click', _submitGuess);
+
+  // Try Again
+  document.getElementById('demo-guess-again')?.addEventListener('click', _resetGuess);
+
+  // Track cumulative count across loops
+  window.addEventListener('count:update', _onGuessCountUpdate);
+  window.addEventListener('scene:reset',  _onGuessSceneReset);
+}
+
+function _onGuessCountUpdate(e) {
+  const total = e.detail?.total ?? e.detail?.count_in ?? 0;
+  _guessState.latestCount = _guessState.countAtReset + Number(total);
+
+  if (_guessState.active) {
+    const elapsed = _guessState.latestCount - _guessState.startCount;
+    const pct = Math.min(100, Math.round((elapsed / Math.max(1, _guessState.guessVal)) * 100));
+    const fill = document.getElementById('demo-prog-fill');
+    if (fill) {
+      fill.style.width = pct + '%';
+      fill.style.background =
+        pct < 50 ? 'var(--accent)' :
+        pct < 85 ? '#f59e0b' : '#ef4444';
+    }
+    const lv = document.getElementById('demo-live-count');
+    if (lv) lv.textContent = elapsed.toLocaleString();
+  }
+}
+
+function _onGuessSceneReset() {
+  // Video looped — add the last known "raw" total before reset to our cumulative offset
+  // _latestDets-based total before reset is stored in loopTotal via last count:update
+  // We approximate: countAtReset = latestCount (already cumulative)
+  _guessState.countAtReset = _guessState.latestCount;
+}
+
+function _submitGuess() {
+  const secs  = _guessState.selectedSecs;
+  const label = _guessState.selectedLabel;
+  const guess = Math.max(0, parseInt(document.getElementById('demo-guess-input')?.value, 10) || 0);
+  _guessState.guessVal    = guess;
+  _guessState.startCount  = _guessState.latestCount;
+  _guessState.active      = true;
+  _guessState.secsLeft    = secs;
+
+  // Show active state
+  document.getElementById('demo-guess-form')?.classList.add('hidden');
+  const activeEl = document.getElementById('demo-active');
+  if (activeEl) activeEl.classList.remove('hidden');
+
+  const wtag = document.getElementById('demo-window-tag');
+  if (wtag) wtag.textContent = label;
+  const rg = document.getElementById('demo-receipt-guess');
+  if (rg) rg.textContent = guess.toLocaleString();
+  const lv = document.getElementById('demo-live-count');
+  if (lv) lv.textContent = '0';
+  const fill = document.getElementById('demo-prog-fill');
+  if (fill) { fill.style.width = '0%'; fill.style.background = 'var(--accent)'; }
+
+  // Countdown
+  _updateCountdownEl(secs);
+  _guessState.timerId = setInterval(() => {
+    _guessState.secsLeft--;
+    _updateCountdownEl(_guessState.secsLeft);
+    if (_guessState.secsLeft <= 0) {
+      clearInterval(_guessState.timerId);
+      _guessState.timerId = null;
+      _evaluateGuess();
+    }
+  }, 1000);
+}
+
+function _updateCountdownEl(secs) {
+  const el = document.getElementById('demo-countdown');
+  if (!el) return;
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  el.textContent = m > 0
+    ? `${m}:${String(s).padStart(2, '0')}`
+    : `0:${String(Math.max(0, s)).padStart(2, '0')}`;
+}
+
+function _evaluateGuess() {
+  const windowCount = _guessState.latestCount - _guessState.startCount;
+  const guess       = _guessState.guessVal;
+  const diff        = Math.abs(windowCount - guess);
+  const pct         = windowCount > 0 ? diff / windowCount : (diff > 0 ? 1 : 0);
+
+  let badge, pts, badgeClass;
+  if (diff === 0) {
+    badge = 'EXACT'; pts = 100; badgeClass = '';
+  } else if (pct <= 0.4) {
+    badge = 'CLOSE'; pts = Math.round(100 * (1 - pct / 0.4)); badgeClass = '';
+  } else {
+    badge = 'MISS'; pts = 0; badgeClass = 'bpr-badge-miss';
+  }
+
+  document.getElementById('demo-active')?.classList.add('hidden');
+  const resultEl = document.getElementById('demo-result');
+  if (resultEl) resultEl.classList.remove('hidden');
+
+  const badgeEl = document.getElementById('demo-res-badge');
+  if (badgeEl) { badgeEl.textContent = badge; badgeEl.className = 'bpr-badge' + (badgeClass ? ' ' + badgeClass : ''); }
+  const ptsEl = document.getElementById('demo-res-pts');
+  if (ptsEl) { ptsEl.textContent = pts + ' pts'; ptsEl.className = 'bpr-pts' + (badge === 'MISS' ? ' bpr-pts-miss' : ''); }
+  const rgEl = document.getElementById('demo-res-guess');
+  if (rgEl) rgEl.textContent = guess.toLocaleString();
+  const raEl = document.getElementById('demo-res-actual');
+  if (raEl) raEl.textContent = windowCount.toLocaleString();
+
+  _guessState.active = false;
+}
+
+function _resetGuess() {
+  if (_guessState.timerId) { clearInterval(_guessState.timerId); _guessState.timerId = null; }
+  _guessState.active = false;
+
+  document.getElementById('demo-result')?.classList.add('hidden');
+  document.getElementById('demo-active')?.classList.add('hidden');
+  document.getElementById('demo-guess-form')?.classList.remove('hidden');
+
+  const fill = document.getElementById('demo-prog-fill');
+  if (fill) { fill.style.width = '0%'; fill.style.background = 'var(--accent)'; }
+}
+
+function _teardownGuess() {
+  if (_guessState.timerId) { clearInterval(_guessState.timerId); _guessState.timerId = null; }
+  _guessState.active       = false;
+  _guessState.latestCount  = 0;
+  _guessState.countAtReset = 0;
+  _guessState.startCount   = 0;
+  window.removeEventListener('count:update', _onGuessCountUpdate);
+  window.removeEventListener('scene:reset',  _onGuessSceneReset);
+  _resetGuess();
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
