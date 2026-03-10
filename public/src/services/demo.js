@@ -14,6 +14,7 @@
 
 import { getContentBounds } from '../utils/coord-utils.js';
 import { Stream } from './stream.js';
+import { Counter } from './counter.js';
 
 let _active      = false;
 let _events      = [];      // sorted [{t, ...count:update payload}]
@@ -156,6 +157,9 @@ export async function activate() {
     if (noContent) noContent.classList.remove('hidden');
   }
 
+  // Pause live AI stream — demo replays its own pre-recorded events
+  Counter.pause();
+
   overlay.classList.remove('hidden');
   _dpl.hide();
   _updateUI(true);
@@ -200,13 +204,12 @@ export function deactivate() {
   const val = document.getElementById('demo-count-val');
   if (val) val.textContent = '—';
 
-  // Restore live stream — HLS may have dropped while demo was open.
-  // Stream.init() destroys any stale instance and reconnects immediately,
-  // which also clears the stream-offline-overlay via stream:status ok.
+  // Restore live stream + AI — HLS may have dropped while demo was open.
+  // Stream.init() destroys any stale instance and reconnects immediately.
+  // Counter.resume() reconnects the WebSocket so live count:update events flow again.
   const liveVideo = document.getElementById('live-video');
-  if (liveVideo) {
-    Stream.init(liveVideo).catch(() => {});
-  }
+  if (liveVideo) Stream.init(liveVideo).catch(() => {});
+  Counter.resume();
 
   _updateUI(false);
 }

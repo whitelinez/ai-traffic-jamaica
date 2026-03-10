@@ -123,6 +123,30 @@ async function connect() {
   };
 }
 
+let _paused = false;
+
+function pause() {
+  _paused = true;
+  clearTimeout(reconnectTimer);
+  reconnectTimer = null;
+  if (ws) {
+    ws.onclose = null;   // prevent the onclose handler from scheduling a reconnect
+    ws.onerror = null;
+    ws.close();
+    ws = null;
+  }
+  setStatus(false);
+}
+
+function resume() {
+  if (!_paused) return;
+  _paused = false;
+  lastCountTsMs = 0;
+  lastKnownTotal = 0;
+  backoff = 2000;
+  connect();
+}
+
 function init() {
   if (started) return;
   started = true;
@@ -137,4 +161,4 @@ function destroy() {
   if (ws) ws.close();
 }
 
-export const Counter = { init, destroy };
+export const Counter = { init, destroy, pause, resume };
