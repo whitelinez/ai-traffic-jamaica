@@ -13,6 +13,7 @@
  */
 
 import { getContentBounds } from '../utils/coord-utils.js';
+import { Stream } from './stream.js';
 
 let _active      = false;
 let _events      = [];      // sorted [{t, ...count:update payload}]
@@ -146,7 +147,6 @@ export async function activate() {
     _lastVidTime = -1;
     _latestDets  = [];
 
-    window.dispatchEvent(new CustomEvent('scene:reset'));
     _rafId = requestAnimationFrame(_replayTick);
   } else {
     // No recording — show no-content state
@@ -198,7 +198,14 @@ export function deactivate() {
   const val = document.getElementById('demo-count-val');
   if (val) val.textContent = '—';
 
-  window.dispatchEvent(new CustomEvent('scene:reset'));
+  // Restore live stream — HLS may have dropped while demo was open.
+  // Stream.init() destroys any stale instance and reconnects immediately,
+  // which also clears the stream-offline-overlay via stream:status ok.
+  const liveVideo = document.getElementById('live-video');
+  if (liveVideo) {
+    Stream.init(liveVideo).catch(() => {});
+  }
+
   _updateUI(false);
 }
 
