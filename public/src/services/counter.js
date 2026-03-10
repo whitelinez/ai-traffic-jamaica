@@ -108,6 +108,8 @@ async function connect() {
         lastCountTsMs = 0;
         lastKnownTotal = 0;
         window.dispatchEvent(new CustomEvent('scene:reset'));
+      } else if (data.type === 'demo_mode') {
+        window.dispatchEvent(new CustomEvent('demo:mode', { detail: { active: Boolean(data.active), message: data.message || '' } }));
       }
     } catch {}
   };

@@ -351,6 +351,7 @@ const GUEST_TS_KEY = "wlz.guest.session_ts";
     if (user.app_metadata?.role === "admin") {
       el("nav-admin-link")?.classList.remove("hidden");
       el("btn-layout-editor")?.classList.remove("hidden");
+      el("header-demo-btn")?.classList.remove("hidden");
     }
   }
 
@@ -1730,7 +1731,7 @@ function _connectUserWs(session) {
   el("header-analytics-cta")?.addEventListener("click", openGovAnalytics);
   closeBtn?.addEventListener("click", closeGov);
 
-  // ── Demo mode toggle ──────────────────────────────────────────────────────
+  // ── Demo mode toggle (admin only) ─────────────────────────────────────────
   el("header-demo-btn")?.addEventListener("click", () => {
     if (Demo.isActive()) Demo.deactivate();
     else Demo.activate();
@@ -1740,6 +1741,18 @@ function _connectUserWs(session) {
     if (e.key === "Escape") {
       if (Demo.isActive()) Demo.deactivate();
       else if (_open) closeGov();
+    }
+  });
+
+  // ── AI demo-mode overlay (shown to all users when admin runs demo) ────────
+  window.addEventListener("demo:mode", (e) => {
+    const active = Boolean(e.detail?.active);
+    const overlay = el("ai-demo-overlay");
+    if (!overlay) return;
+    overlay.classList.toggle("hidden", !active);
+    if (active) {
+      const msgEl = overlay.querySelector(".ai-demo-sub");
+      if (msgEl && e.detail?.message) msgEl.textContent = e.detail.message;
     }
   });
 

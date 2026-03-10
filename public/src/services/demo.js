@@ -16,6 +16,7 @@ import { getContentBoundsContain, contentToPixel } from '../utils/coord-utils.js
 import { Stream } from './stream.js';
 import { Counter } from './counter.js';
 import { DetectionOverlay } from '../overlays/detection-overlay.js';
+import { sb } from '../core/supabase.js';
 
 let _active      = false;
 let _rafId       = null;
@@ -76,12 +77,23 @@ export async function activate() {
   if (_active) return;
 
   _dpl.show();
-  _dpl.set(0, 'Initialising…');
-  await _wait(250);
+  _dpl.set(0, 'Checking permissions…');
+  _dplDetail('Verifying admin access');
+  await _wait(200);
 
-  // 1. Fetch manifest (video URL only — no events JSON needed)
-  _dpl.set(20, 'Checking demo archive…');
-  await _wait(300);
+  // Admin gate
+  const admin = await _isAdmin();
+  if (!admin) {
+    _dpl.hide();
+    _showToast('Demo mode is restricted to administrators.');
+    return;
+  }
+
+  _dpl.set(12, 'Connecting to archive…');
+  _dplDetail('Fetching demo recording manifest');
+  await _wait(200);
+
+  // Fetch manifest
   let manifest = null;
   try {
     const res = await fetch('/api/demo');
@@ -92,10 +104,53 @@ export async function activate() {
 
   const hasRecording = Boolean(manifest?.available && manifest?.video_url);
 
-  _dpl.set(55, 'Starting YOLO inference…');
-  await _wait(200);
+  if (!hasRecording) {
+    _dpl.set(100, 'No recording available');
+    _dplDetail('Record a demo first via admin panel');
+    await _wait(1800);
+    _dpl.hide();
+    return;
+  }
 
-  // 2. Open overlay
+  _dpl.set(28, 'Recording found');
+  _dplDetail(`${manifest.duration_sec ? Math.round(manifest.duration_sec / 60) + ' min clip' : 'Demo clip'} · recorded ${manifest.recorded_at ? new Date(manifest.recorded_at).toLocaleDateString() : 'recently'}`);
+  await _wait(400);
+
+  _dpl.set(42, 'Requesting AI handoff…');
+  _dplDetail('Pausing live camera inference · transferring to demo source');
+  await _wait(300);
+
+  // Tell backend to start YOLO on the demo video (async — don't block on it)
+  _startDemoDetect();
+
+  _dpl.set(56, 'Live AI pausing…');
+  _dplDetail('Backend stopping live detection loop');
+  await _wait(600);
+
+  _dpl.set(68, 'Warming up inference engine…');
+  _dplDetail('YOLO loading demo video · starting ByteTrack');
+  await _wait(500);
+
+  // Wait for first detection from backend (up to 18s)
+  _dpl.set(72, 'Waiting for AI signal…');
+  _dplDetail('Listening on WebSocket for first detection frame');
+
+  const gotDetection = await _waitForFirstDetection(18000, (elapsed) => {
+    const pct = 72 + Math.min(16, Math.floor(elapsed / 1000) * 2);
+    _dpl.set(pct, 'AI inference running…');
+    _dplDetail(`Receiving frames · ${Math.floor(elapsed / 1000)}s elapsed`);
+  });
+
+  if (!gotDetection) {
+    _dpl.set(90, 'AI starting (slow init)…');
+    _dplDetail('Detection may take a moment to appear');
+  } else {
+    _dpl.set(90, 'AI online');
+    _dplDetail('First detection received — opening demo');
+  }
+  await _wait(350);
+
+  // Open overlay
   const overlay = document.getElementById('demo-overlay');
   if (!overlay) { _dpl.hide(); return; }
 
@@ -124,33 +179,68 @@ export async function activate() {
       if (window.ResizeObserver) new ResizeObserver(_syncCanvasSize).observe(_videoEl);
       _videoEl.addEventListener('loadedmetadata', _syncCanvasSize);
     }
-  } else {
-    const videoArea = document.getElementById('demo-video-area');
-    const noContent = document.getElementById('demo-no-content');
-    if (videoArea) videoArea.classList.add('hidden');
-    if (noContent) noContent.classList.remove('hidden');
   }
 
-  // 3. Clear stale live detections from the DetectionOverlay queue
+  // Clear stale live detections from the DetectionOverlay queue
   DetectionOverlay.clearDetections();
 
-  // 4. Tell backend to start YOLO inference on the demo video
-  //    (backend also pauses the live AI loop so WS events come from demo only)
-  _startDemoDetect();
-
-  // 5. Listen to count:update — backend broadcasts demo detections via normal WS
+  // Listen to count:update — backend broadcasts demo detections via normal WS
   window.addEventListener('count:update', _onCountUpdate);
 
-  // 6. Start draw loop (detection boxes + tripwire rendered every RAF frame)
+  // Start draw loop (detection boxes + tripwire rendered every RAF frame)
   _startDrawLoop();
 
   overlay.classList.remove('hidden');
-  _dpl.set(100, 'Opening demo…');
-  await _wait(200);
+  _dpl.set(100, 'Demo active');
+  _dplDetail('');
+  await _wait(180);
   _dpl.hide();
   _updateUI(true);
   _initSidebar();
   _initTripwire();
+}
+
+// ── Admin check ───────────────────────────────────────────────────────────────
+async function _isAdmin() {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    return session?.user?.app_metadata?.role === 'admin';
+  } catch {
+    return false;
+  }
+}
+
+// ── Preloader detail line ─────────────────────────────────────────────────────
+function _dplDetail(text) {
+  const el = document.getElementById('demo-pl-detail');
+  if (el) el.textContent = text;
+}
+
+// ── Wait for first count:update from backend YOLO ────────────────────────────
+function _waitForFirstDetection(timeoutMs, onTick) {
+  return new Promise(resolve => {
+    const start = Date.now();
+    let tickInterval = null;
+    const cleanup = () => {
+      clearTimeout(timer);
+      clearInterval(tickInterval);
+      window.removeEventListener('count:update', handler);
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve(false);
+    }, timeoutMs);
+    function handler() {
+      cleanup();
+      resolve(true);
+    }
+    window.addEventListener('count:update', handler);
+    if (onTick) {
+      tickInterval = setInterval(() => {
+        onTick(Date.now() - start);
+      }, 1000);
+    }
+  });
 }
 
 export function deactivate() {
@@ -633,4 +723,16 @@ function _updateUI(on) {
   }
   const badge = document.getElementById(DEMO_BADGE_ID);
   if (badge) badge.classList.toggle('hidden', !on);
+}
+
+function _showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'demo-toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('demo-toast--visible'));
+  setTimeout(() => {
+    t.classList.remove('demo-toast--visible');
+    setTimeout(() => t.remove(), 400);
+  }, 3200);
 }

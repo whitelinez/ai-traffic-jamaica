@@ -823,3 +823,58 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: 0.9rem;
   font-size: 10px;
   color: var(--muted);
 }
+
+/* ── AI Demo Mode Overlay ────────────────────────────────────────────────── */
+.ai-demo-overlay {
+  position: absolute; inset: 0; z-index: 25;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(4px);
+  border-radius: inherit;
+}
+.ai-demo-inner {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-align: center; padding: 24px 20px;
+}
+.ai-demo-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.12em;
+  color: #ef4444; text-transform: uppercase; margin: 0;
+}
+.ai-demo-sub {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px; color: rgba(255,255,255,0.65); margin: 0;
+  letter-spacing: 0.04em;
+}
+.ai-demo-bar {
+  display: flex; align-items: center; gap: 6px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px; letter-spacing: 0.10em; color: rgba(239,68,68,0.75);
+}
+.ai-demo-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #ef4444;
+  animation: ai-demo-pulse 1.2s ease-in-out infinite;
+}
+.ai-demo-ring {
+  animation: ai-demo-spin 3s linear infinite;
+  transform-origin: center;
+}
+.ai-demo-label { text-transform: uppercase; }
+@keyframes ai-demo-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+@keyframes ai-demo-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Demo Preloader detail line ──────────────────────────────────────────── */
+.demo-pl-detail {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px; color: rgba(255,255,255,0.42);
+  letter-spacing: 0.06em; text-align: center;
+  min-height: 13px; margin-top: -4px;
+  max-width: 260px; word-break: break-word;
+}

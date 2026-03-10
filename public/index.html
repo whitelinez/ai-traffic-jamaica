@@ -123,7 +123,7 @@
 
     <!-- Right: Actions + auth -->
     <nav class="header-nav">
-      <button id="header-demo-btn" class="header-play-btn header-demo-btn">DEMO</button>
+      <button id="header-demo-btn" class="header-play-btn header-demo-btn hidden">DEMO</button>
       <button id="header-analytics-cta" class="header-play-btn">ANALYTICS</button>
 
       <!-- Logged out -->
@@ -243,6 +243,24 @@
             <div class="stream-offline-bar">
               <span class="stream-offline-dot"></span>
               <span class="stream-offline-label">SIGNAL LOST</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Demo Mode Overlay — shown to all users when admin is running demo -->
+        <div id="ai-demo-overlay" class="ai-demo-overlay hidden">
+          <div class="ai-demo-inner">
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+              <circle cx="18" cy="18" r="15" stroke="rgba(239,68,68,0.25)" stroke-width="1.5"/>
+              <circle cx="18" cy="18" r="15" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="12 8" class="ai-demo-ring"/>
+              <path d="M18 10v8l5 3" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="7" y1="7" x2="29" y2="29" stroke="rgba(239,68,68,0.5)" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+            <p class="ai-demo-title">AI INFERENCE OFFLINE</p>
+            <p class="ai-demo-sub">Being used in Demo Mode by Admin</p>
+            <div class="ai-demo-bar">
+              <span class="ai-demo-dot"></span>
+              <span class="ai-demo-label">DEMO ACTIVE</span>
             </div>
           </div>
         </div>
@@ -865,6 +883,7 @@
       <div class="demo-pl-rec"><span class="demo-pl-rec-dot"></span>REC</div>
       <div class="demo-pl-title">DEMO MODE</div>
       <div class="demo-pl-sub" id="demo-pl-label">Initialising…</div>
+      <div class="demo-pl-detail" id="demo-pl-detail"></div>
       <div class="demo-pl-pct" id="demo-pl-pct">0%</div>
       <div class="demo-pl-bar-wrap">
         <div class="demo-pl-bar" id="demo-pl-bar"></div>
