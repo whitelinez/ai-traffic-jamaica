@@ -1735,7 +1735,13 @@ function _connectUserWs(session) {
     if (Demo.isActive()) Demo.deactivate();
     else Demo.activate();
   });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && _open) closeGov(); });
+  el("btn-close-demo")?.addEventListener("click", () => Demo.deactivate());
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (Demo.isActive()) Demo.deactivate();
+      else if (_open) closeGov();
+    }
+  });
 
   // ── Reset analytics camera when user switches cameras ─────────────────────
   window.addEventListener("camera:switched", () => {

@@ -1,17 +1,18 @@
 /**
- * demo.js — Demo mode: plays a pre-recorded video with frame-synced detection replay.
+ * demo.js — Demo mode overlay: plays a pre-recorded video with frame-synced
+ * YOLO detection replay drawn directly on a canvas overlay.
  *
  * Flow:
- *   1. activate()  → fetch /api/demo manifest → load events JSON → swap <video> src
- *   2. RAF loop    → on each video timeupdate, dispatch stored count:update events
- *                    matching video.currentTime
- *   3. deactivate() → destroy HLS → restore live stream → dispatch scene:reset
+ *   1. activate()  → fetch /api/demo manifest → load events JSON
+ *                  → open #demo-overlay → set <video> src → start RAF loop
+ *   2. RAF loop    → on each video.currentTime advance, dispatch count:update
+ *                    events matching timestamps AND draw detection boxes
+ *   3. deactivate() → hide overlay → cancel RAF → reset state
  *
- * Events dispatched during replay are identical in shape to live WebSocket events,
- * so all existing overlays (detection, zone, count widget) work without changes.
+ * The #demo-overlay is fully self-contained — the live stream is untouched.
  */
 
-import { Stream } from './stream.js';
+import { getContentBounds } from '../utils/coord-utils.js';
 
 let _active      = false;
 let _events      = [];      // sorted [{t, ...count:update payload}]
@@ -19,10 +20,20 @@ let _eventIdx    = 0;       // next event index to dispatch
 let _lastVidTime = -1;      // previous video.currentTime, for loop detection
 let _rafId       = null;
 let _videoEl     = null;
+let _canvasEl    = null;
+let _ctx         = null;
 let _manifest    = null;
+let _latestDets  = [];      // detections from current event frame
 
 const DEMO_BTN_ID   = 'header-demo-btn';
 const DEMO_BADGE_ID = 'stream-demo-badge';
+
+const CLS_COLORS = {
+  car:        '#29B6F6',
+  truck:      '#FF7043',
+  bus:        '#AB47BC',
+  motorcycle: '#FFD600',
+};
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -60,30 +71,43 @@ export async function activate() {
     return;
   }
 
-  // 3. Swap stream to demo video
-  _videoEl = document.getElementById('live-video');
-  if (!_videoEl) return;
+  // 3. Get overlay elements
+  const overlay = document.getElementById('demo-overlay');
+  _videoEl  = document.getElementById('demo-video');
+  _canvasEl = document.getElementById('demo-canvas');
+  if (!overlay || !_videoEl || !_canvasEl) return;
 
-  Stream.destroy();
-  _videoEl.src    = manifest.video_url;
-  _videoEl.loop   = true;
-  _videoEl.muted  = true;
+  // 4. Set up video
+  _videoEl.src         = manifest.video_url;
+  _videoEl.loop        = true;
+  _videoEl.muted       = true;
   _videoEl.playsInline = true;
   _videoEl.load();
   _videoEl.play().catch(() => {});
 
-  // 4. Reset replay state
+  // 5. Set up canvas
+  _ctx = _canvasEl.getContext('2d');
+  _syncCanvasSize();
+  window.addEventListener('resize', _syncCanvasSize);
+  if (window.ResizeObserver) {
+    new ResizeObserver(_syncCanvasSize).observe(_videoEl);
+  }
+  _videoEl.addEventListener('loadedmetadata', _syncCanvasSize);
+
+  // 6. Reset replay state
   _eventIdx    = 0;
   _lastVidTime = -1;
+  _latestDets  = [];
   _active      = true;
 
-  // 5. Dispatch scene reset so overlays/count reset
+  // 7. Open overlay, dispatch reset
+  overlay.classList.remove('hidden');
   window.dispatchEvent(new CustomEvent('scene:reset'));
 
-  // 6. Start replay loop
+  // 8. Start replay loop
   _rafId = requestAnimationFrame(_replayTick);
 
-  // 7. Update UI
+  // 9. Update UI
   _updateUI(true);
 }
 
@@ -93,18 +117,34 @@ export function deactivate() {
 
   if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
 
-  // Restore HLS live stream
+  // Hide overlay, pause and clear video
+  const overlay = document.getElementById('demo-overlay');
+  if (overlay) overlay.classList.add('hidden');
+
   if (_videoEl) {
     _videoEl.pause();
     _videoEl.removeAttribute('src');
-    _videoEl.loop = false;
     _videoEl.load();
-    Stream.init(_videoEl);
+    _videoEl = null;
   }
 
-  _events   = [];
-  _eventIdx = 0;
-  _manifest = null;
+  // Clear canvas
+  if (_ctx && _canvasEl) {
+    _ctx.clearRect(0, 0, _canvasEl.width, _canvasEl.height);
+  }
+  _ctx = null;
+  _canvasEl = null;
+
+  window.removeEventListener('resize', _syncCanvasSize);
+
+  _events     = [];
+  _eventIdx   = 0;
+  _latestDets = [];
+  _manifest   = null;
+
+  // Reset count HUD
+  const val = document.getElementById('demo-count-val');
+  if (val) val.textContent = '—';
 
   window.dispatchEvent(new CustomEvent('scene:reset'));
   _updateUI(false);
@@ -122,17 +162,111 @@ function _replayTick() {
 
   // Detect video loop (time jumped backward significantly)
   if (_lastVidTime > 0 && vt < _lastVidTime - 1.0) {
-    _eventIdx = 0;
+    _eventIdx   = 0;
+    _latestDets = [];
     window.dispatchEvent(new CustomEvent('scene:reset'));
   }
   _lastVidTime = vt;
 
   // Dispatch all events whose timestamp ≤ current video time
+  let dispatched = 0;
   while (_eventIdx < _events.length && _events[_eventIdx].t <= vt) {
     const ev = _events[_eventIdx];
     window.dispatchEvent(new CustomEvent('count:update', { detail: ev }));
+    // Keep latest detections for canvas drawing
+    if (ev.detections) _latestDets = ev.detections;
+    // Update count HUD
+    const total = ev.total ?? ev.count_in ?? 0;
+    const valEl = document.getElementById('demo-count-val');
+    if (valEl) valEl.textContent = Number(total).toLocaleString();
     _eventIdx++;
+    dispatched++;
   }
+
+  // Redraw detection boxes on every frame (smooth visuals even between events)
+  _drawDetections(_latestDets);
+}
+
+// ── Detection canvas drawing ──────────────────────────────────────────────────
+
+function _syncCanvasSize() {
+  if (!_videoEl || !_canvasEl) return;
+  const dpr  = window.devicePixelRatio || 1;
+  const cssW = _videoEl.clientWidth;
+  const cssH = _videoEl.clientHeight;
+  _canvasEl.width  = Math.round(cssW * dpr);
+  _canvasEl.height = Math.round(cssH * dpr);
+  _canvasEl.style.width  = cssW + 'px';
+  _canvasEl.style.height = cssH + 'px';
+  if (_ctx) _ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function _drawDetections(dets) {
+  if (!_ctx || !_canvasEl || !_videoEl) return;
+
+  const dpr  = window.devicePixelRatio || 1;
+  _ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  _ctx.clearRect(0, 0, _videoEl.clientWidth, _videoEl.clientHeight);
+
+  if (!dets || !dets.length) return;
+
+  const bounds = getContentBounds(_videoEl);
+
+  for (const det of dets) {
+    const x1 = det.x1 * bounds.w + bounds.x;
+    const y1 = det.y1 * bounds.h + bounds.y;
+    const x2 = det.x2 * bounds.w + bounds.x;
+    const y2 = det.y2 * bounds.h + bounds.y;
+    const bw = x2 - x1, bh = y2 - y1;
+    if (bw < 4 || bh < 4) continue;
+
+    const color = CLS_COLORS[det.cls] || '#66BB6A';
+    _drawCornerBox(x1, y1, bw, bh, color);
+    _drawLabel(x1, y1, det, color);
+  }
+}
+
+function _drawCornerBox(x, y, w, h, color) {
+  const c = Math.max(6, Math.min(20, Math.floor(Math.min(w, h) * 0.22)));
+  _ctx.save();
+  _ctx.strokeStyle = color;
+  _ctx.lineWidth   = 1.8;
+  _ctx.lineCap     = 'round';
+  _ctx.shadowColor = color;
+  _ctx.shadowBlur  = 8;
+  _ctx.setLineDash([]);
+  _ctx.beginPath();
+  _ctx.moveTo(x,     y + c); _ctx.lineTo(x,     y    ); _ctx.lineTo(x + c, y    );
+  _ctx.moveTo(x + w - c, y); _ctx.lineTo(x + w, y    ); _ctx.lineTo(x + w, y + c);
+  _ctx.moveTo(x + w, y + h - c); _ctx.lineTo(x + w, y + h); _ctx.lineTo(x + w - c, y + h);
+  _ctx.moveTo(x + c, y + h); _ctx.lineTo(x,     y + h); _ctx.lineTo(x,     y + h - c);
+  _ctx.stroke();
+  _ctx.restore();
+}
+
+function _drawLabel(x, y, det, color) {
+  const CLS_NAME = { car: 'Car', truck: 'Truck', bus: 'Bus', motorcycle: 'Moto' };
+  const cls  = CLS_NAME[String(det?.cls || '').toLowerCase()] || 'Vehicle';
+  const conf = det.conf != null ? ` ${Math.round(Number(det.conf) * 100)}%` : '';
+  const lbl  = cls + conf;
+  const fs   = 10;
+  _ctx.font = `700 ${fs}px "JetBrains Mono", monospace`;
+  const tw  = _ctx.measureText(lbl).width;
+  const px  = 4, py = 2;
+  const tx  = x, ty = (y - (fs + py * 2)) >= 0 ? y - (fs + py * 2) : y;
+  _hexFill(color, 0.88);
+  _ctx.fillRect(tx, ty, tw + px * 2, fs + py * 2);
+  _ctx.fillStyle    = '#000';
+  _ctx.textAlign    = 'left';
+  _ctx.textBaseline = 'top';
+  _ctx.fillText(lbl, tx + px, ty + py);
+}
+
+function _hexFill(hex, alpha) {
+  const raw  = String(hex).replace('#', '').padEnd(6, '0').slice(0, 6);
+  const n    = parseInt(raw, 16);
+  const r    = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  _ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
@@ -140,10 +274,9 @@ function _replayTick() {
 function _updateUI(on) {
   const btn = document.getElementById(DEMO_BTN_ID);
   if (btn) {
-    btn.textContent  = on ? 'EXIT DEMO' : 'DEMO';
+    btn.textContent = on ? 'EXIT DEMO' : 'DEMO';
     btn.classList.toggle('demo-btn--active', on);
   }
-
   const badge = document.getElementById(DEMO_BADGE_ID);
   if (badge) badge.classList.toggle('hidden', !on);
 }

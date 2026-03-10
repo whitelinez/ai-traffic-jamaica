@@ -852,6 +852,51 @@
     </div>
   </div>
 
+  <!-- ── Demo Mode Overlay ────────────────────────────────────────────────── -->
+  <div id="demo-overlay" class="demo-overlay hidden" role="dialog" aria-modal="true" aria-label="Demo Mode">
+
+    <!-- Header — reuses gov-hdr styles -->
+    <div class="gov-hdr">
+      <div class="gov-hdr-left">
+        <div class="gov-hdr-logo-wrap">
+          <img src="/img/iconinframes.png" alt="AI Traffic Jamaica" class="gov-hdr-logo" aria-hidden="true" loading="lazy">
+          <img src="/img/aiframes.png" alt="" class="gov-hdr-aiframe" aria-hidden="true" loading="lazy">
+        </div>
+        <div class="gov-hdr-rule"></div>
+        <div class="gov-hdr-id">
+          <div class="gov-title">DEMO MODE</div>
+          <div class="gov-subtitle">Pre-recorded footage · AI detection replay</div>
+        </div>
+        <span class="demo-hdr-badge">● DEMO</span>
+      </div>
+      <div class="gov-hdr-right">
+        <button id="btn-close-demo" class="gov-close-btn" aria-label="Exit Demo Mode">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 4L4 12M4 4l8 8"/></svg>
+          LIVE
+        </button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="demo-body">
+      <!-- Video + canvas -->
+      <div class="demo-video-wrap">
+        <video id="demo-video" class="demo-video" muted playsinline loop></video>
+        <canvas id="demo-canvas" class="demo-canvas"></canvas>
+        <div class="demo-count-hud">
+          <span class="demo-count-label">VEHICLES DETECTED</span>
+          <span id="demo-count-val" class="demo-count-val">—</span>
+        </div>
+      </div>
+      <!-- Info bar -->
+      <div class="demo-info-bar">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+        <span>Pre-recorded live footage with frame-synced YOLO detections replayed in real-time — exactly what the AI sees at the intersection.</span>
+      </div>
+    </div>
+
+  </div>
+
   <!-- ── Government / Analytics Mode Overlay ──────────────────────────────── -->
   <div id="gov-overlay" class="gov-overlay hidden" role="dialog" aria-modal="true" aria-label="Traffic Analytics">
 
