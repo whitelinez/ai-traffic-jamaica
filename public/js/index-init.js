@@ -2822,7 +2822,7 @@ function _connectUserWs(session) {
       _govFrom = new Date(today - 30 * 86400000).toISOString().slice(0, 10);
       _govGranularity = "day";
     } else if (preset === "all") {
-      _govFrom = null; _govTo = null;
+      _govFrom = "2020-01-01"; // far enough back to capture all traffic_daily rows
       _govGranularity = "day";
     }
     _updateCalBtns();

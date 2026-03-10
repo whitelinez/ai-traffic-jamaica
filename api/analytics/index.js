@@ -325,13 +325,28 @@ async function _firstDate(SUPABASE_URL, headers, camera_id) {
 
 async function _globalTotals(SUPABASE_URL, headers, camera_id) {
   try {
-    let url = `${SUPABASE_URL}/rest/v1/vehicle_crossings?select=id&zone_source=in.(entry,game)&limit=1`;
-    if (camera_id) url += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
-    const r = await fetch(url, { headers: { ...headers, Prefer: "count=exact" } });
-    if (!r.ok) return null;
-    const range = r.headers.get("Content-Range");
-    const total = range ? (parseInt(range.split("/")[1]) || 0) : 0;
-    return { total };
+    // Sum all complete days from traffic_daily (permanent aggregated store)
+    let dailyUrl = `${SUPABASE_URL}/rest/v1/traffic_daily?select=total_crossings`;
+    if (camera_id) dailyUrl += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
+    const dr = await fetch(dailyUrl, { headers });
+    let historicalTotal = 0;
+    if (dr.ok) {
+      const rows = await dr.json();
+      historicalTotal = rows.reduce((sum, r) => sum + (r.total_crossings || 0), 0);
+    }
+
+    // Add today's live crossings (not yet in traffic_daily — aggregated at midnight)
+    const todayMidnight = new Date().toISOString().slice(0, 10) + "T00:00:00Z";
+    let liveUrl = `${SUPABASE_URL}/rest/v1/vehicle_crossings?select=id&zone_source=in.(entry,game)&captured_at=gte.${encodeURIComponent(todayMidnight)}&limit=1`;
+    if (camera_id) liveUrl += `&camera_id=eq.${encodeURIComponent(camera_id)}`;
+    const lr = await fetch(liveUrl, { headers: { ...headers, Prefer: "count=exact" } });
+    let liveCount = 0;
+    if (lr.ok) {
+      const range = lr.headers.get("Content-Range");
+      liveCount = range ? (parseInt(range.split("/")[1]) || 0) : 0;
+    }
+
+    return { total: historicalTotal + liveCount };
   } catch { return null; }
 }
 
