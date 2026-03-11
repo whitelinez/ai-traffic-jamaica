@@ -15,7 +15,7 @@
  *   - Dispatches legacy DOM events for backward compat with vanilla JS modules
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WS_EVENTS, TIMING } from "@/lib/constants";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -57,14 +57,17 @@ export interface UseWebSocketLiveReturn {
   roundInfo:   RoundInfo | null;
   isConnected: boolean;
   wsStatus:    WsStatus;
+  streamUrl:   string;
 }
 
 // ── Token cache ───────────────────────────────────────────────────────────────
 
 interface TokenCache {
-  token:    string;
-  wssUrl:   string;
-  fetchedAt: number;  // ms timestamp
+  token:       string;
+  streamToken: string;
+  wssUrl:      string;
+  streamBase:  string;
+  fetchedAt:   number;  // ms timestamp
 }
 
 let _tokenCache: TokenCache | null = null;
@@ -78,8 +81,8 @@ async function fetchWsToken(): Promise<TokenCache> {
   const res = await fetch("/api/token");
   if (!res.ok) throw new Error(`[useWebSocketLive] token fetch failed: ${res.status}`);
 
-  const data = await res.json() as { token: string; wss_url: string; expires_in: number };
-  _tokenCache = { token: data.token, wssUrl: data.wss_url, fetchedAt: Date.now() };
+  const data = await res.json() as { token: string; stream_token: string; wss_url: string; stream_base: string; expires_in: number };
+  _tokenCache = { token: data.token, streamToken: data.stream_token ?? data.token, wssUrl: data.wss_url, streamBase: data.stream_base ?? "", fetchedAt: Date.now() };
   return _tokenCache;
 }
 
@@ -90,6 +93,7 @@ export function useWebSocketLive(cameraId?: string): UseWebSocketLiveReturn {
   const [detections,  setDetections]  = useState<Detection[]>([]);
   const [roundInfo,   setRoundInfo]   = useState<RoundInfo | null>(null);
   const [wsStatus,    setWsStatus]    = useState<WsStatus>("disconnected");
+  const [tokenData,   setTokenData]   = useState<TokenCache | null>(null);
 
   const wsRef         = useRef<WebSocket | null>(null);
   const backoffRef    = useRef<number>(TIMING.WS_BACKOFF_INITIAL);
@@ -161,6 +165,7 @@ export function useWebSocketLive(cameraId?: string): UseWebSocketLiveReturn {
     let tokenData: TokenCache;
     try {
       tokenData = await fetchWsToken();
+      setTokenData(tokenData);
     } catch (err) {
       console.error("[useWebSocketLive] token error:", err);
       setWsStatus("error");
@@ -207,6 +212,8 @@ export function useWebSocketLive(cameraId?: string): UseWebSocketLiveReturn {
   const scheduleReconnect = useCallback(() => {
     if (unmountedRef.current) return;
     if (reconnTimerRef.current) clearTimeout(reconnTimerRef.current);
+    // Clear cached token so next connect fetches a fresh nonce — prevents 4001 on retry
+    _tokenCache = null;
     const delay = backoffRef.current;
     backoffRef.current = Math.min(backoffRef.current * 2, TIMING.WS_BACKOFF_MAX);
     reconnTimerRef.current = setTimeout(() => {
@@ -247,11 +254,17 @@ export function useWebSocketLive(cameraId?: string): UseWebSocketLiveReturn {
     };
   }, [connect]);
 
+  const streamUrl = useMemo(() => {
+    if (!tokenData?.streamBase || !cameraId) return "";
+    return `${tokenData.streamBase}/stream/live.m3u8?token=${encodeURIComponent(tokenData.streamToken)}&alias=${encodeURIComponent(cameraId)}`;
+  }, [tokenData, cameraId]);
+
   return {
     count,
     detections,
     roundInfo,
     isConnected: wsStatus === "connected",
     wsStatus,
+    streamUrl,
   };
 }

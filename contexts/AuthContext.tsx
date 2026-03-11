@@ -25,12 +25,11 @@ import { sb } from "@/lib/supabase-client";
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface UserProfile {
-  id:           string;
-  username:     string | null;
-  display_name: string | null;
-  avatar_url:   string | null;
-  points:       number;
-  role:         string | null;
+  user_id:  string;
+  username: string | null;
+  avatar_url: string | null;
+  points:   number;
+  role:     string | null;
 }
 
 export interface AuthState {
@@ -60,8 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await sb
       .from("profiles")
-      .select("id, username, display_name, avatar_url, points, role")
-      .eq("id", userId)
+      .select("user_id, username, avatar_url, points, role")
+      .eq("user_id", userId)
       .single();
 
     if (error) {
@@ -70,12 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     if (data) {
       const p: UserProfile = {
-        id:           data.id           as string,
-        username:     data.username     as string | null,
-        display_name: data.display_name as string | null,
-        avatar_url:   data.avatar_url   as string | null,
-        points:       (data.points      as number) ?? 0,
-        role:         data.role         as string | null,
+        user_id:    data.user_id    as string,
+        username:   data.username   as string | null,
+        avatar_url: data.avatar_url as string | null,
+        points:     (data.points    as number) ?? 0,
+        role:       data.role       as string | null,
       };
       setProfile(p);
       setBalance(p.points);
@@ -134,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           event:  "UPDATE",
           schema: "public",
           table:  "profiles",
-          filter: `id=eq.${user.id}`,
+          filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
           const updated = payload.new as Partial<UserProfile>;

@@ -260,9 +260,9 @@ export function LivePanel({ summary, isLoading }: LivePanelProps) {
               </div>
 
               {/* Donut */}
-              <div className="w-[80px] h-[80px] shrink-0">
+              <div className="w-[80px] h-[80px] shrink-0" style={{ minHeight: 80, minWidth: 80 }}>
                 {donutData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width={80} height={80}>
                     <PieChart>
                       <Pie
                         data={donutData}

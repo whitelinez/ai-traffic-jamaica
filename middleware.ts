@@ -26,17 +26,13 @@ export async function middleware(request: NextRequest) {
 
   // /account — requires any authenticated session
   if (pathname.startsWith("/account") && !session) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   // /admin — requires admin role
   if (pathname.startsWith("/admin")) {
     if (!session) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.redirect(new URL("/", request.url));
     }
     const role = session.user?.app_metadata?.role;
     if (role !== "admin") {

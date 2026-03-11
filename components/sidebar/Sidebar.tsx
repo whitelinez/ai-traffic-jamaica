@@ -3,9 +3,10 @@
  * components/sidebar/Sidebar.tsx
  * 380px sidebar wrapper. Tab bar + panel routing.
  * Tabs: PLAY | RANKINGS | LIVE | INTEL
+ * Active tab shows YOLO detection corner brackets (vanilla AI frames effect).
  */
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import MarketsTab from "./MarketsTab";
 import LeaderboardTab from "./LeaderboardTab";
@@ -43,15 +44,19 @@ interface Props {
 // ── Tab config ───────────────────────────────────────────────────────────────
 
 const TABS: { id: Tab; label: string; ariaLabel: string }[] = [
-  { id: "markets",     label: "PLAY",     ariaLabel: "Guess panel" },
+  { id: "markets",     label: "PLAY",     ariaLabel: "Guess panel"          },
   { id: "leaderboard", label: "RANKINGS", ariaLabel: "Leaderboard rankings" },
-  { id: "chat",        label: "LIVE",     ariaLabel: "Live chat" },
+  { id: "chat",        label: "LIVE",     ariaLabel: "Live chat"            },
   { id: "intel",       label: "INTEL",    ariaLabel: "AI intelligence data" },
 ];
+
+// Inline SVG for detection corner brackets — matches vanilla exactly
+const DETECT_BRACKET_URL = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 44' preserveAspectRatio='none'%3E%3Cg stroke='%2300d4ff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 1H1V14'/%3E%3Cpath d='M86 1H99V14'/%3E%3Cpath d='M1 30V43H14'/%3E%3Cpath d='M86 43H99V30'/%3E%3C/g%3E%3C/svg%3E")`;
 
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function Sidebar({
+  activeCameraId = "",
   mlStats,
   wsStatus,
 }: Props) {
@@ -94,6 +99,7 @@ export default function Sidebar({
       {/* Tab bar */}
       <nav
         className="flex-shrink-0 flex items-stretch bg-background border-b border-border sticky top-0 z-10"
+        style={{ overflow: "visible" }}
         role="tablist"
         aria-label="Sidebar tabs"
       >
@@ -109,18 +115,71 @@ export default function Sidebar({
               aria-selected={isActive}
               aria-label={tab.ariaLabel}
               onClick={() => handleTabClick(tab.id)}
-              className={cn(
-                "relative flex-1 flex items-center justify-center gap-1 py-3 text-[10px] font-label font-semibold tracking-wider transition-colors",
-                isActive
-                  ? "text-primary border-b-2 border-primary -mb-px"
-                  : "text-muted hover:text-foreground border-b-2 border-transparent -mb-px"
-              )}
+              style={{
+                position:    "relative",
+                flex:        1,
+                padding:     "12px 0",
+                fontSize:    "0.82rem",
+                fontWeight:  600,
+                letterSpacing: "0.04em",
+                color:       isActive ? "#00d4ff" : "rgba(130,155,185,0.7)",
+                background:  isActive ? "rgba(0,212,255,0.04)" : "transparent",
+                border:      "none",
+                borderBottom: "none",
+                textShadow:  isActive ? "0 0 10px rgba(0,212,255,0.2)" : "none",
+                transition:  "color .15s, background .15s",
+                overflow:    "visible",
+                cursor:      "pointer",
+                display:     "flex",
+                alignItems:  "center",
+                justifyContent: "center",
+                gap:         5,
+              }}
+              onMouseEnter={e => {
+                if (!isActive) {
+                  (e.currentTarget as HTMLButtonElement).style.color = "rgba(190,220,240,0.9)";
+                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,212,255,0.04)";
+                }
+              }}
+              onMouseLeave={e => {
+                if (!isActive) {
+                  (e.currentTarget as HTMLButtonElement).style.color = "rgba(130,155,185,0.7)";
+                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                }
+              }}
             >
+              {/* YOLO detection bracket overlay — active only */}
+              {isActive && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position:           "absolute",
+                    top:                3,
+                    right:              5,
+                    bottom:             3,
+                    left:               5,
+                    backgroundImage:    DETECT_BRACKET_URL,
+                    backgroundSize:     "100% 100%",
+                    backgroundRepeat:   "no-repeat",
+                    backgroundPosition: "center",
+                    pointerEvents:      "none",
+                    opacity:            0.85,
+                    animation:          "tabDetectIn 0.18s ease-out forwards",
+                    zIndex:             2,
+                  }}
+                />
+              )}
+
               {tab.label}
 
               {/* Chat unread badge */}
               {showBadge && (
-                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold leading-none">
+                <span style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  minWidth: 16, height: 16, borderRadius: 999, padding: "0 4px",
+                  background: "rgba(0,188,212,0.2)", border: "1px solid rgba(0,188,212,0.52)",
+                  color: "#baf8ff", fontSize: "0.62rem", fontWeight: 700,
+                }}>
                   {chatUnread > 99 ? "99+" : chatUnread}
                 </span>
               )}
@@ -158,10 +217,9 @@ export default function Sidebar({
         role="tabpanel"
         aria-label={TABS.find((t) => t.id === activeTab)?.ariaLabel}
       >
-        {/* Each panel mounted/unmounted for clean state */}
         {activeTab === "markets" && (
           <div className="h-full overflow-y-auto">
-            <MarketsTab />
+            <MarketsTab activeCameraId={activeCameraId} />
           </div>
         )}
         {activeTab === "leaderboard" && (

@@ -1,56 +1,41 @@
 "use client";
 
 /**
- * VisionHUD.tsx — AI inference HUD panel on the left side of the stream.
- *
- * Collapsed: small "VISION HUD" label + state badge.
- * Expanded: detection rate bar, traffic load text, frames + objects counts.
- *
- * Animates expand/collapse with Framer Motion.
+ * VisionHUD.tsx — AI inference HUD panel (top-right of stream).
+ * Matches vanilla ml-hud exactly:
+ *   - VISION HUD title (gold) + state badge (green/amber/red)
+ *   - Verbose status line
+ *   - Detection Rate cell with filled bar track
+ *   - Traffic Load cell
+ *   - Frames / Objects metrics row
  */
-
-import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
 
 interface VisionHUDProps {
   fps: number;
-  detectionRate: number;   // 0-100 percentage for the detection rate bar
+  detectionRate: number;   // 0–100 percentage for the detection rate bar
   frameCount: number;
   objectCount: number;
   trafficMsg: string;
-  isExpanded: boolean;
-  onToggle: () => void;
   stateLabel?: string;
   className?: string;
 }
 
-function DetectionRateBar({ value }: { value: number }) {
-  const pct = Math.max(0, Math.min(100, value));
-  const barColor =
-    pct >= 80 ? "#00FF88" : pct >= 40 ? "#FFB800" : "#FF3D6B";
+type StateVariant = "live" | "scan" | "delay" | "idle";
 
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between">
-        <span className="text-[9px] font-label uppercase tracking-wider text-muted-foreground">
-          Detection Rate
-        </span>
-        <strong
-          className="font-mono text-[10px]"
-          style={{ color: barColor }}
-        >
-          {value.toFixed(1)}/m
-        </strong>
-      </div>
-      <div className="h-1 w-full rounded-full bg-muted/20 overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, background: barColor }}
-        />
-      </div>
-    </div>
-  );
+function stateVariant(label: string): StateVariant {
+  const l = label.toLowerCase();
+  if (l === "live") return "live";
+  if (l === "scan") return "scan";
+  if (l === "delay") return "delay";
+  return "idle";
 }
+
+const STATE_STYLES: Record<StateVariant, { color: string; bg: string; border: string; dot: string }> = {
+  live:  { color: "#ecffed",              bg: "rgba(26,104,59,0.30)",  border: "rgba(112,201,133,0.72)", dot: "#00FF88" },
+  scan:  { color: "#fff2ce",              bg: "rgba(132,99,24,0.32)",  border: "rgba(225,185,74,0.70)",  dot: "#FFD600" },
+  delay: { color: "#ffd7d7",              bg: "rgba(120,34,34,0.32)",  border: "rgba(255,116,116,0.72)", dot: "#FF6B6B" },
+  idle:  { color: "rgba(180,215,230,0.65)", bg: "rgba(0,0,0,0.18)",   border: "rgba(180,215,230,0.18)", dot: "#7A9BB5" },
+};
 
 export function VisionHUD({
   fps,
@@ -58,101 +43,156 @@ export function VisionHUD({
   frameCount,
   objectCount,
   trafficMsg,
-  isExpanded,
-  onToggle,
   stateLabel = "Idle",
-  className,
 }: VisionHUDProps) {
+  const variant = stateVariant(stateLabel);
+  const ss = STATE_STYLES[variant];
+  const pct = Math.max(0, Math.min(100, detectionRate));
+
   return (
     <div
       id="ml-hud"
-      title="Toggle AI details"
-      className={cn(
-        "absolute left-3 top-3 z-20 cursor-pointer select-none",
-        "rounded-md glass px-2.5 py-2",
-        "max-w-[188px] min-w-[112px]",
-        "transition-all duration-200",
-        className,
-      )}
-      onClick={onToggle}
-      role="button"
-      aria-expanded={isExpanded}
-      aria-label="Toggle VISION HUD"
+      title="AI Vision HUD"
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(0,212,255,0.45)"; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(0,212,255,0.25)"; }}
+      style={{
+        position:          "absolute",
+        top:               12,
+        right:             12,
+        width:             194,
+        background:        "rgba(8,12,20,0.82)",
+        backdropFilter:    "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        border:            "1px solid rgba(0,212,255,0.25)",
+        borderRadius:      8,
+        padding:           "10px 12px",
+        zIndex:            6,
+        userSelect:        "none",
+        textAlign:         "left",
+        transition:        "border-color 0.15s",
+        cursor:            "default",
+      }}
     >
-      {/* Header — always visible */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-label text-[10px] font-bold tracking-[0.14em] uppercase text-primary">
+      {/* ── Head row: title + state badge ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+        <span style={{
+          fontSize:      "0.47rem",
+          letterSpacing: "0.09em",
+          textTransform: "uppercase",
+          color:         "rgba(255,224,120,0.94)",
+          fontWeight:    800,
+          textShadow:    "0 0 6px rgba(255,214,0,0.24), 0 1px 6px rgba(0,0,0,0.45)",
+        }}>
           VISION HUD
         </span>
-        <span className="flex items-center gap-1 text-[9px] font-mono text-muted-foreground">
-          <span
-            className="inline-block h-1.5 w-1.5 rounded-full bg-green-active animate-pulse-dot flex-shrink-0"
-            aria-hidden="true"
-          />
-          {stateLabel}
+
+        <span style={{
+          display:       "inline-flex",
+          alignItems:    "center",
+          gap:           4,
+          padding:       "1px 5px",
+          fontSize:      "0.49rem",
+          fontWeight:    800,
+          letterSpacing: "0.03em",
+          color:         ss.color,
+          background:    ss.bg,
+          border:        `1px solid ${ss.border}`,
+        }}>
+          {/* State dot */}
+          <span style={{
+            width: 6, height: 6, borderRadius: "50%",
+            background: ss.dot, flexShrink: 0,
+            animation: variant === "live" ? "pulse-dot 1.5s infinite" : "none",
+          }} />
+          <span id="ml-hud-wx-text">{stateLabel}</span>
         </span>
       </div>
 
-      {/* Expandable body */}
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            key="hud-body"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.22, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="mt-2.5 flex flex-col gap-2.5">
-              {/* Detection rate bar */}
-              <DetectionRateBar value={detectionRate} />
+      {/* ── Verbose status line ── */}
+      <p style={{
+        margin:        "0 0 5px",
+        fontSize:      "0.42rem",
+        lineHeight:    1.2,
+        letterSpacing: "0.03em",
+        color:         "rgba(255,238,185,0.8)",
+        textShadow:    "0 1px 4px rgba(0,0,0,0.45)",
+        whiteSpace:    "nowrap",
+        overflow:      "hidden",
+        textOverflow:  "ellipsis",
+      }}>
+        {fps > 0
+          ? `${fps.toFixed(1)} fps | scene active`
+          : "Scene lock scanning | retrain idle | scene --"}
+      </p>
 
-              {/* Traffic load */}
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[9px] font-label uppercase tracking-wider text-muted-foreground">
-                  Traffic Load
-                </span>
-                <span
-                  id="ml-hud-traffic-msg"
-                  className="font-mono text-[10px] text-foreground truncate"
-                >
-                  {trafficMsg || "Waiting for data…"}
-                </span>
-              </div>
+      {/* ── Cells ── */}
+      <div style={{ display: "grid", gap: 2, marginBottom: 2 }}>
 
-              {/* Metrics row */}
-              <div className="flex items-center justify-between gap-2 pt-0.5 border-t border-border/40">
-                <span className="text-[9px] font-mono text-muted-foreground">
-                  Frames{" "}
-                  <strong
-                    id="ml-hud-frames"
-                    className="text-foreground"
-                  >
-                    {frameCount.toLocaleString()}
-                  </strong>
-                </span>
-                <span className="text-[9px] font-mono text-muted-foreground">
-                  Objects{" "}
-                  <strong
-                    id="ml-hud-dets"
-                    className="text-foreground"
-                  >
-                    {objectCount}
-                  </strong>
-                </span>
-              </div>
+        {/* Detection Rate */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "2px 5px", alignItems: "center" }}>
+          <span style={{ fontSize: "0.43rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,228,146,0.88)" }}>
+            Detection Rate
+          </span>
+          <strong id="ml-hud-conf" style={{
+            fontSize:         "0.49rem",
+            color:            "#fff7d8",
+            fontVariantNumeric: "tabular-nums",
+            textShadow:       "0 0 5px rgba(255,214,0,0.18), 0 1px 4px rgba(0,0,0,0.42)",
+          }}>
+            {detectionRate.toFixed(1)}/m
+          </strong>
+          {/* Bar track */}
+          <div style={{
+            gridColumn:  "1 / -1",
+            height:      6,
+            position:    "relative",
+            border:      "1px solid rgba(255,225,138,0.62)",
+            background:  "rgba(255,255,255,0.04)",
+            overflow:    "hidden",
+            clipPath:    "polygon(0 50%, 4% 0, 100% 0, 96% 100%, 0 100%)",
+          }}>
+            <div id="ml-hud-conf-bar" style={{
+              width:      `${pct}%`,
+              height:     "100%",
+              background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.68) 0 5px, rgba(255,255,255,0.0) 5px 7px)",
+              opacity:    0.74,
+              transition: "width 180ms linear",
+            }} />
+          </div>
+        </div>
 
-              {/* FPS hint */}
-              {fps > 0 && (
-                <div className="text-[9px] font-mono text-muted-foreground">
-                  {fps.toFixed(1)} fps
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* Traffic Load */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "2px 5px" }}>
+          <span style={{ fontSize: "0.43rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,228,146,0.88)" }}>
+            Traffic Load
+          </span>
+          <span id="ml-hud-traffic-msg" style={{ fontSize: "0.42rem", color: "rgba(255,241,191,0.9)", lineHeight: 1.3 }}>
+            {trafficMsg || "Waiting for data…"}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Metrics row ── */}
+      <div style={{
+        display:        "flex",
+        justifyContent: "space-between",
+        gap:            6,
+        fontSize:       "0.46rem",
+        color:          "rgba(255,228,146,0.84)",
+      }}>
+        <span style={{ display: "inline-flex", flex: "1 1 0", alignItems: "center", justifyContent: "space-between", gap: 4, minWidth: 0 }}>
+          Frames{" "}
+          <strong id="ml-hud-frames" style={{ color: "#fff7d8", fontVariantNumeric: "tabular-nums", textShadow: "0 0 5px rgba(255,214,0,0.18), 0 1px 4px rgba(0,0,0,0.45)" }}>
+            {frameCount.toLocaleString()}
+          </strong>
+        </span>
+        <span style={{ display: "inline-flex", flex: "1 1 0", alignItems: "center", justifyContent: "space-between", gap: 4, minWidth: 0 }}>
+          Objects{" "}
+          <strong id="ml-hud-dets" style={{ color: "#fff7d8", fontVariantNumeric: "tabular-nums", textShadow: "0 0 5px rgba(255,214,0,0.18), 0 1px 4px rgba(0,0,0,0.45)" }}>
+            {objectCount}
+          </strong>
+        </span>
+      </div>
     </div>
   );
 }

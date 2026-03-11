@@ -1,6 +1,5 @@
 "use client";
 
-import { BarChart2 } from "lucide-react";
 import { LogoPulse } from "./LogoPulse";
 import { UserNav } from "./UserNav";
 import { cn } from "@/lib/utils";
@@ -51,11 +50,10 @@ export function SiteHeader({
 
         <button
           onClick={onAnalyticsClick}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-label font-semibold tracking-wider text-primary border border-primary/30 rounded hover:bg-primary/10 transition-colors"
+          className="px-3 py-1.5 text-xs font-label font-semibold tracking-wider text-primary-foreground bg-primary rounded hover:opacity-90 transition-opacity"
           aria-label="Open analytics dashboard"
         >
-          <BarChart2 className="h-3.5 w-3.5" aria-hidden />
-          <span className="hidden sm:inline">ANALYTICS</span>
+          ANALYTICS
         </button>
 
         <UserNav

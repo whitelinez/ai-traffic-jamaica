@@ -15,12 +15,12 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "connect-src 'self' https://*.supabase.co wss: https://*.railway.app https://backend.aitrafficja.com https://cdn.jsdelivr.net https://*.ipcamlive.com https://*.vercel-analytics.com https://vitals.vercel-insights.com https://cloudflareinsights.com",
+              "connect-src 'self' https://*.supabase.co wss: https://*.railway.app https://aitrafficja.com https://backend.aitrafficja.com https://cdn.jsdelivr.net https://*.ipcamlive.com https://*.vercel-analytics.com https://vitals.vercel-insights.com https://cloudflareinsights.com",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net blob: https://*.vercel-analytics.com https://static.cloudflareinsights.com",
               "worker-src blob:",
               "style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com 'unsafe-inline'",
               "font-src 'self' https://fonts.gstatic.com data:",
-              "img-src 'self' data: https://*.supabase.co https://*.ipcamlive.com https://img.youtube.com",
+              "img-src 'self' data: https://*.supabase.co https://*.ipcamlive.com https://img.youtube.com https://www.google.com https://www.gstatic.com https://lh3.googleusercontent.com",
               "media-src 'self' blob: https://*.ipcamlive.com https://*.supabase.co",
               "frame-src https://*.ipcamlive.com https://www.youtube.com https://www.youtube-nocookie.com",
               "frame-ancestors 'none'",
@@ -49,6 +49,7 @@ const nextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "**.supabase.co" },
       { protocol: "https", hostname: "**.ipcamlive.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },
 };

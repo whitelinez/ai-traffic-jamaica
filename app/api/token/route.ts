@@ -44,11 +44,19 @@ export async function GET(): Promise<Response> {
     });
   }
 
-  const token  = await generateHmacToken(secret);
-  const wssUrl = wsBase.replace(/^https?:\/\//, "wss://") + "/ws/live";
+  // Generate two separate tokens so stream and WS don't share a nonce
+  // (backend HMAC auth has replay protection — consuming a nonce for one request
+  //  invalidates it for the other)
+  const [token, streamToken] = await Promise.all([
+    generateHmacToken(secret),
+    generateHmacToken(secret),
+  ]);
+  const httpBase   = wsBase.replace(/\/$/, "");
+  const wssUrl     = httpBase.replace(/^https?:\/\//, "wss://") + "/ws/live";
+  const streamBase = httpBase;
 
   return new Response(
-    JSON.stringify({ token, wss_url: wssUrl, expires_in: TOKEN_TTL_SECONDS }),
+    JSON.stringify({ token, stream_token: streamToken, wss_url: wssUrl, stream_base: streamBase, expires_in: TOKEN_TTL_SECONDS }),
     {
       status: 200,
       headers: {

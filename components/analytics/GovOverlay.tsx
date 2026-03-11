@@ -113,7 +113,7 @@ function GovHeader({
           strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
           <path d="M12 4L4 12M4 4l8 8"/>
         </svg>
-        PLAY
+        CLOSE
       </button>
     </div>
   );
@@ -264,6 +264,7 @@ export function GovOverlay({ open, onClose, cameraId, cameraName }: GovOverlayPr
               "bg-background border-l border-border",
               "shadow-2xl"
             )}
+            style={{ colorScheme: "dark" }}
           >
             {/* Header */}
             <GovHeader cameraName={cameraName} onClose={onClose} />

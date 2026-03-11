@@ -13,14 +13,14 @@ import { cn } from "@/lib/utils";
 
 interface RawBet {
   user_id: string | null;
-  payout_pts: number | null;
+  potential_payout: number | null;
   window_duration_sec: number | null;
   resolved_at: string | null;
 }
 
 interface ProfileRow {
-  id: string;
-  display_name: string | null;
+  user_id: string;
+  username: string | null;
   avatar_url: string | null;
 }
 
@@ -77,11 +77,11 @@ export default function LeaderboardTab() {
       // Pull resolved bets for this window in last 24h
       const { data: bets, error: bErr } = await sb
         .from("bets")
-        .select("user_id, payout_pts, window_duration_sec, resolved_at")
+        .select("user_id, potential_payout, window_duration_sec, resolved_at")
         .eq("status", "resolved")
         .eq("window_duration_sec", window)
         .gt("resolved_at", new Date(Date.now() - 86_400_000).toISOString())
-        .order("payout_pts", { ascending: false }) as { data: RawBet[] | null; error: unknown };
+        .order("potential_payout", { ascending: false }) as { data: RawBet[] | null; error: unknown };
 
       if (bErr) throw bErr;
       if (!bets?.length) {
@@ -94,7 +94,7 @@ export default function LeaderboardTab() {
       for (const b of bets) {
         if (!b.user_id) continue;
         const existing = userMap.get(b.user_id) ?? { totalPts: 0, guessCount: 0 };
-        existing.totalPts  += Number(b.payout_pts ?? 0);
+        existing.totalPts  += Number(b.potential_payout ?? 0);
         existing.guessCount += 1;
         userMap.set(b.user_id, existing);
       }
@@ -110,10 +110,10 @@ export default function LeaderboardTab() {
       try {
         const { data: profiles } = await sb
           .from("profiles")
-          .select("id, display_name, avatar_url")
-          .in("id", userIds) as { data: ProfileRow[] | null };
+          .select("user_id, username, avatar_url")
+          .in("user_id", userIds) as { data: ProfileRow[] | null };
         (profiles ?? []).forEach((p) => {
-          profileMap.set(p.id, { name: p.display_name ?? `Player ${p.id.slice(0, 5)}`, avatarUrl: p.avatar_url ?? null });
+          profileMap.set(p.user_id, { name: p.username ?? `Player ${p.user_id.slice(0, 5)}`, avatarUrl: p.avatar_url || null });
         });
       } catch {
         // profiles table optional

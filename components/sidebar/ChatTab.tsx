@@ -31,10 +31,11 @@ interface ProfileCache {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const MAX_MESSAGES     = 100;
-const CHAR_LIMIT       = 280;
-const SEND_COOLDOWN_MS = 1500;
-const LOAD_LIMIT       = 40;
+const MAX_MESSAGES      = 40;
+const MSG_EXPIRE_MS     = 90_000; // messages older than 90s are removed from view
+const CHAR_LIMIT        = 280;
+const SEND_COOLDOWN_MS  = 1500;
+const LOAD_LIMIT        = 20;
 
 const GUEST_ID_KEY   = "wlz.chat.guest_id";
 const GUEST_NAME_KEY = "wlz.chat.guest_name";
@@ -202,13 +203,13 @@ export default function ChatTab() {
     try {
       const { data } = await sb
         .from("profiles")
-        .select("id, display_name, avatar_url")
-        .in("id", newIds);
+        .select("user_id, username, avatar_url")
+        .in("user_id", newIds);
       if (!data) return;
       setProfiles((prev) => {
         const next = new Map(prev);
         for (const p of data) {
-          next.set(p.id, { name: p.display_name ?? `Player ${p.id.slice(0, 5)}`, avatarUrl: p.avatar_url ?? null });
+          next.set(p.user_id, { name: p.username ?? `Player ${String(p.user_id).slice(0, 5)}`, avatarUrl: p.avatar_url ?? null });
         }
         return next;
       });
@@ -345,6 +346,16 @@ export default function ChatTab() {
     }
   }
 
+  // ── Auto-expire messages older than MSG_EXPIRE_MS ─────────────────────
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const cutoff = Date.now() - MSG_EXPIRE_MS;
+      setMessages(prev => prev.filter(m => new Date(m.created_at).getTime() > cutoff));
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, []);
+
   // ── Build last-sender map for grouping ────────────────────────────────
 
   const getLastSenderId = (messages: Message[], idx: number): string | null => {
@@ -385,10 +396,27 @@ export default function ChatTab() {
             ))}
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full py-10">
-            <p className="text-muted text-sm text-center">
-              No messages yet.<br />
-              <span className="text-muted/60 text-xs">Start the conversation.</span>
+          <div className="flex flex-col items-center justify-center h-full gap-5 py-10">
+            {/* Live online count — prominent default state */}
+            <div style={{
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+              padding: "20px 28px",
+              background: "rgba(0,212,255,0.04)",
+              border: "1px solid rgba(0,212,255,0.12)",
+              borderRadius: 8,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 6px rgba(34,197,94,0.7)", flexShrink: 0 }} className="animate-pulse-dot" />
+                <span style={{ fontFamily: '"JetBrains Mono",monospace', fontSize: "1.5rem", fontWeight: 900, color: "#e8f4ff", letterSpacing: "-0.02em" }}>
+                  {onlineCount > 0 ? onlineCount : "—"}
+                </span>
+              </div>
+              <p style={{ margin: 0, fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(0,212,255,0.6)", fontFamily: '"JetBrains Mono",monospace' }}>
+                {onlineCount === 1 ? "person watching" : "people watching"}
+              </p>
+            </div>
+            <p className="text-muted/60 text-xs text-center">
+              No recent messages.<br />Be the first to say something.
             </p>
           </div>
         ) : (

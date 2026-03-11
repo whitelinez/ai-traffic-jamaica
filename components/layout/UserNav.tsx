@@ -38,7 +38,7 @@ export function UserNav({ onLoginClick, onRegisterClick }: UserNavProps) {
     supabase
       .from("profiles")
       .select("points, role")
-      .eq("id", user.id)
+      .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (!data) return;
