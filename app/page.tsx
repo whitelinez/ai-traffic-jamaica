@@ -1,52 +1,82 @@
+"use client";
+
 /**
- * app/page.tsx — Main dashboard shell (Phase 0 placeholder).
- * Will be populated with StreamWrapper + Sidebar + GovOverlay in Phase 3–5.
+ * app/page.tsx — Main dashboard shell (Phase 1).
+ * Houses SiteHeader + OnboardingOverlay + placeholder stream/sidebar panels.
+ * Stream (HLS), ZoneOverlay, FloatingCount, BetPanel, Leaderboard wired in Phase 3–4.
+ * GovOverlay wired in Phase 5.
  */
+
+import { useState } from "react";
+import { SiteHeader } from "@/components/layout/SiteHeader";
+import { OnboardingOverlay } from "@/components/layout/OnboardingOverlay";
+
 export default function Home() {
+  const [govOpen, setGovOpen] = useState(false);
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-6 text-center">
-        {/* Live indicator */}
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-green-active animate-pulse-dot" />
-          <span className="font-mono text-xs text-muted-foreground tracking-widest uppercase">
-            AI Traffic JA
-          </span>
+    <>
+      {/* ── Onboarding ───────────────────────────────────────────────── */}
+      <OnboardingOverlay />
+
+      {/* ── Header ───────────────────────────────────────────────────── */}
+      <SiteHeader onAnalyticsClick={() => setGovOpen(true)} />
+
+      {/* ── Main dashboard grid ───────────────────────────────────────── */}
+      <main className="flex min-h-[calc(100vh-3.5rem)] flex-col lg:flex-row">
+        {/* Stream panel — placeholder, filled in Phase 3 */}
+        <section className="relative flex-1 bg-black flex items-center justify-center min-h-[56vw] lg:min-h-0">
+          <div className="flex flex-col items-center gap-3 text-center p-8">
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-green-active animate-pulse-dot" />
+              <span className="font-mono text-xs text-muted tracking-widest uppercase">
+                Stream Panel — Phase 3
+              </span>
+            </span>
+            <p className="text-muted text-sm max-w-xs">
+              HLS video, detection canvas, zone overlay, and count widget will render here.
+            </p>
+          </div>
+        </section>
+
+        {/* Sidebar — placeholder, filled in Phase 4 */}
+        <aside className="w-full lg:w-[380px] border-t lg:border-t-0 lg:border-l border-border bg-surface flex flex-col">
+          <div className="flex flex-col items-center justify-center flex-1 gap-3 p-8 text-center">
+            <span className="font-mono text-xs text-muted tracking-widest uppercase">
+              Sidebar — Phase 4
+            </span>
+            <p className="text-muted text-sm max-w-xs">
+              Markets tab, Leaderboard, and Chat will render here.
+            </p>
+          </div>
+        </aside>
+      </main>
+
+      {/* ── Gov Analytics Overlay placeholder — Phase 5 ───────────────── */}
+      {govOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+          onClick={() => setGovOpen(false)}
+        >
+          <div
+            className="glass rounded-xl p-8 text-center max-w-sm mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="font-mono text-xs text-primary tracking-widest uppercase mb-3">
+              Gov Analytics Overlay
+            </p>
+            <p className="text-muted text-sm">
+              Full analytics dashboard — Phase 5.
+            </p>
+            <button
+              onClick={() => setGovOpen(false)}
+              className="mt-4 text-xs text-muted hover:text-foreground transition-colors"
+            >
+              Close ×
+            </button>
+          </div>
         </div>
-
-        <h1 className="font-display text-4xl font-bold text-foreground tracking-tight">
-          Next.js Migration
-        </h1>
-
-        <p className="text-muted-foreground max-w-sm">
-          Phase 0 scaffold complete. Tailwind tokens, shadcn/ui, and project structure are ready.
-        </p>
-
-        {/* Token verification swatches */}
-        <div className="grid grid-cols-4 gap-2 mt-4">
-          {[
-            { bg: "bg-background",  label: "bg" },
-            { bg: "bg-surface",     label: "surface" },
-            { bg: "bg-card",        label: "card" },
-            { bg: "bg-primary",     label: "cyan" },
-            { bg: "bg-accent",      label: "accent" },
-            { bg: "bg-green-live",  label: "live" },
-            { bg: "bg-cls-car",     label: "car" },
-            { bg: "bg-cls-truck",   label: "truck" },
-          ].map(({ bg, label }) => (
-            <div key={label} className="flex flex-col items-center gap-1">
-              <div className={`h-8 w-8 rounded ${bg} border border-border`} />
-              <span className="text-[10px] text-muted-foreground font-mono">{label}</span>
-            </div>
-          ))}
-        </div>
-
-        <p className="text-xs text-muted-foreground mt-2">
-          All swatches above should show distinct brand colors. If background/surface/card
-          look identical or primary shows white, check{" "}
-          <code className="text-primary">tailwind.config.ts</code>.
-        </p>
-      </div>
-    </main>
+      )}
+    </>
   );
 }

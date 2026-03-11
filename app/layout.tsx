@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { DevBanner } from "@/components/layout/DevBanner";
 
 export const metadata: Metadata = {
   title: "AI Traffic JA — Live Vehicle Detection",
@@ -56,6 +57,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background text-foreground antialiased">
+        <DevBanner />
         {children}
       </body>
     </html>
