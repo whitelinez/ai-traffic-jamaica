@@ -142,6 +142,11 @@ export function useWebSocketLive(cameraId?: string): UseWebSocketLiveReturn {
   // ── Connect ────────────────────────────────────────────────────────────────
   const connect = useCallback(async () => {
     if (unmountedRef.current) return;
+    // Don't connect until we have a camera to subscribe to
+    if (!cameraId) {
+      setWsStatus("disconnected");
+      return;
+    }
     if (wsRef.current?.readyState === WebSocket.CONNECTING) return;
 
     // Close any existing socket cleanly before reconnecting

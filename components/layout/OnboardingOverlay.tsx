@@ -105,7 +105,7 @@ export function OnboardingOverlay() {
               {current.badge && (
                 <div className="mb-3 inline-flex items-center gap-1.5 rounded border border-primary/20 bg-primary/5 px-2 py-1 text-[11px] text-primary">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/img/iconinframes.png" alt="" className="h-3 w-3" />
+                  <img src="/iconinframes.png" alt="" className="h-3 w-3" />
                   {current.badge}
                 </div>
               )}

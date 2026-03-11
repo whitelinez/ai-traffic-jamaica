@@ -35,7 +35,7 @@ export function LogoPulse() {
       {/* Dual-image logo frame */}
       <span className="relative h-8 w-8 shrink-0">
         <Image
-          src="/img/iconinframes.png"
+          src="/iconinframes.png"
           alt="AI Traffic Jamaica"
           fill
           className={`object-contain transition-opacity duration-500 ${
@@ -44,7 +44,7 @@ export function LogoPulse() {
           priority
         />
         <Image
-          src="/img/aiframes.png"
+          src="/aiframes.png"
           alt=""
           aria-hidden
           fill
