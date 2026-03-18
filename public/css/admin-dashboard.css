@@ -506,6 +506,32 @@
 .auth-success{ color: var(--ok);  font-size: 12px; margin: 4px 0 0; }
 
 /* ── Zone Editor ─────────────────────────────────────────────── */
+.zone-cam-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.zone-cam-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.zone-cam-switcher select {
+  flex: 1;
+  background: var(--as2);
+  border: 1px solid rgba(15,185,177,0.35);
+  color: var(--text);
+  font-size: 0.82rem;
+  padding: 5px 8px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.zone-cam-switcher select:focus { outline: none; border-color: var(--accent); }
+
 .zone-editor-workflow {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(270px, 1fr);

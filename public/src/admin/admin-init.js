@@ -1,3 +1,4 @@
+import Hls from 'hls.js';
 import { sb } from '../core/supabase.js';
 import { Auth } from '../services/auth.js';
 import { Stream } from '../services/stream.js';
@@ -2556,6 +2557,58 @@ async function init() {
   const lmCanvas = document.getElementById("landmark-canvas");
   await Stream.init(video);
   AdminLine.init(video, canvas, cameraId);
+
+  // ── Zone editor camera switcher ────────────────────────────────
+  (async function initZoneCamSelect() {
+    const sel = document.getElementById("zone-cam-select");
+    if (!sel) return;
+    let _zoneHls = null;
+    try {
+      const { data: cams } = await sb
+        .from("cameras")
+        .select("id, ipcam_alias, feed_appearance, is_active")
+        .order("created_at", { ascending: false });
+      if (cams?.length) {
+        sel.innerHTML = cams.map(c => {
+          const label = c.feed_appearance?.label || c.ipcam_alias || c.id;
+          return `<option value="${c.id}" data-alias="${c.ipcam_alias || ""}"${String(c.id) === String(cameraId) ? " selected" : ""}>${label}${c.is_active ? " ★" : ""}</option>`;
+        }).join("");
+        // Set label for current cam
+        const activeCam = cams.find(c => String(c.id) === String(cameraId));
+        const labelEl = document.getElementById("zone-editor-cam-label");
+        if (labelEl && activeCam) labelEl.textContent = activeCam.feed_appearance?.label || activeCam.ipcam_alias || "";
+      }
+    } catch { /* non-fatal */ }
+
+    sel.addEventListener("change", () => {
+      const opt = sel.options[sel.selectedIndex];
+      const camId = opt?.value;
+      const alias = opt?.dataset.alias || "";
+      const label = opt?.text?.replace(" ★", "") || alias;
+      const labelEl = document.getElementById("zone-editor-cam-label");
+      if (labelEl) labelEl.textContent = label;
+
+      // Switch HLS stream
+      const streamUrl = alias ? `/api/stream?alias=${encodeURIComponent(alias)}` : "/api/stream";
+      if (Hls.isSupported()) {
+        if (_zoneHls) { _zoneHls.destroy(); }
+        _zoneHls = new Hls({ enableWorker: false, maxBufferLength: 8, maxMaxBufferLength: 16 });
+        _zoneHls.loadSource(streamUrl);
+        _zoneHls.attachMedia(video);
+        _zoneHls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
+      } else if (video.canPlayType?.("application/vnd.apple.mpegurl")) {
+        video.src = streamUrl;
+        video.play().catch(() => {});
+      }
+
+      // Re-init AdminLine + landmarks for new camera
+      AdminLine.init(video, canvas, camId);
+      AdminLine.loadZones?.();
+      const lmCnv = document.getElementById("landmark-canvas");
+      if (lmCnv && AdminLandmarks) AdminLandmarks.reinit(video, lmCnv, camId);
+    });
+  })();
+
   if (lmCanvas && AdminLandmarks) {
     AdminLandmarks.init(video, lmCanvas, cameraId);
     AdminLandmarks.loadLandmarks();
