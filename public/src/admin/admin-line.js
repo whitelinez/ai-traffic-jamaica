@@ -90,6 +90,8 @@ export const AdminLine = (() => {
       canvas.addEventListener("click", handleClick);
       document.getElementById("btn-clear-line")?.addEventListener("click", clearActive);
       document.getElementById("btn-save-line")?.addEventListener("click", saveZones);
+      document.getElementById("btn-remove-count-band")?.addEventListener("click", removeCountBand);
+      document.getElementById("btn-remove-detect-zone")?.addEventListener("click", removeDetectZone);
       document.getElementById("btn-save-count-settings")?.addEventListener("click", saveCountSettingsOnly);
       document.getElementById("btn-count-preset-balanced")?.addEventListener("click", () => {
         applyCountSettingsToForm(DEFAULT_COUNT_SETTINGS);
@@ -641,6 +643,31 @@ export const AdminLine = (() => {
     updateZoneValidityStatus("Zone cleared");
   }
 
+  function removeCountBand() {
+    countPoints = [];
+    redraw();
+    updateStatus("Removing count band…");
+    _saveField({ count_line: null }, "Count band removed ✓");
+  }
+
+  function removeDetectZone() {
+    detectPoints = [];
+    redraw();
+    updateStatus("Removing detect zone…");
+    _saveField({ detect_zone: null }, "Detect zone removed ✓");
+  }
+
+  async function _saveField(fields, successMsg) {
+    if (!cameraId) { updateStatus("No camera selected"); return; }
+    try {
+      const { error } = await window.sb.from("cameras").update(fields).eq("id", cameraId);
+      if (error) throw error;
+      updateStatus(successMsg);
+    } catch (e) {
+      updateStatus("Save failed: " + e.message);
+    }
+  }
+
   async function saveZones() {
     if (isSaving) return;
     const validity = getZoneValidity();
@@ -673,6 +700,8 @@ export const AdminLine = (() => {
       updateData.count_line = toRel4(countPoints);
     } else if (countPoints.length >= COUNT_MIN_POINTS) {
       updateData.count_line = toRel2(countPoints);
+    } else {
+      updateData.count_line = null;
     }
     if (detectPoints.length >= 3) {
       updateData.detect_zone = {
@@ -901,7 +930,7 @@ export const AdminLine = (() => {
   function updateZoneValidityStatus(prefixMsg = "") {
     const validity = getZoneValidity();
     const saveBtn = document.getElementById("btn-save-line");
-    const canSave = validity.ok && (countPoints.length >= COUNT_MIN_POINTS || detectPoints.length >= 3);
+    const canSave = validity.ok;
     if (saveBtn) {
       if (canSave) saveBtn.removeAttribute("disabled");
       else saveBtn.setAttribute("disabled", "disabled");
@@ -1003,6 +1032,6 @@ export const AdminLine = (() => {
   }
 
 
-  return { init, clearActive, saveZones, refresh, saveCountSettingsOnly, loadZones: loadExistingZones };
+  return { init, clearActive, saveZones, refresh, saveCountSettingsOnly, loadZones: loadExistingZones, removeCountBand, removeDetectZone };
 })();
 
