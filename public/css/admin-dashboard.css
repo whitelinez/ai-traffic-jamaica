@@ -521,6 +521,12 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+.zone-cam-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  opacity: 0.6;
+  white-space: nowrap;
+}
 .zone-cam-switcher select {
   flex: 1;
   background: var(--as2);
