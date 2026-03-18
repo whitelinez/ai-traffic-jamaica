@@ -360,8 +360,7 @@ import { DetectionOverlay } from './detection-overlay.js';
     const pt = (rx, ry) => contentToPixel(rx, ry, bounds);
 
     if (detectZone) _drawDetectZoneCanvas(detectZone, pt);
-    const _effectiveLine = countLine || { x1: 0.0, y1: 0.55, x2: 1.0, y2: 0.55 };
-    _drawCountLineCanvas(_effectiveLine, pt);
+    if (countLine) _drawCountLineCanvas(countLine, pt);
     if (_pulseRings.length) _drawPulseRings(bounds);
 
     _drawLandmarks(bounds);
@@ -376,8 +375,7 @@ import { DetectionOverlay } from './detection-overlay.js';
     const pt = (rx, ry) => contentToPixel(rx, ry, bounds);
 
     if (detectZone) _drawDetectZonePixi(detectZone, pt);
-    const _effectiveLineP = countLine || { x1: 0.0, y1: 0.55, x2: 1.0, y2: 0.55 };
-    _drawCountLinePixi(_effectiveLineP, pt);
+    if (countLine) _drawCountLinePixi(countLine, pt);
 
     // Landmarks render on the 2D ctx even when Pixi is active (text/labels)
     if (ctx) _drawLandmarks(getContentBounds(video));
