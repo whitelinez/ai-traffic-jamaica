@@ -44,21 +44,25 @@ async function init(videoEl, opts = {}) {
     _mediaRecoveryAttempts = 0;
     hlsInstance = new Hls({
       enableWorker: true,
-      lowLatencyMode: true,
-      backBufferLength: 2,
-      maxBufferLength: 4,
-      maxMaxBufferLength: 8,
+      lowLatencyMode: false,
+      backBufferLength: 0,
+      maxBufferLength: 3,
+      maxMaxBufferLength: 6,
       liveSyncDurationCount: 1,
-      liveMaxLatencyDurationCount: 3,
+      liveMaxLatencyDurationCount: 2,
       fragLoadingMaxRetry: 4,
       levelLoadingMaxRetry: 4,
       manifestLoadingMaxRetry: 3,
+      nudgeOffset: 0.1,
+      nudgeMaxRetry: 3,
     });
     hlsInstance.loadSource(streamUrl);
     hlsInstance.attachMedia(videoEl);
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
       _mediaRecoveryAttempts = 0;
       emitStatus('ok', { alias: currentAlias });
+      // Seek to live edge to minimize latency
+      if (hlsInstance.liveSyncPosition) videoEl.currentTime = hlsInstance.liveSyncPosition;
       videoEl.play().catch(() => {
         document.getElementById('play-overlay')?.classList.remove('hidden');
       });
