@@ -641,16 +641,27 @@ const AdminLine = (() => {
 
   function removeCountBand() {
     countPoints = [];
-    setMode("count");
     redraw();
-    updateZoneValidityStatus("Count band cleared — click Save to persist");
+    updateStatus("Removing count band…");
+    _saveField({ count_line: null }, "Count band removed ✓");
   }
 
   function removeDetectZone() {
     detectPoints = [];
-    setMode("detect");
     redraw();
-    updateZoneValidityStatus("Detect zone cleared — click Save to persist");
+    updateStatus("Removing detect zone…");
+    _saveField({ detect_zone: null }, "Detect zone removed ✓");
+  }
+
+  async function _saveField(fields, successMsg) {
+    if (!cameraId) { updateStatus("No camera selected"); return; }
+    try {
+      const { error } = await window.sb.from("cameras").update(fields).eq("id", cameraId);
+      if (error) throw error;
+      updateStatus(successMsg);
+    } catch (e) {
+      updateStatus("Save failed: " + e.message);
+    }
   }
 
   async function saveZones() {
