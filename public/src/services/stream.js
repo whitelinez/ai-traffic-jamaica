@@ -7,6 +7,9 @@ let currentVideoEl = null;
 let retryTimer = null;
 let _wssUrl = null;
 let _mediaRecoveryAttempts = 0;
+let _stallWatchdog = null;
+let _stallLastTime = -1;
+let _stallLastAt = 0;
 
 function emitStatus(status, detail = {}) {
   window.dispatchEvent(new CustomEvent('stream:status', { detail: { status, alias: currentAlias, ...detail } }));
@@ -14,6 +17,29 @@ function emitStatus(status, detail = {}) {
 
 function clearRetry() {
   if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+}
+
+function _startStallWatchdog(videoEl) {
+  if (_stallWatchdog) clearInterval(_stallWatchdog);
+  _stallLastTime = -1;
+  _stallLastAt = Date.now();
+  _stallWatchdog = setInterval(() => {
+    if (!videoEl || videoEl.paused || videoEl.ended || videoEl.readyState < 2) return;
+    const now = Date.now();
+    if (videoEl.currentTime !== _stallLastTime) {
+      _stallLastTime = videoEl.currentTime;
+      _stallLastAt = now;
+    } else if (now - _stallLastAt > 8000) {
+      console.warn('[Stream] Stall detected (8s) — reinitialising');
+      clearInterval(_stallWatchdog);
+      _stallWatchdog = null;
+      init(videoEl, { alias: currentAlias });
+    }
+  }, 2000);
+}
+
+function _clearStallWatchdog() {
+  if (_stallWatchdog) { clearInterval(_stallWatchdog); _stallWatchdog = null; }
 }
 
 function buildStreamUrl() {
@@ -61,11 +87,11 @@ async function init(videoEl, opts = {}) {
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
       _mediaRecoveryAttempts = 0;
       emitStatus('ok', { alias: currentAlias });
-      // Seek to live edge to minimize latency
       if (hlsInstance.liveSyncPosition) videoEl.currentTime = hlsInstance.liveSyncPosition;
       videoEl.play().catch(() => {
         document.getElementById('play-overlay')?.classList.remove('hidden');
       });
+      _startStallWatchdog(videoEl);
     });
     hlsInstance.on(Hls.Events.ERROR, (_, data) => {
       if (!data.fatal) return;
@@ -108,6 +134,7 @@ function setAlias(alias) {
 
 function destroy() {
   clearRetry();
+  _clearStallWatchdog();
   _mediaRecoveryAttempts = 0;
   if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
 }
